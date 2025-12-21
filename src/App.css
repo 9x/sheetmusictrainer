@@ -296,3 +296,49 @@
   background-color: rgba(var(--hue-primary), 0.1);
   transform: translateY(-2px);
 }
+
+.zen-button {
+  background-color: transparent;
+  border: 2px solid var(--color-text-muted);
+  color: var(--color-text-muted);
+  padding: 0.5rem 1rem;
+  border-radius: 30px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.zen-button:hover {
+  border-color: var(--color-text-main);
+  color: var(--color-text-main);
+  background-color: rgba(128, 128, 128, 0.1);
+  transform: translateY(-2px);
+}
+
+.exit-zen-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-text-muted);
+  border-radius: 20px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.2s;
+  z-index: 100;
+  font-weight: 600;
+  box-shadow: var(--shadow-md);
+}
+
+.exit-zen-button:hover {
+  opacity: 1;
+  color: var(--color-text-main);
+  border-color: var(--color-text-main);
+  transform: scale(1.05);
+}

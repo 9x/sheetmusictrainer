@@ -22,6 +22,7 @@ export interface AppSettings {
     instrument: string;
     showTuningMeter: boolean;
     rhythm: RhythmSettings;
+    zenMode: boolean;
 }
 
 interface ControlsProps {

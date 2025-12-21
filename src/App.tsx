@@ -40,7 +40,8 @@ function App() {
       autoAdvance: false,
       sound: true,
       volume: 0.5
-    }
+    },
+    zenMode: false
   });
 
   const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
@@ -173,10 +174,12 @@ function App() {
   }, [settings.showHint, targetMidi, currentTuning, currentInstrumentDef]);
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <div className="logo">Sheet music trainer</div>
-      </header>
+    <div className={`app-container ${settings.zenMode ? 'zen-mode' : ''}`}>
+      {!settings.zenMode && (
+        <header className="app-header">
+          <div className="logo">Sheet music trainer</div>
+        </header>
+      )}
 
       <main className="main-stage">
         <div className="card sheet-music-card">
@@ -190,13 +193,15 @@ function App() {
             height={currentInstrumentDef.clefMode === 'grand' ? 300 : 250}
           />
 
-          <div className="feedback-area">
-            {feedbackMessage ? (
-              <div className="success-message animate-pop">{feedbackMessage}</div>
-            ) : (
-              <div className="instruction-text">Play the note above</div>
-            )}
-          </div>
+          {!settings.zenMode && (
+            <div className="feedback-area">
+              {feedbackMessage ? (
+                <div className="success-message animate-pop">{feedbackMessage}</div>
+              ) : (
+                <div className="instruction-text">Play the note above</div>
+              )}
+            </div>
+          )}
 
           {settings.showHint && (
             <div className="hint-card">
@@ -211,53 +216,81 @@ function App() {
 
           {error && <div className="error-message">{error}</div>}
 
-          <div className="action-row" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
-            <button
-              className={`hint-button ${settings.showHint ? 'active' : ''}`}
-              onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
-            >
-              <HelpCircle size={18} />
-              {settings.showHint ? "Hide Hint" : "Show Hint"}
-            </button>
-            <button className="skip-button" onClick={generateNewNote}>
-              <SkipForward size={18} />
-              Skip Note
-            </button>
-          </div>
-        </div>
-
-        <div className="pitch-monitor-bar">
-          <button
-            className={`mic-button ${listening ? 'listening' : ''}`}
-            onClick={() => setListening(!listening)}
-            aria-label={listening ? "Stop Listening" : "Start Listening"}
-          >
-            {listening ? <Mic size={28} /> : <MicOff size={28} />}
-          </button>
-
-          {settings.showTuningMeter && pitchData ? (
-            <TuningMeter cents={pitchData.cents} noteName={pitchData.note} />
-          ) : (
-            <div className={`pitch-readout ${pitchData ? 'active' : ''}`}>
-              {pitchData ? (
-                <>
-                  <span className={`detected-note ${pitchData.midi === targetMidi ? 'match' : ''}`}>
-                    {pitchData.note}
-                  </span>
-                  <span className="detected-hz">{Math.round(pitchData.frequency)} Hz</span>
-                </>
-              ) : (
-                <span className="placeholder">{listening ? "Listening..." : "Mic Off"}</span>
-              )}
+          {!settings.zenMode && (
+            <div className="action-row" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
+              <button
+                className={`hint-button ${settings.showHint ? 'active' : ''}`}
+                onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
+              >
+                <HelpCircle size={18} />
+                {settings.showHint ? "Hide Hint" : "Show Hint"}
+              </button>
+              <button className="skip-button" onClick={generateNewNote}>
+                <SkipForward size={18} />
+                Skip Note
+              </button>
+              <button
+                className="zen-button"
+                onClick={() => setSettings(s => ({ ...s, zenMode: true }))}
+                title="Zen Mode"
+              >
+                <span>Zen</span>
+              </button>
             </div>
           )}
         </div>
-      </main>
 
-      <footer className="settings-footer">
-        <Controls settings={settings} onUpdateSettings={setSettings} />
-      </footer>
-    </div>
+
+        {
+          !settings.zenMode && (
+            <div className="pitch-monitor-bar">
+              <button
+                className={`mic-button ${listening ? 'listening' : ''}`}
+                onClick={() => setListening(!listening)}
+                aria-label={listening ? "Stop Listening" : "Start Listening"}
+              >
+                {listening ? <Mic size={28} /> : <MicOff size={28} />}
+              </button>
+
+              {settings.showTuningMeter && pitchData ? (
+                <TuningMeter cents={pitchData.cents} noteName={pitchData.note} />
+              ) : (
+                <div className={`pitch-readout ${pitchData ? 'active' : ''}`}>
+                  {pitchData ? (
+                    <>
+                      <span className={`detected-note ${pitchData.midi === targetMidi ? 'match' : ''}`}>
+                        {pitchData.note}
+                      </span>
+                      <span className="detected-hz">{Math.round(pitchData.frequency)} Hz</span>
+                    </>
+                  ) : (
+                    <span className="placeholder">{listening ? "Listening..." : "Mic Off"}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        }
+      </main >
+
+      {!settings.zenMode && (
+        <footer className="settings-footer">
+          <Controls settings={settings} onUpdateSettings={setSettings} />
+        </footer>
+      )
+      }
+
+      {
+        settings.zenMode && (
+          <button
+            className="exit-zen-button"
+            onClick={() => setSettings(s => ({ ...s, zenMode: false }))}
+          >
+            Exit Zen Mode
+          </button>
+        )
+      }
+    </div >
   );
 }
 
