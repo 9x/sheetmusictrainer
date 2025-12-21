@@ -8,6 +8,7 @@ interface SheetMusicProps {
     clef?: 'treble' | 'bass';
     width?: number;
     height?: number;
+    transpose?: number; // Transposition in semitones for visualization (e.g., +12 for guitar)
 }
 
 export const SheetMusic: React.FC<SheetMusicProps> = ({
@@ -15,7 +16,8 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
     playedMidi,
     clef = 'treble',
     width = 300,
-    height = 200
+    height = 200,
+    transpose = 12 // Default to +1 octave (Guitar Notation)
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -35,37 +37,45 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         stave.addClef(clef);
         stave.setContext(context).draw();
 
+        // Helper to create keys for VexFlow
+        const getVexFlowKey = (midi: number) => {
+            const visualMidi = midi + transpose;
+            const details = getNoteDetails(visualMidi);
+            return {
+                keys: [`${details.name.toLowerCase()}/${details.octave}`],
+                hasAccidental: details.name.includes("#")
+            };
+        };
+
         // Create Target Note
-        const targetDetails = getNoteDetails(targetMidi);
-        const targetKey = `${targetDetails.name.toLowerCase()}/${targetDetails.octave}`;
+        const targetData = getVexFlowKey(targetMidi);
 
         const targetStaveNote = new StaveNote({
-            keys: [targetKey],
+            keys: targetData.keys,
             duration: "w",
             clef: clef
         });
 
-        if (targetDetails.name.includes("#")) {
+        if (targetData.hasAccidental) {
             targetStaveNote.addModifier(new Accidental("#"));
         }
 
         if (playedMidi) {
-            const playedDetails = getNoteDetails(playedMidi);
-            const playedKey = `${playedDetails.name.toLowerCase()}/${playedDetails.octave}`;
+            const playedData = getVexFlowKey(playedMidi);
 
             const playedStaveNote = new StaveNote({
-                keys: [playedKey],
+                keys: playedData.keys,
                 duration: "h",
-                clef: clef,
+                clef: clef
             });
 
             // Target note as half note to match measure
             const targetNoteHalf = new StaveNote({
-                keys: [targetKey],
+                keys: targetData.keys,
                 duration: "h",
                 clef: clef
             });
-            if (targetDetails.name.includes("#")) targetNoteHalf.addModifier(new Accidental("#"));
+            if (targetData.hasAccidental) targetNoteHalf.addModifier(new Accidental("#"));
 
 
             if (playedMidi === targetMidi) {
@@ -74,10 +84,11 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
                 playedStaveNote.setStyle({ fillStyle: "var(--color-error)", strokeStyle: "var(--color-error)" });
             }
 
-            if (playedDetails.name.includes("#")) {
+            if (playedData.hasAccidental) {
                 playedStaveNote.addModifier(new Accidental("#"));
             }
 
+            // Use camelCase properties as fixed previously
             const voiceCombined = new Voice({ numBeats: 4, beatValue: 4 });
             voiceCombined.addTickables([targetNoteHalf, playedStaveNote]);
 
@@ -91,7 +102,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
             voice.draw(context, stave);
         }
 
-    }, [targetMidi, playedMidi, clef, width, height]);
+    }, [targetMidi, playedMidi, clef, width, height, transpose]);
 
     return <div ref={containerRef} className="sheet-music-container" />;
 };

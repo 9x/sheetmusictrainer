@@ -101,7 +101,7 @@ function App() {
     }
   }, [pitchData, targetMidi, matchStartTime, generateNewNote]);
 
-  const targetDetails = getNoteDetails(targetMidi);
+
 
   // Hint text construction
   const hintPositions = useMemo(() => {
@@ -135,7 +135,9 @@ function App() {
 
           {settings.showHint && (
             <div className="hint-card">
-              <div className="hint-note">{targetDetails.scientific}</div>
+              <div className="hint-note">
+                {getNoteDetails(targetMidi + 12).scientific} (Written)
+              </div>
               <div className="hint-positions">
                 {hintPositions.map((p, i) => (
                   <span key={i} className="hint-tag">

@@ -49,3 +49,8 @@ export function getRandomNote(min: number, max: number, validNotes?: number[]): 
     }
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+// Helper to convert Written note to Sounding note for guitar
+// e.g. Input: "C4" (Written) -> Returns C3 (Sounding) MIDI
+// But usually we work with MIDI.
+// This is just a note for logic: Guitar Sounding = Written - 12.
