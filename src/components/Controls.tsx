@@ -8,6 +8,7 @@ export interface AppSettings {
     difficulty: Difficulty;
     showHint: boolean;
     tuningId: string;
+    keySignature: string;
 }
 
 interface ControlsProps {
@@ -63,6 +64,34 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
                 </select>
             </div>
 
+
+            <div className="control-group">
+                <label className="control-label">
+                    <span>Key Signature</span>
+                </label>
+                <select
+                    value={settings.keySignature}
+                    onChange={(e) => onUpdateSettings({ ...settings, keySignature: e.target.value })}
+                    className="control-select"
+                >
+                    <optgroup label="Major Keys">
+                        <option value="C">C Major</option>
+                        <option value="G">G Major</option>
+                        <option value="D">D Major</option>
+                        <option value="A">A Major</option>
+                        <option value="E">E Major</option>
+                        <option value="F">F Major</option>
+                        <option value="Bb">Bb Major</option>
+                        <option value="Eb">Eb Major</option>
+                    </optgroup>
+                    <optgroup label="Minor Keys">
+                        <option value="Am">A Minor</option>
+                        <option value="Em">E Minor</option>
+                        <option value="Dm">D Minor</option>
+                    </optgroup>
+                </select>
+            </div>
+
             <button
                 className={`control-button ${settings.showHint ? 'active' : ''}`}
                 onClick={toggleHint}
@@ -73,3 +102,4 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
         </div>
     );
 };
+

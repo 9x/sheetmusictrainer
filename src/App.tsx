@@ -26,7 +26,8 @@ function App() {
   const [settings, setSettings] = useState<AppSettings>({
     difficulty: 'first_pos',
     showHint: false,
-    tuningId: 'standard'
+    tuningId: 'standard',
+    keySignature: 'C'
   });
 
   const [streak, setStreak] = useState(0);
@@ -122,6 +123,7 @@ function App() {
           <SheetMusic
             targetMidi={targetMidi}
             playedMidi={pitchData?.midi}
+            keySignature={settings.keySignature}
             width={Math.min(window.innerWidth - 40, 500)}
             height={250}
           />
