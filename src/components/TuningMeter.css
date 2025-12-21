@@ -1,0 +1,118 @@
+.tuning-meter-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 260px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 12px;
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 10px;
+}
+
+.meter-scale {
+    position: relative;
+    width: 100%;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.tick {
+    position: absolute;
+    top: 4px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.5);
+    transform: translateX(-50%);
+}
+
+.tick-left {
+    left: 10%;
+}
+
+.tick-center {
+    left: 50%;
+}
+
+.tick-right {
+    left: 90%;
+}
+
+.center-line {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
+.meter-needle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: white;
+    transform: translateX(-50%);
+    transition: left 0.1s ease-out;
+    z-index: 2;
+    border-radius: 2px;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+}
+
+.meter-needle.perfect {
+    background-color: #4ade80;
+    box-shadow: 0 0 10px #4ade80;
+}
+
+/* Tailwind Green-400 */
+.meter-needle.good {
+    background-color: #86efac;
+}
+
+/* Tailwind Green-300 */
+.meter-needle.okay {
+    background-color: #facc15;
+}
+
+/* Tailwind Yellow-400 */
+.meter-needle.poor {
+    background-color: #f87171;
+}
+
+/* Tailwind Red-400 */
+
+.tuning-readout {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-family: monospace;
+}
+
+.tuning-readout .note-name {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: white;
+}
+
+.tuning-readout .cents-value {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.tuning-readout .cents-value.perfect {
+    color: #4ade80;
+}
+
+.tuning-readout .cents-value.okay {
+    color: #facc15;
+}
+
+.tuning-readout .cents-value.poor {
+    color: #f87171;
+}

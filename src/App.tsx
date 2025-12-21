@@ -13,6 +13,7 @@ import {
 } from './music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
 import { FretboardHint } from './components/FretboardHint';
+import { TuningMeter } from './components/TuningMeter';
 import { Mic, MicOff, SkipForward, HelpCircle } from 'lucide-react';
 import './App.css';
 import './styles/skip-button.css';
@@ -27,6 +28,7 @@ function App() {
   const [settings, setSettings] = useState<AppSettings>({
     difficulty: 'first_pos',
     showHint: false,
+    showTuningMeter: false,
     tuningId: 'standard',
     keySignature: 'C',
     instrument: 'guitar',
@@ -233,18 +235,22 @@ function App() {
             {listening ? <Mic size={28} /> : <MicOff size={28} />}
           </button>
 
-          <div className={`pitch-readout ${pitchData ? 'active' : ''}`}>
-            {pitchData ? (
-              <>
-                <span className={`detected-note ${pitchData.midi === targetMidi ? 'match' : ''}`}>
-                  {pitchData.note}
-                </span>
-                <span className="detected-hz">{Math.round(pitchData.frequency)} Hz</span>
-              </>
-            ) : (
-              <span className="placeholder">{listening ? "Listening..." : "Mic Off"}</span>
-            )}
-          </div>
+          {settings.showTuningMeter && pitchData ? (
+            <TuningMeter cents={pitchData.cents} noteName={pitchData.note} />
+          ) : (
+            <div className={`pitch-readout ${pitchData ? 'active' : ''}`}>
+              {pitchData ? (
+                <>
+                  <span className={`detected-note ${pitchData.midi === targetMidi ? 'match' : ''}`}>
+                    {pitchData.note}
+                  </span>
+                  <span className="detected-hz">{Math.round(pitchData.frequency)} Hz</span>
+                </>
+              ) : (
+                <span className="placeholder">{listening ? "Listening..." : "Mic Off"}</span>
+              )}
+            </div>
+          )}
         </div>
       </main>
 

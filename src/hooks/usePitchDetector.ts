@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { PitchAnalyzer } from '../audio/PitchAnalyzer';
-import { frequencyToMidi, getNoteDetails } from '../music/NoteUtils';
+import { frequencyToMidi, getNoteDetails, getCentDifference } from '../music/NoteUtils';
 
 interface PitchData {
     frequency: number;
@@ -28,11 +28,13 @@ export function usePitchDetector(active: boolean) {
             // Calculate cents off purely for display if needed, 
             // but for training we usually care if midi matches.
 
+            const cents = getCentDifference(freq, midi);
+
             setPitchData({
                 frequency: freq,
                 midi,
                 note: scientific,
-                cents: 0,
+                cents,
                 clarity: 1
             });
         }

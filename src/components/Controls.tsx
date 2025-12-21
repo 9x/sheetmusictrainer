@@ -1,4 +1,4 @@
-import { Settings, Guitar, Music } from 'lucide-react';
+import { Settings, Guitar, Music, Gauge } from 'lucide-react';
 import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 
@@ -20,6 +20,7 @@ export interface AppSettings {
     tuningId: string;
     keySignature: string;
     instrument: string;
+    showTuningMeter: boolean;
     rhythm: RhythmSettings;
 }
 
@@ -227,7 +228,19 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
                     </div>
                 )}
             </div>
-
+            <div className="control-group" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px', marginTop: '12px', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="control-label" style={{ marginBottom: 0 }}>
+                    <Gauge size={18} />
+                    <span>Tuning Meter</span>
+                </label>
+                <button
+                    className={`switch-button ${settings.showTuningMeter ? 'active' : ''}`}
+                    onClick={() => onUpdateSettings({ ...settings, showTuningMeter: !settings.showTuningMeter })}
+                    title={settings.showTuningMeter ? "Hide Tuner" : "Show Tuner"}
+                >
+                    <div className="switch-thumb" />
+                </button>
+            </div>
 
 
         </div>
