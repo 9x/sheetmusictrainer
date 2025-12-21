@@ -12,8 +12,9 @@ import {
   getFirstPositionNotes,
   getFretboardPositions
 } from './music/Tunings';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, MicOff, SkipForward } from 'lucide-react';
 import './App.css';
+import './styles/skip-button.css';
 
 const NOTE_MATCH_THRESHOLD_MS = 300; // How long to convert hold note to confirm
 
@@ -149,6 +150,13 @@ function App() {
           )}
 
           {error && <div className="error-message">{error}</div>}
+
+          <div className="action-row" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+            <button className="skip-button" onClick={generateNewNote}>
+              <SkipForward size={18} />
+              Skip Note
+            </button>
+          </div>
         </div>
 
         <div className="pitch-monitor-bar">

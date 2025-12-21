@@ -58,9 +58,17 @@ export class PitchAnalyzer {
         }
         rms = Math.sqrt(rms / this.buffer.length);
 
-        if (rms < 0.01) return null; // Silence threshold
+        if (rms < 0.05) return null; // Silence threshold increased to 0.05 for robustness because 0.01 picked up noise
 
         const pitch = this.detector(this.buffer);
+
+        // Guitar range filtering:
+        // Low E (E2) is ~82Hz. Drop D is ~73Hz.
+        // High E (E4) is ~330Hz. 12th fret E5 is ~660Hz.
+        // Harmonics can go higher, but unlikely above 1500Hz for fundamental training.
+        // 19kHz (user reported D#10) is definitely noise.
+        if (pitch && (pitch < 70 || pitch > 1500)) return null;
+
         return pitch;
     }
 }
