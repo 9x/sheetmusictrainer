@@ -12,6 +12,7 @@ import {
   getFretboardPositions
 } from './music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
+import { FretboardHint } from './components/FretboardHint';
 import { Mic, MicOff, SkipForward, HelpCircle } from 'lucide-react';
 import './App.css';
 import './styles/skip-button.css';
@@ -195,18 +196,12 @@ function App() {
             )}
           </div>
 
-          {settings.showHint && currentInstrumentDef.showTuning && (
+          {settings.showHint && currentInstrumentDef.showTuning && currentTuning && (
             <div className="hint-card">
               <div className="hint-note">
                 {getNoteDetails(targetMidi + currentInstrumentDef.transpose).scientific} (Written)
               </div>
-              <div className="hint-positions">
-                {hintPositions.map((p, i) => (
-                  <span key={i} className="hint-tag">
-                    String {p.stringIndex + 1} / Fret {p.fret}
-                  </span>
-                ))}
-              </div>
+              <FretboardHint tuning={currentTuning} positions={hintPositions} />
             </div>
           )}
 
