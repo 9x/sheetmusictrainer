@@ -64,7 +64,7 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                     y={paddingY}
                     width={width - (paddingX * 2) - nutWidth}
                     height={height - (paddingY * 2)}
-                    fill="#4a3e35" // Dark wood color
+                    fill="#999999" // Requested dark gray
                     stroke="none"
                 />
 
@@ -74,7 +74,7 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                     y={paddingY}
                     width={nutWidth}
                     height={height - (paddingY * 2)}
-                    fill="#ddd" // Bone/plastic color
+                    fill="#333" // Dark nut
                 />
 
                 {/* Fret Markers (Dots) on fretboard */}
@@ -87,14 +87,14 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                         // Draw two dots
                         return (
                             <g key={`marker-${m}`}>
-                                <circle cx={cx} cy={height / 2 - stringSpacing} r={6} fill="#aaa" opacity={0.6} />
-                                <circle cx={cx} cy={height / 2 + stringSpacing} r={6} fill="#aaa" opacity={0.6} />
+                                <circle cx={cx} cy={height / 2 - stringSpacing} r={6} fill="#777" />
+                                <circle cx={cx} cy={height / 2 + stringSpacing} r={6} fill="#777" />
                             </g>
                         );
                     }
 
                     return (
-                        <circle key={`marker-${m}`} cx={cx} cy={cy} r={6} fill="#aaa" opacity={0.6} />
+                        <circle key={`marker-${m}`} cx={cx} cy={cy} r={6} fill="#777" />
                     );
                 })}
 
@@ -109,8 +109,8 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                             y1={paddingY}
                             x2={x}
                             y2={height - paddingY}
-                            stroke="#silver"
-                            strokeWidth={2}
+                            stroke="#CCCCCC" // Lighter frets
+                            strokeWidth={1}
                         />
                     );
                 })}
@@ -120,7 +120,8 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                     const y = getStringY(i);
 
                     // i=0 is LOW pitch (thickest). 
-                    const visualThickness = 3 - (i * 0.3); // 0 -> 3, 5 -> 1.5
+                    // Bolder: Increase base thick
+                    const visualThickness = 4 - (i * 0.4); // 4 down to ~2
 
                     return (
                         <line
@@ -129,8 +130,8 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                             y1={y}
                             x2={width - paddingX}
                             y2={y}
-                            stroke="#d4d4d4" // String color
-                            strokeWidth={Math.max(1, visualThickness)}
+                            stroke="#EEEEEE" // Lighter strings
+                            strokeWidth={Math.max(1.5, visualThickness)}
                         />
                     );
                 })}
