@@ -196,12 +196,14 @@ function App() {
             )}
           </div>
 
-          {settings.showHint && currentInstrumentDef.showTuning && currentTuning && (
+          {settings.showHint && (
             <div className="hint-card">
               <div className="hint-note">
-                {getNoteDetails(targetMidi + currentInstrumentDef.transpose).scientific} (Written)
+                {getNoteDetails(targetMidi + currentInstrumentDef.transpose).scientific}
               </div>
-              <FretboardHint tuning={currentTuning} positions={hintPositions} />
+              {currentInstrumentDef.showTuning && currentTuning && (
+                <FretboardHint tuning={currentTuning} positions={hintPositions} />
+              )}
             </div>
           )}
 
