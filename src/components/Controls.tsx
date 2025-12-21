@@ -1,9 +1,18 @@
-import React from 'react';
-import { Settings, HelpCircle, Guitar, Music } from 'lucide-react';
+import { Settings, Guitar, Music } from 'lucide-react';
 import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 
 export type Difficulty = 'all' | 'first_pos' | 'open' | 'e_string';
+
+export interface RhythmSettings {
+    mode: 'bpm' | 'seconds';
+    bpm: number;
+    seconds: number;
+    active: boolean;
+    autoAdvance: boolean;
+    sound: boolean;
+    volume: number;
+}
 
 export interface AppSettings {
     difficulty: Difficulty;
@@ -11,6 +20,7 @@ export interface AppSettings {
     tuningId: string;
     keySignature: string;
     instrument: string;
+    rhythm: RhythmSettings;
 }
 
 interface ControlsProps {
@@ -34,7 +44,6 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
         const defaultRange = instDef.ranges[0].id;
 
         // Reset tuning if applicable, or just keep as is (it won't be shown/used)
-        // If instrument has tunings, pick first.
         let newTuningId = settings.tuningId;
         if (instDef.showTuning && INSTRUMENT_TUNINGS[newInstrumentId as 'guitar' | 'bass']) {
             newTuningId = INSTRUMENT_TUNINGS[newInstrumentId as 'guitar' | 'bass'][0];
@@ -43,8 +52,15 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
         onUpdateSettings({
             ...settings,
             instrument: newInstrumentId,
-            difficulty: defaultRange as Difficulty, // flexible casting
+            difficulty: defaultRange as Difficulty,
             tuningId: newTuningId
+        });
+    };
+
+    const updateRhythm = (updates: Partial<RhythmSettings>) => {
+        onUpdateSettings({
+            ...settings,
+            rhythm: { ...settings.rhythm, ...updates }
         });
     };
 
@@ -52,9 +68,7 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
     const availableTunings = INSTRUMENT_TUNINGS[settings.instrument as 'guitar' | 'bass'] || [];
     const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
 
-    const toggleHint = () => {
-        onUpdateSettings({ ...settings, showHint: !settings.showHint });
-    };
+
 
     return (
         <div className="controls-container">
@@ -108,10 +122,9 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
                 </select>
             </div>
 
-
             <div className="control-group">
                 <label className="control-label">
-                    <span>Key Signature</span>
+                    <span>Key</span>
                 </label>
                 <select
                     value={settings.keySignature}
@@ -136,13 +149,87 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
                 </select>
             </div>
 
-            <button
-                className={`control-button ${settings.showHint ? 'active' : ''}`}
-                onClick={toggleHint}
-                title="Show Hint"
-            >
-                <HelpCircle size={20} />
-            </button>
+            {/* Rhythm Controls */}
+            <div className="control-group rhythm-group" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px', marginTop: '12px', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '8px' }}>
+                    <label className="control-label" style={{ marginBottom: 0 }}>
+                        <span>Metronome / Timer</span>
+                    </label>
+                    <button
+                        className={`switch-button ${settings.rhythm.active ? 'active' : ''}`}
+                        onClick={() => updateRhythm({ active: !settings.rhythm.active })}
+                        title={settings.rhythm.active ? "Turn Off" : "Turn On"}
+                    >
+                        <div className="switch-thumb" />
+                    </button>
+                </div>
+
+                {settings.rhythm.active && (
+                    <div className="rhythm-details" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                                className={`control-button small ${settings.rhythm.mode === 'bpm' ? 'active' : ''}`}
+                                onClick={() => updateRhythm({ mode: 'bpm' })}
+                            >BPM</button>
+                            <button
+                                className={`control-button small ${settings.rhythm.mode === 'seconds' ? 'active' : ''}`}
+                                onClick={() => updateRhythm({ mode: 'seconds' })}
+                            >Timer</button>
+                        </div>
+
+                        {settings.rhythm.mode === 'bpm' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '12px', minWidth: '40px' }}>{settings.rhythm.bpm} BPM</span>
+                                <input
+                                    type="range"
+                                    min="30"
+                                    max="240"
+                                    step="5"
+                                    value={settings.rhythm.bpm}
+                                    onChange={(e) => updateRhythm({ bpm: Number(e.target.value) })}
+                                    style={{ flex: 1 }}
+                                />
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '12px', minWidth: '40px' }}>{settings.rhythm.seconds}s</span>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="60"
+                                    step="1"
+                                    value={settings.rhythm.seconds}
+                                    onChange={(e) => updateRhythm({ seconds: Number(e.target.value) })}
+                                    style={{ flex: 1 }}
+                                />
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={settings.rhythm.autoAdvance}
+                                    onChange={(e) => updateRhythm({ autoAdvance: e.target.checked })}
+                                />
+                                Auto-Adv
+                            </label>
+
+                            <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={settings.rhythm.sound}
+                                    onChange={(e) => updateRhythm({ sound: e.target.checked })}
+                                />
+                                Sound
+                            </label>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+
+
         </div>
     );
 };

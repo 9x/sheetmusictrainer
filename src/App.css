@@ -241,3 +241,58 @@
 .animate-pop {
   animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
+
+/* Switch Button for Metronome */
+.switch-button {
+  width: 44px;
+  height: 24px;
+  border-radius: 99px;
+  background-color: #ddd;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 0;
+  border: none;
+  display: flex;
+  align-items: center;
+}
+
+.switch-button.active {
+  background-color: var(--color-primary);
+}
+
+.switch-thumb {
+  width: 18px;
+  height: 18px;
+  background-color: white;
+  border-radius: 50%;
+  position: absolute;
+  left: 3px;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.switch-button.active .switch-thumb {
+  transform: translateX(17px);
+}
+
+/* Hint Button styling - similar to skip button but distinct */
+.hint-button {
+  background-color: transparent;
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+  padding: 0.5rem 1rem;
+  border-radius: 30px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+
+.hint-button:hover {
+  background-color: rgba(var(--hue-primary), 0.1);
+  transform: translateY(-2px);
+}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SheetMusic } from './components/SheetMusic';
 import { Controls, type AppSettings } from './components/Controls';
 import { usePitchDetector } from './hooks/usePitchDetector';
+import { useMetronome } from './hooks/useMetronome';
 import {
   getRandomNote,
   getNoteDetails
@@ -11,7 +12,7 @@ import {
   getFretboardPositions
 } from './music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
-import { Mic, MicOff, SkipForward } from 'lucide-react';
+import { Mic, MicOff, SkipForward, HelpCircle } from 'lucide-react';
 import './App.css';
 import './styles/skip-button.css';
 
@@ -23,14 +24,22 @@ function App() {
 
   const [targetMidi, setTargetMidi] = useState<number>(60); // Start with C4
   const [settings, setSettings] = useState<AppSettings>({
-    difficulty: 'first_pos', // Will be dynamic, but initial default needed
+    difficulty: 'first_pos',
     showHint: false,
     tuningId: 'standard',
     keySignature: 'C',
-    instrument: 'guitar'
+    instrument: 'guitar',
+    rhythm: {
+      mode: 'bpm',
+      bpm: 60,
+      seconds: 5,
+      active: false,
+      autoAdvance: false,
+      sound: true,
+      volume: 0.5
+    }
   });
 
-  const [streak, setStreak] = useState(0);
   const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
 
@@ -78,6 +87,30 @@ function App() {
   }, [settings.difficulty, settings.tuningId]);
 
 
+  // Metronome Logic
+  // Calculate effective BPM based on mode
+  const effectiveBpm = useMemo(() => {
+    if (settings.rhythm.mode === 'bpm') return settings.rhythm.bpm;
+    // In seconds mode, BPM = 60 / seconds
+    return 60 / settings.rhythm.seconds;
+  }, [settings.rhythm.mode, settings.rhythm.bpm, settings.rhythm.seconds]);
+
+  const handleTick = useCallback(() => {
+    if (settings.rhythm.autoAdvance && settings.rhythm.active) {
+      generateNewNote();
+      // Reset feedback message on auto-tick
+      setFeedbackMessage("");
+    }
+  }, [settings.rhythm.autoAdvance, settings.rhythm.active, generateNewNote]);
+
+  const { restart: restartMetronome } = useMetronome({
+    bpm: effectiveBpm,
+    volume: settings.rhythm.sound ? settings.rhythm.volume : 0,
+    playing: settings.rhythm.active,
+    onTick: handleTick
+  });
+
+
   // Match Logic
   useEffect(() => {
     if (!pitchData) {
@@ -91,23 +124,42 @@ function App() {
       } else {
         const duration = Date.now() - matchStartTime;
         if (duration > NOTE_MATCH_THRESHOLD_MS) {
-          setStreak(s => s + 1);
+          // Success!
           setFeedbackMessage("Good!");
 
-          // Simple flash effect or delay
-          setTimeout(() => {
-            generateNewNote();
-          }, 800);
+          const isRhythmActive = settings.rhythm.active && settings.rhythm.autoAdvance;
+          const isTimerMode = settings.rhythm.mode === 'seconds';
 
-          setMatchStartTime(null);
+          if (!isRhythmActive) {
+            // Standard or Rhythm-Manual
+
+            setTimeout(() => {
+              generateNewNote();
+            }, 800);
+            setMatchStartTime(null);
+          } else {
+            // Rhythm Active AND Auto-Advance
+            if (isTimerMode) {
+              // Dynamic Timer Mode: Success triggers advance
+
+              restartMetronome(); // Reset the countdown
+              setTimeout(() => {
+                generateNewNote();
+              }, 200);
+              setMatchStartTime(null);
+            } else {
+              // Strict BPM Mode: Consumed success, but wait for tick.
+              if (feedbackMessage !== "Good!") { // Only increment if not already good
+
+              }
+            }
+          }
         }
       }
     } else {
       setMatchStartTime(null);
     }
-  }, [pitchData, targetMidi, matchStartTime, generateNewNote]);
-
-
+  }, [pitchData, targetMidi, matchStartTime, generateNewNote, settings.rhythm, restartMetronome, feedbackMessage]);
 
   // Hint text construction
   const hintPositions = useMemo(() => {
@@ -120,8 +172,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <div className="logo">Antigravity Guitar</div>
-        <div className="streak-badge">Streak: <strong>{streak}</strong></div>
+        <div className="logo">Sheet music trainer</div>
       </header>
 
       <main className="main-stage">
@@ -161,7 +212,14 @@ function App() {
 
           {error && <div className="error-message">{error}</div>}
 
-          <div className="action-row" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+          <div className="action-row" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
+            <button
+              className={`hint-button ${settings.showHint ? 'active' : ''}`}
+              onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
+            >
+              <HelpCircle size={18} />
+              {settings.showHint ? "Hide Hint" : "Show Hint"}
+            </button>
             <button className="skip-button" onClick={generateNewNote}>
               <SkipForward size={18} />
               Skip Note
