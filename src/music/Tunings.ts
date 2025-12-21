@@ -5,21 +5,35 @@ export interface Tuning {
     strings: number[]; // MIDI numbers for strings, usually low to high (6th to 1st)
 }
 
+export type Instrument = 'guitar' | 'bass';
+
 // Low E2 (40), A2 (45), D3 (50), G3 (55), B3 (59), E4 (64)
 export const STANDARD_TUNING: Tuning = {
-    name: "Standard",
+    name: "Standard (Guitar)",
     strings: [40, 45, 50, 55, 59, 64]
 };
 
 // Low D2 (38), A2 (45), D3 (50), G3 (55), B3 (59), E4 (64)
 export const DROP_D_TUNING: Tuning = {
-    name: "Drop D",
+    name: "Drop D (Guitar)",
     strings: [38, 45, 50, 55, 59, 64]
+};
+
+// Bass Standard: E1 (28), A1 (33), D2 (38), G2 (43)
+export const BASS_STANDARD_TUNING: Tuning = {
+    name: "Standard (Bass)",
+    strings: [28, 33, 38, 43]
 };
 
 export const TUNINGS: Record<string, Tuning> = {
     "standard": STANDARD_TUNING,
     "drop_d": DROP_D_TUNING,
+    "bass_standard": BASS_STANDARD_TUNING,
+};
+
+export const INSTRUMENT_TUNINGS: Record<Instrument, string[]> = {
+    'guitar': ['standard', 'drop_d'],
+    'bass': ['bass_standard']
 };
 
 export interface FretPosition {

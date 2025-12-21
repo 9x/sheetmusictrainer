@@ -62,12 +62,8 @@ export class PitchAnalyzer {
 
         const pitch = this.detector(this.buffer);
 
-        // Guitar range filtering:
-        // Low E (E2) is ~82Hz. Drop D is ~73Hz.
-        // High E (E4) is ~330Hz. 12th fret E5 is ~660Hz.
-        // Harmonics can go higher, but unlikely above 1500Hz for fundamental training.
-        // 19kHz (user reported D#10) is definitely noise.
-        if (pitch && (pitch < 70 || pitch > 1500)) return null;
+        // Widen range for Bass (E1 ~41Hz) and Whistle (C8 ~4186Hz)
+        if (pitch && (pitch < 30 || pitch > 5000)) return null;
 
         return pitch;
     }

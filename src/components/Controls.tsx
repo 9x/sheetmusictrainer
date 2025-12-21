@@ -1,6 +1,7 @@
 import React from 'react';
-import { Settings, HelpCircle, Guitar } from 'lucide-react';
-import { TUNINGS } from '../music/Tunings';
+import { Settings, HelpCircle, Guitar, Music } from 'lucide-react';
+import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
+import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 
 export type Difficulty = 'all' | 'first_pos' | 'open' | 'e_string';
 
@@ -9,6 +10,7 @@ export interface AppSettings {
     showHint: boolean;
     tuningId: string;
     keySignature: string;
+    instrument: string;
 }
 
 interface ControlsProps {
@@ -25,6 +27,31 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
         onUpdateSettings({ ...settings, tuningId: e.target.value });
     };
 
+    const handleInstrumentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newInstrumentId = e.target.value;
+        const instDef = INSTRUMENT_DEFINITIONS[newInstrumentId];
+
+        const defaultRange = instDef.ranges[0].id;
+
+        // Reset tuning if applicable, or just keep as is (it won't be shown/used)
+        // If instrument has tunings, pick first.
+        let newTuningId = settings.tuningId;
+        if (instDef.showTuning && INSTRUMENT_TUNINGS[newInstrumentId as 'guitar' | 'bass']) {
+            newTuningId = INSTRUMENT_TUNINGS[newInstrumentId as 'guitar' | 'bass'][0];
+        }
+
+        onUpdateSettings({
+            ...settings,
+            instrument: newInstrumentId,
+            difficulty: defaultRange as Difficulty, // flexible casting
+            tuningId: newTuningId
+        });
+    };
+
+    // Cast instrument to specific key if needed, or use generic record access
+    const availableTunings = INSTRUMENT_TUNINGS[settings.instrument as 'guitar' | 'bass'] || [];
+    const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
+
     const toggleHint = () => {
         onUpdateSettings({ ...settings, showHint: !settings.showHint });
     };
@@ -33,19 +60,37 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
         <div className="controls-container">
             <div className="control-group">
                 <label className="control-label">
-                    <Guitar size={18} />
-                    <span>Tuning</span>
+                    <Music size={18} />
+                    <span>Instrument</span>
                 </label>
                 <select
-                    value={settings.tuningId}
-                    onChange={handleTuningChange}
+                    value={settings.instrument}
+                    onChange={handleInstrumentChange}
                     className="control-select"
                 >
-                    {Object.entries(TUNINGS).map(([id, tuning]) => (
-                        <option key={id} value={id}>{tuning.name}</option>
+                    {Object.values(INSTRUMENT_DEFINITIONS).map(def => (
+                        <option key={def.id} value={def.id}>{def.displayName}</option>
                     ))}
                 </select>
             </div>
+
+            {currentInstrumentDef.showTuning && (
+                <div className="control-group">
+                    <label className="control-label">
+                        <Guitar size={18} />
+                        <span>Tuning</span>
+                    </label>
+                    <select
+                        value={settings.tuningId}
+                        onChange={handleTuningChange}
+                        className="control-select"
+                    >
+                        {availableTunings.map(id => (
+                            <option key={id} value={id}>{TUNINGS[id].name}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             <div className="control-group">
                 <label className="control-label">
@@ -57,10 +102,9 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
                     onChange={handleDifficultyChange}
                     className="control-select"
                 >
-                    <option value="open">Open Strings (Beginner)</option>
-                    <option value="first_pos">First Position</option>
-                    <option value="e_string">E String Only</option>
-                    <option value="all">All Notes</option>
+                    {currentInstrumentDef.ranges.map(r => (
+                        <option key={r.id} value={r.id}>{r.label}</option>
+                    ))}
                 </select>
             </div>
 

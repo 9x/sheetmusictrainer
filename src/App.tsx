@@ -8,10 +8,9 @@ import {
 } from './music/NoteUtils';
 import {
   TUNINGS,
-  getOpenStringNotes,
-  getFirstPositionNotes,
   getFretboardPositions
 } from './music/Tunings';
+import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
 import { Mic, MicOff, SkipForward } from 'lucide-react';
 import './App.css';
 import './styles/skip-button.css';
@@ -24,10 +23,11 @@ function App() {
 
   const [targetMidi, setTargetMidi] = useState<number>(60); // Start with C4
   const [settings, setSettings] = useState<AppSettings>({
-    difficulty: 'first_pos',
+    difficulty: 'first_pos', // Will be dynamic, but initial default needed
     showHint: false,
     tuningId: 'standard',
-    keySignature: 'C'
+    keySignature: 'C',
+    instrument: 'guitar'
   });
 
   const [streak, setStreak] = useState(0);
@@ -35,30 +35,34 @@ function App() {
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
 
   const currentTuning = TUNINGS[settings.tuningId];
+  const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
 
   // Generate valid notes based on difficulty
   const validNotes = useMemo(() => {
-    switch (settings.difficulty) {
-      case 'open':
-        return getOpenStringNotes(currentTuning);
-      case 'first_pos':
-        return getFirstPositionNotes(currentTuning);
-      case 'e_string':
-        // Low E string: 40 to 40+12 (E2 to E3)
-        const lowE = currentTuning.strings[0];
-        return Array.from({ length: 13 }, (_, i) => lowE + i);
-      case 'all':
-      default:
-        // Range from Low E (40) to High E 12th fret (64+12=76)
-        return Array.from({ length: 37 }, (_, i) => 40 + i);
+    // Find range config
+    const rangeConfig = currentInstrumentDef.ranges.find(r => r.id === settings.difficulty);
+
+    if (rangeConfig) {
+      return Array.from({ length: rangeConfig.max - rangeConfig.min + 1 }, (_, i) => rangeConfig.min + i);
     }
-  }, [settings.difficulty, currentTuning]);
+
+    // Fallback if difficulty ID doesn't match current instrument (e.g. after switch)
+    // Return first range of current instrument
+    const fallbackRange = currentInstrumentDef.ranges[0];
+    return Array.from({ length: fallbackRange.max - fallbackRange.min + 1 }, (_, i) => fallbackRange.min + i);
+
+  }, [settings.difficulty, currentInstrumentDef]);
 
   const generateNewNote = useCallback(() => {
-    const newNote = getRandomNote(40, 76, validNotes);
+    // Determine min/max based on available notes to avoid infinite loops if validNotes empty
+    if (validNotes.length === 0) return;
+    const min = validNotes[0];
+    const max = validNotes[validNotes.length - 1];
+
+    const newNote = getRandomNote(min, max, validNotes);
     if (newNote === targetMidi && validNotes.length > 1) {
       // Try once to get a different note
-      const retry = getRandomNote(40, 76, validNotes);
+      const retry = getRandomNote(min, max, validNotes);
       setTargetMidi(retry);
     } else {
       setTargetMidi(newNote);
@@ -108,8 +112,10 @@ function App() {
   // Hint text construction
   const hintPositions = useMemo(() => {
     if (!settings.showHint) return [];
+    if (!currentInstrumentDef.showTuning || !currentTuning) return []; // No fretboard hints for piano/voice
+
     return getFretboardPositions(targetMidi, currentTuning);
-  }, [settings.showHint, targetMidi, currentTuning]);
+  }, [settings.showHint, targetMidi, currentTuning, currentInstrumentDef]);
 
   return (
     <div className="app-container">
@@ -124,8 +130,10 @@ function App() {
             targetMidi={targetMidi}
             playedMidi={pitchData?.midi}
             keySignature={settings.keySignature}
+            clef={currentInstrumentDef.clefMode}
+            transpose={currentInstrumentDef.transpose}
             width={Math.min(window.innerWidth - 40, 500)}
-            height={250}
+            height={currentInstrumentDef.clefMode === 'grand' ? 300 : 250}
           />
 
           <div className="feedback-area">
@@ -136,10 +144,10 @@ function App() {
             )}
           </div>
 
-          {settings.showHint && (
+          {settings.showHint && currentInstrumentDef.showTuning && (
             <div className="hint-card">
               <div className="hint-note">
-                {getNoteDetails(targetMidi + 12).scientific} (Written)
+                {getNoteDetails(targetMidi + currentInstrumentDef.transpose).scientific} (Written)
               </div>
               <div className="hint-positions">
                 {hintPositions.map((p, i) => (
