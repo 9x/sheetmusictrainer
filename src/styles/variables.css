@@ -1,0 +1,66 @@
+:root {
+  /* HSL Colors for easy manipulation */
+  --hue-primary: 250;
+  --hue-success: 150;
+  --hue-error: 10;
+  --hue-text: 220;
+
+  --color-bg: hsl(220, 20%, 97%);
+  --color-surface: hsl(0, 0%, 100%);
+  --color-primary: hsl(var(--hue-primary), 60%, 50%);
+  --color-primary-dark: hsl(var(--hue-primary), 60%, 40%);
+  --color-text-main: hsl(var(--hue-text), 20%, 20%);
+  --color-text-muted: hsl(var(--hue-text), 10%, 60%);
+  
+  --color-success: hsl(var(--hue-success), 60%, 45%);
+  --color-error: hsl(var(--hue-error), 70%, 55%);
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+
+  /* Typography */
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-size-base: 16px;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 2rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.05), 0 4px 6px rgba(0,0,0,0.02);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 24px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: hsl(220, 20%, 10%);
+    --color-surface: hsl(220, 20%, 15%);
+    --color-text-main: hsl(220, 10%, 90%);
+    --color-text-muted: hsl(220, 10%, 60%);
+  }
+}
+
+body {
+    margin: 0;
+    font-family: var(--font-family);
+    background-color: var(--color-bg);
+    color: var(--color-text-main);
+    transition: background-color 0.3s ease, color 0.3s ease;
+    line-height: 1.5;
+}
+
+#root {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}

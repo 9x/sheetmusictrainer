@@ -1,0 +1,243 @@
+/* App.css */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--color-bg);
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-xl);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.logo {
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  color: var(--color-primary);
+}
+
+.streak-badge {
+  background-color: var(--color-primary-dark);
+  color: white;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-lg);
+  font-weight: 600;
+}
+
+.main-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-md);
+  gap: var(--spacing-xl);
+}
+
+.card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+  transition: transform 0.2s ease;
+}
+
+.sheet-music-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  overflow: hidden;
+}
+
+.feedback-area {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--spacing-md);
+}
+
+.success-message {
+  color: var(--color-success);
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+}
+
+.instruction-text {
+  color: var(--color-text-muted);
+}
+
+.error-message {
+  color: var(--color-error);
+  margin-top: var(--spacing-md);
+}
+
+.hint-card {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background-color: var(--color-bg);
+  border-radius: var(--radius-sm);
+  width: 100%;
+  text-align: center;
+}
+
+.hint-note {
+  font-size: var(--font-size-lg);
+  font-weight: bold;
+  margin-bottom: var(--spacing-xs);
+}
+
+.hint-positions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  justify-content: center;
+}
+
+.hint-tag {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-text-muted);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+/* Pitch Monitor Bar */
+.pitch-monitor-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xl);
+}
+
+.mic-button {
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-text-muted);
+  color: var(--color-text-muted);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mic-button:hover {
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
+}
+
+.mic-button.listening {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 0 15px rgba(var(--hue-primary), 0.3);
+}
+
+.pitch-readout {
+  display: flex;
+  flex-direction: column;
+  min-width: 100px;
+}
+
+.detected-note {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-text-muted);
+}
+
+.detected-note.match {
+  color: var(--color-success);
+}
+
+.detected-hz {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+/* Controls Footer */
+.settings-footer {
+  background-color: var(--color-surface);
+  padding: var(--spacing-md);
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.controls-container {
+  display: flex;
+  gap: var(--spacing-xl);
+  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.control-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.control-select {
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid #ddd;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background-color: var(--color-bg);
+}
+
+.control-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: var(--spacing-sm);
+  transition: color 0.2s;
+}
+
+.control-button.active {
+  color: var(--color-primary);
+}
+
+/* Animations */
+@keyframes pop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-pop {
+  animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
