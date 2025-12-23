@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Renderer, Stave, StaveNote, Accidental, Voice, Formatter, StaveConnector } from 'vexflow';
+import { Renderer, Stave, StaveNote, Accidental, Voice, Formatter, StaveConnector, GhostNote, Annotation } from 'vexflow';
 import { getNoteInKey } from '../music/NoteUtils';
 
 
@@ -11,6 +11,7 @@ interface SheetMusicProps {
     height?: number;
     transpose?: number; // Transposition in semitones for visualization (e.g., +12 for guitar)
     keySignature?: string;
+    hideTargetNote?: boolean;
 }
 
 export const SheetMusic: React.FC<SheetMusicProps> = ({
@@ -20,7 +21,8 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
     width = 300,
     height = 250, // Increased default height for Grand Staff
     transpose = 12, // Default to +1 octave (Guitar Notation)
-    keySignature = 'C'
+    keySignature = 'C',
+    hideTargetNote = false
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -111,14 +113,38 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         };
 
         // --- Create Notes ---
-        const targetObj = createStaveNote(targetMidi, "w", 'target');
+        let targetObj: { note: StaveNote | GhostNote, clef: string };
+
+        if (hideTargetNote) {
+            const visualMidi = targetMidi + transpose;
+            let noteClef = clef;
+            if (clef === 'grand') {
+                noteClef = getGrandStaffClef(visualMidi);
+            }
+
+            // Create a GhostNote (invisible) instead of a StaveNote
+            // We use the same keys to ensure it takes up the right vertical space/clef logic
+            const data = getNoteInKey(visualMidi, keySignature);
+            const ghost = new GhostNote({
+                keys: data.keys,
+                duration: "w",
+                clef: noteClef as 'treble' | 'bass'
+            });
+
+            // Add a Question Mark Annotation
+            ghost.addModifier(new Annotation("?").setVerticalJustification(Annotation.VerticalJustify.CENTER));
+
+            targetObj = { note: ghost, clef: noteClef };
+        } else {
+            targetObj = createStaveNote(targetMidi, "w", 'target');
+        }
 
         const voicesToDraw: { stave: Stave, voice: Voice }[] = [];
 
         // Helper to push voice
-        const addVoice = (stave: Stave, notes: StaveNote[]) => {
+        const addVoice = (stave: Stave, notes: (StaveNote | GhostNote)[]) => {
             const voice = new Voice({ numBeats: 4, beatValue: 4 });
-            voice.addTickables(notes);
+            voice.addTickables(notes as any[]);
             new Formatter().joinVoices([voice]).format([voice], width - 60);
             voicesToDraw.push({ stave, voice });
         };
@@ -126,7 +152,20 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
 
         if (playedMidi) {
             const playedObj = createStaveNote(playedMidi, "h", 'played');
-            const targetHalfObj = createStaveNote(targetMidi, "h", 'target');
+
+            let targetHalfObj: { note: StaveNote | GhostNote, clef: string };
+            if (hideTargetNote) {
+                const visualMidi = targetMidi + transpose;
+                let noteClef = clef;
+                if (clef === 'grand') noteClef = getGrandStaffClef(visualMidi);
+                const data = getNoteInKey(visualMidi, keySignature);
+
+                const ghost = new GhostNote({ keys: data.keys, duration: "h", clef: noteClef as 'treble' | 'bass' });
+                ghost.addModifier(new Annotation("?").setVerticalJustification(Annotation.VerticalJustify.CENTER));
+                targetHalfObj = { note: ghost, clef: noteClef };
+            } else {
+                targetHalfObj = createStaveNote(targetMidi, "h", 'target');
+            }
 
             // If Grand Staff: Notes might be on DIFFERENT staves.
             // We need to group notes by Stave.

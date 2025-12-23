@@ -23,6 +23,7 @@ export interface AppSettings {
     showTuningMeter: boolean;
     rhythm: RhythmSettings;
     zenMode: boolean;
+    gameMode: 'sight_reading' | 'ear_training';
 }
 
 interface ControlsProps {
@@ -149,6 +150,28 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
                         <option value="Dm">D Minor</option>
                     </optgroup>
                 </select>
+            </div>
+
+            <div className="control-group" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px', marginTop: '12px', width: '100%' }}>
+                <label className="control-label" style={{ marginBottom: '8px' }}>
+                    <span>Game Mode</span>
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        className={`control-button ${settings.gameMode === 'sight_reading' ? 'active' : ''}`}
+                        onClick={() => onUpdateSettings({ ...settings, gameMode: 'sight_reading' })}
+                        style={{ flex: 1 }}
+                    >
+                        Sight Reading
+                    </button>
+                    <button
+                        className={`control-button ${settings.gameMode === 'ear_training' ? 'active' : ''}`}
+                        onClick={() => onUpdateSettings({ ...settings, gameMode: 'ear_training' })}
+                        style={{ flex: 1 }}
+                    >
+                        Ear Training
+                    </button>
+                </div>
             </div>
 
             {/* Rhythm Controls */}

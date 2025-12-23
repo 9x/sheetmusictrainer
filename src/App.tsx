@@ -3,6 +3,7 @@ import { SheetMusic } from './components/SheetMusic';
 import { Controls, type AppSettings } from './components/Controls';
 import { usePitchDetector } from './hooks/usePitchDetector';
 import { useMetronome } from './hooks/useMetronome';
+import { useAudioPlayer } from './hooks/useAudioPlayer';
 import {
   getRandomNote,
   getNoteDetails
@@ -14,7 +15,7 @@ import {
 import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
 import { FretboardHint } from './components/FretboardHint';
 import { TuningMeter } from './components/TuningMeter';
-import { Mic, MicOff, SkipForward, HelpCircle } from 'lucide-react';
+import { Mic, MicOff, SkipForward, HelpCircle, Volume2 } from 'lucide-react';
 import './App.css';
 import './styles/skip-button.css';
 
@@ -23,6 +24,7 @@ const NOTE_MATCH_THRESHOLD_MS = 300; // How long to convert hold note to confirm
 function App() {
   const [listening, setListening] = useState(false);
   const { pitchData, error } = usePitchDetector(listening);
+  const { playNote } = useAudioPlayer();
 
   const [targetMidi, setTargetMidi] = useState<number>(60); // Start with C4
   const [settings, setSettings] = useState<AppSettings>({
@@ -41,11 +43,13 @@ function App() {
       sound: true,
       volume: 0.5
     },
-    zenMode: false
+    zenMode: false,
+    gameMode: 'sight_reading'
   });
 
   const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
+  const [revealed, setRevealed] = useState(false);
 
   const currentTuning = TUNINGS[settings.tuningId];
   const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
@@ -82,7 +86,19 @@ function App() {
     }
     setMatchStartTime(null);
     setFeedbackMessage("");
+    setRevealed(false);
   }, [validNotes, targetMidi]);
+
+  // Audio Playback trigger
+  useEffect(() => {
+    if (settings.gameMode === 'ear_training' && !revealed) {
+      // Add a small delay to ensure state settles or allow UI to update
+      const timer = setTimeout(() => {
+        playNote(targetMidi, 1.0); // Play for 1 second
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [targetMidi, settings.gameMode, revealed, playNote]);
 
   // Initial note
   useEffect(() => {
@@ -130,6 +146,7 @@ function App() {
         if (duration > NOTE_MATCH_THRESHOLD_MS) {
           // Success!
           setFeedbackMessage("Good!");
+          setRevealed(true);
 
           const isRhythmActive = settings.rhythm.active && settings.rhythm.autoAdvance;
           const isTimerMode = settings.rhythm.mode === 'seconds';
@@ -191,6 +208,7 @@ function App() {
             transpose={currentInstrumentDef.transpose}
             width={Math.min(window.innerWidth - 40, 500)}
             height={currentInstrumentDef.clefMode === 'grand' ? 300 : 250}
+            hideTargetNote={settings.gameMode === 'ear_training' && !revealed}
           />
 
           {!settings.zenMode && (
@@ -198,8 +216,23 @@ function App() {
               {feedbackMessage ? (
                 <div className="success-message animate-pop">{feedbackMessage}</div>
               ) : (
-                <div className="instruction-text">Play the note above</div>
+                <div className="instruction-text">
+                  {settings.gameMode === 'ear_training' ? "Listen and play the note" : "Play the note above"}
+                </div>
               )}
+            </div>
+          )}
+
+          {settings.gameMode === 'ear_training' && !settings.zenMode && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+              <button
+                className="control-button"
+                onClick={() => playNote(targetMidi, 1.0)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px' }}
+              >
+                <Volume2 size={24} />
+                Play Note
+              </button>
             </div>
           )}
 
