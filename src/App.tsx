@@ -139,6 +139,9 @@ function App() {
     }
 
     if (pitchData.midi === targetMidi) {
+      // Prevent re-triggering success if we're already in a success state
+      if (feedbackMessage === "Good!") return;
+
       if (matchStartTime === null) {
         setMatchStartTime(Date.now());
       } else {
@@ -147,6 +150,7 @@ function App() {
           // Success!
           setFeedbackMessage("Good!");
           setRevealed(true);
+          setMatchStartTime(null);
 
           const isRhythmActive = settings.rhythm.active && settings.rhythm.autoAdvance;
           const isTimerMode = settings.rhythm.mode === 'seconds';
@@ -157,7 +161,6 @@ function App() {
             setTimeout(() => {
               generateNewNote();
             }, 800);
-            setMatchStartTime(null);
           } else {
             // Rhythm Active AND Auto-Advance
             if (isTimerMode) {

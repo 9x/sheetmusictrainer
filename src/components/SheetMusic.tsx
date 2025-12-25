@@ -127,8 +127,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
             const data = getNoteInKey(visualMidi, keySignature);
             const ghost = new GhostNote({
                 keys: data.keys,
-                duration: "w",
-                clef: noteClef as 'treble' | 'bass'
+                duration: "w"
             });
 
             // Add a Question Mark Annotation
@@ -160,7 +159,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
                 if (clef === 'grand') noteClef = getGrandStaffClef(visualMidi);
                 const data = getNoteInKey(visualMidi, keySignature);
 
-                const ghost = new GhostNote({ keys: data.keys, duration: "h", clef: noteClef as 'treble' | 'bass' });
+                const ghost = new GhostNote({ keys: data.keys, duration: "h" });
                 ghost.addModifier(new Annotation("?").setVerticalJustification(Annotation.VerticalJustify.CENTER));
                 targetHalfObj = { note: ghost, clef: noteClef };
             } else {
