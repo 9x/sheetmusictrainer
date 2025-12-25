@@ -15,7 +15,7 @@ import {
 import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
 import { FretboardHint } from './components/FretboardHint';
 import { TuningMeter } from './components/TuningMeter';
-import { Mic, MicOff, SkipForward, HelpCircle, Volume2 } from 'lucide-react';
+import { Mic, MicOff, SkipForward, HelpCircle, Volume2, X } from 'lucide-react';
 import './App.css';
 import './styles/skip-button.css';
 
@@ -185,6 +185,47 @@ function App() {
     }
   }, [pitchData, targetMidi, matchStartTime, generateNewNote, settings.rhythm, restartMetronome, feedbackMessage]);
 
+  /* Keyboard Shortcuts */
+  const [showHelp, setShowHelp] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      // prevent default for space to stop scrolling
+      if (e.code === 'Space') {
+        e.preventDefault();
+      }
+
+      switch (e.key.toLowerCase()) {
+        case 'h':
+          setSettings(s => ({ ...s, showHint: !s.showHint }));
+          break;
+        case 'z':
+          setSettings(s => ({ ...s, zenMode: !s.zenMode }));
+          break;
+        case 'r': // Replay
+        case 'p': // Play
+          playNote(targetMidi, 1.0);
+          break;
+      }
+
+      // Check non-character keys via code to avoid layout issues for function keys
+      if (e.code === 'Space' || e.code === 'Enter') {
+        generateNewNote();
+      }
+
+      if (e.code === 'Escape') {
+        if (showHelp) setShowHelp(false);
+        else if (settings.zenMode) setSettings(s => ({ ...s, zenMode: false }));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [settings.zenMode, showHelp, generateNewNote, playNote, targetMidi]);
+
   // Hint text construction
   const hintPositions = useMemo(() => {
     if (!settings.showHint) return [];
@@ -197,7 +238,37 @@ function App() {
     <div className={`app-container ${settings.zenMode ? 'zen-mode' : ''}`}>
       {!settings.zenMode && (
         <header className="app-header">
-          <div className="logo">Sheet music trainer</div>
+          <div className="app-header-left">
+            <div className="logo">Sheet music trainer</div>
+            <div className="app-subtitle">
+              <a href="http://jensmohrmann.de" target="_blank" rel="noopener noreferrer">jensmohrmann.de</a>
+            </div>
+          </div>
+
+          <div className="header-controls">
+            <div className="game-mode-toggle">
+              <button
+                className={`toggle-option ${settings.gameMode === 'sight_reading' ? 'active' : ''}`}
+                onClick={() => setSettings(s => ({ ...s, gameMode: 'sight_reading' }))}
+              >
+                Sight Reading
+              </button>
+              <button
+                className={`toggle-option ${settings.gameMode === 'ear_training' ? 'active' : ''}`}
+                onClick={() => setSettings(s => ({ ...s, gameMode: 'ear_training' }))}
+              >
+                Ear Training
+              </button>
+            </div>
+
+            <button
+              className="icon-button"
+              onClick={() => setShowHelp(true)}
+              title="Shortcuts Help"
+            >
+              <HelpCircle size={24} />
+            </button>
+          </div>
         </header>
       )}
 
@@ -257,20 +328,14 @@ function App() {
               <button
                 className={`hint-button ${settings.showHint ? 'active' : ''}`}
                 onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
+                title="Keyboard Shortcut: H"
               >
                 <HelpCircle size={18} />
                 {settings.showHint ? "Hide Hint" : "Show Hint"}
               </button>
-              <button className="skip-button" onClick={generateNewNote}>
+              <button className="skip-button" onClick={generateNewNote} title="Keyboard Shortcut: Space">
                 <SkipForward size={18} />
                 Skip Note
-              </button>
-              <button
-                className="zen-button"
-                onClick={() => setSettings(s => ({ ...s, zenMode: true }))}
-                title="Zen Mode"
-              >
-                <span>Zen</span>
               </button>
             </div>
           )}
@@ -316,16 +381,45 @@ function App() {
       )
       }
 
-      {
-        settings.zenMode && (
-          <button
-            className="exit-zen-button"
-            onClick={() => setSettings(s => ({ ...s, zenMode: false }))}
-          >
-            Exit Zen Mode
-          </button>
-        )
-      }
+      {/* Floating Zen Mode Button (Toggle) */}
+      <button
+        className="exit-zen-button"
+        onClick={() => setSettings(s => ({ ...s, zenMode: !s.zenMode }))}
+        title="Keyboard Shortcut: Z"
+      >
+        {settings.zenMode ? "Exit Zen Mode" : "Zen Mode"}
+      </button>
+
+      {/* Help Popup */}
+      {showHelp && (
+        <div className="help-popup-overlay" onClick={() => setShowHelp(false)}>
+          <div className="help-popup" onClick={e => e.stopPropagation()}>
+            <button className="help-close" onClick={() => setShowHelp(false)}><X size={20} /></button>
+            <h2 style={{ marginTop: 0, marginBottom: '24px' }}>Keyboard Shortcuts</h2>
+
+            <div className="help-item">
+              <span>Skip Note</span>
+              <span className="shortcut-key">Space</span>
+            </div>
+            <div className="help-item">
+              <span>Toggle Hint</span>
+              <span className="shortcut-key">H</span>
+            </div>
+            <div className="help-item">
+              <span>Toggle Zen Mode</span>
+              <span className="shortcut-key">Z</span>
+            </div>
+            <div className="help-item">
+              <span>Replay Note</span>
+              <span className="shortcut-key">R</span>
+            </div>
+            <div className="help-item">
+              <span>Close Help / Exit Zen</span>
+              <span className="shortcut-key">Esc</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 }

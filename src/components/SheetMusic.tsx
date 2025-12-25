@@ -36,6 +36,14 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         renderer.resize(width, height);
         const context = renderer.getContext();
 
+        // IMPORTANT: Set global styles for the context to ensure everything draws with correct color
+        // VexFlow uses context properties for default colors.
+        // We can't easily extract CSS var value here without getComputedStyle, which is expensive inside render.
+        // However, VexFlow SVGContext just adds attributes. 
+        // We can set fillStyle/strokeStyle to the var string.
+        context.setFillStyle("var(--color-text-main)");
+        context.setStrokeStyle("var(--color-text-main)");
+
         // --- Helper: Decide which clef a note belongs to in Grand Staff ---
         // For Grand Staff: usually Split at Middle C (C4 / Midi 60). 
         // >= 60 -> Treble, < 60 -> Bass.
@@ -44,6 +52,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         };
 
         let staves: Record<string, Stave> = {};
+
 
         if (clef === 'grand') {
             // Create Treble Stave
@@ -97,8 +106,15 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
                 clef: noteClef as 'treble' | 'bass'
             });
 
+            // Set styles for all notes to use CSS variables if not colored specifically
+            staveNote.setStyle({ fillStyle: "var(--color-text-main)", strokeStyle: "var(--color-text-main)" });
+
             if (data.accidental) {
-                staveNote.addModifier(new Accidental(data.accidental));
+                const accidental = new Accidental(data.accidental);
+                // Ensure accidentals also use the color
+                // VexFlow 4 might not inherit automatically in all contexts, but good to be safe. 
+                // However, StaveNote.setStyle usually propagates.
+                staveNote.addModifier(accidental);
             }
 
             if (type === 'played') {
@@ -131,7 +147,14 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
             });
 
             // Add a Question Mark Annotation
-            ghost.addModifier(new Annotation("?").setVerticalJustification(Annotation.VerticalJustify.CENTER));
+            const annotation = new Annotation("?");
+            annotation.setVerticalJustification(Annotation.VerticalJustify.CENTER);
+            // Annotations don't natively support setStyle in older VexFlow, but let's see. 
+            // In VexFlow 4, Font settings are different. 
+            // We can try to rely on current contexts or just standard fill. 
+            // Actually, context fillStyle affects it.
+
+            ghost.addModifier(annotation);
 
             targetObj = { note: ghost, clef: noteClef };
         } else {
