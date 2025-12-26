@@ -342,7 +342,7 @@ function App() {
       )}
 
       <main className="main-stage">
-        <div className={`card sheet-music-card ${settings.showHint ? 'has-hint' : ''}`}>
+        <div className={`card sheet-music-card ${settings.showHint ? 'has-hint' : ''} ${settings.zenMode ? 'zen-mode' : ''}`}>
           <div className="sheet-music-container">
             <SheetMusic
               targetMidi={targetMidi}
@@ -351,7 +351,7 @@ function App() {
               clef={currentInstrumentDef.clefMode}
               transpose={currentInstrumentDef.transpose}
               width={Math.min(window.innerWidth - 40, 500)}
-              height={currentInstrumentDef.clefMode === 'grand' ? 300 : 250}
+              height={currentInstrumentDef.clefMode === 'grand' ? 260 : 180}
               hideTargetNote={settings.gameMode === 'ear_training' && !revealed}
             />
           </div>
@@ -383,7 +383,7 @@ function App() {
 
           {settings.showHint && (
             <div className="hint-card">
-              <div className="hint-note">
+              <div className="hint-note landscape-hint-note">
                 {getNoteDetails(targetMidi + currentInstrumentDef.transpose).scientific}
               </div>
               {currentInstrumentDef.showTuning && currentTuning && (

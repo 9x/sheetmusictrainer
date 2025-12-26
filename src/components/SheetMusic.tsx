@@ -56,12 +56,12 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
 
         if (clef === 'grand') {
             // Create Treble Stave
-            const topStave = new Stave(20, 40, width - 30);
+            const topStave = new Stave(20, 20, width - 30);
             topStave.addClef('treble').addKeySignature(keySignature);
             topStave.setContext(context).draw();
 
             // Create Bass Stave
-            const bottomStave = new Stave(20, 150, width - 30);
+            const bottomStave = new Stave(20, 110, width - 30);
             bottomStave.addClef('bass').addKeySignature(keySignature);
             bottomStave.setContext(context).draw();
 
@@ -82,7 +82,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
 
         } else {
             // Single Stave
-            const stave = new Stave(10, 80, width - 20); // Centered vertically
+            const stave = new Stave(10, 30, width - 20); // Centered vertically (tighter)
             stave.addClef(clef).addKeySignature(keySignature);
             stave.setContext(context).draw();
             // Map the single clef to the key matching the 'clef' prop so logic below works
