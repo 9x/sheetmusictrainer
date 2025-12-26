@@ -2,7 +2,7 @@ import type { Instrument } from './Tunings';
 
 export type ClefMode = 'treble' | 'bass' | 'grand';
 
-export type NoteSetType = 'static' | 'open_strings' | 'first_position' | 'custom_fret';
+export type NoteSetType = 'static' | 'open_strings' | 'first_position' | 'custom_fret' | 'specific_string';
 
 export interface NoteSetConfig {
     id: string;
@@ -13,6 +13,7 @@ export interface NoteSetConfig {
     notes?: number[]; // Explicit list for static
     defaultMinFret?: number;
     defaultMaxFret?: number;
+    stringIndex?: number; // 0-based index from lowest string (0) to highest
 }
 
 export interface InstrumentDefinition {
@@ -57,7 +58,14 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
                 type: 'custom_fret',
                 defaultMinFret: 0,
                 defaultMaxFret: 12
-            }
+            },
+            // Per String Sets (High E is index 5, Low E is index 0)
+            { id: 'string_1', label: 'String 1 (High)', type: 'specific_string', stringIndex: 5 },
+            { id: 'string_2', label: 'String 2', type: 'specific_string', stringIndex: 4 },
+            { id: 'string_3', label: 'String 3', type: 'specific_string', stringIndex: 3 },
+            { id: 'string_4', label: 'String 4', type: 'specific_string', stringIndex: 2 },
+            { id: 'string_5', label: 'String 5', type: 'specific_string', stringIndex: 1 },
+            { id: 'string_6', label: 'String 6 (Low)', type: 'specific_string', stringIndex: 0 },
         ]
     },
     bass: {
@@ -68,7 +76,11 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
         showTuning: true,
         ranges: [
             // Bass Standard: E1 (28) -> G3 approx (55)
-            { id: 'all', label: 'All Notes', type: 'static', min: 28, max: 55 }
+            { id: 'all', label: 'All Notes', type: 'static', min: 28, max: 55 },
+            { id: 'string_1', label: 'String 1 (High)', type: 'specific_string', stringIndex: 3 },
+            { id: 'string_2', label: 'String 2', type: 'specific_string', stringIndex: 2 },
+            { id: 'string_3', label: 'String 3', type: 'specific_string', stringIndex: 1 },
+            { id: 'string_4', label: 'String 4 (Low)', type: 'specific_string', stringIndex: 0 },
         ]
     },
     piano: {

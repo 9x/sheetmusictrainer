@@ -99,6 +99,21 @@ function App() {
         return [];
       }
 
+      if (config.type === 'specific_string') {
+        if (currentTuning && config.stringIndex !== undefined) {
+          const openNote = currentTuning.strings[config.stringIndex];
+          if (openNote === undefined) return [];
+
+          // Generate frets 0 to 12 for this string
+          const notes = [];
+          for (let i = 0; i <= 12; i++) {
+            notes.push(openNote + i);
+          }
+          return notes;
+        }
+        return [];
+      }
+
       // Static fallback
       if (config.notes) return config.notes;
       if (config.min !== undefined && config.max !== undefined) {
