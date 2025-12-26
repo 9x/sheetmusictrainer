@@ -48,7 +48,7 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  max-width: 600px;
+  max-width: 850px;
   transition: transform 0.2s ease;
 }
 
@@ -497,4 +497,87 @@ button {
   background-color: var(--color-surface);
   color: var(--color-primary);
   box-shadow: var(--shadow-sm);
+}
+
+/* Mobile Landscape Optimization */
+@media (max-height: 500px) and (orientation: landscape) {
+  .app-header {
+    padding: 4px var(--spacing-md);
+  }
+
+  .main-stage {
+    padding: 4px;
+    flex-direction: row;
+    /* Side-by-side if screen is wide enough */
+    align-items: stretch;
+    gap: var(--spacing-md);
+  }
+
+  .card.sheet-music-card {
+    max-width: 95vw;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    padding: var(--spacing-sm);
+  }
+
+  /* Specific adjustment for sheet music container */
+  .sheet-music-container {
+    width: auto;
+    flex: 1;
+    min-width: 250px;
+    max-width: 50%;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* Hint card should be on the side */
+  .hint-card {
+    margin-top: 0;
+    margin-left: var(--spacing-md);
+    flex: 1;
+    min-width: 250px;
+    max-width: 45%;
+    padding: var(--spacing-xs);
+  }
+
+  .hint-note {
+    font-size: 1.2rem;
+    margin-bottom: 2px;
+  }
+
+  /* Make sure hint isn't huge and scrolls if needed */
+  .fretboard-container {
+    max-height: 150px;
+    overflow-y: hidden;
+    display: flex;
+    justify-content: center;
+  }
+
+  .fretboard-container svg {
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+  }
+
+  /* Move feedback and actions */
+  .feedback-area {
+    width: 100%;
+    height: 30px;
+    order: 3;
+    /* Force to bottom */
+    margin-top: 5px;
+  }
+
+  .action-row {
+    margin-top: 5px !important;
+    order: 4;
+    width: 100%;
+  }
+}
+
+/* Ensure FretboardHint container handles flexible width generic */
+.fretboard-container {
+  width: 100%;
 }

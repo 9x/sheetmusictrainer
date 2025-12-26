@@ -53,10 +53,10 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
     return (
         <div className="fretboard-container" style={{ overflowX: 'auto', maxWidth: '100%' }}>
             <svg
-                width={width}
-                height={height}
+                width="100%"
+                height="100%"
                 viewBox={`0 0 ${width} ${height}`}
-                style={{ display: 'block', margin: '0 auto' }}
+                style={{ display: 'block', margin: '0 auto', maxHeight: '100%' }}
             >
                 {/* Fretboard background */}
                 <rect

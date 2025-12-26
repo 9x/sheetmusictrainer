@@ -343,16 +343,18 @@ function App() {
 
       <main className="main-stage">
         <div className="card sheet-music-card">
-          <SheetMusic
-            targetMidi={targetMidi}
-            playedMidi={pitchData?.midi}
-            keySignature={settings.keySignature}
-            clef={currentInstrumentDef.clefMode}
-            transpose={currentInstrumentDef.transpose}
-            width={Math.min(window.innerWidth - 40, 500)}
-            height={currentInstrumentDef.clefMode === 'grand' ? 300 : 250}
-            hideTargetNote={settings.gameMode === 'ear_training' && !revealed}
-          />
+          <div className="sheet-music-container">
+            <SheetMusic
+              targetMidi={targetMidi}
+              playedMidi={pitchData?.midi}
+              keySignature={settings.keySignature}
+              clef={currentInstrumentDef.clefMode}
+              transpose={currentInstrumentDef.transpose}
+              width={Math.min(window.innerWidth - 40, 500)}
+              height={currentInstrumentDef.clefMode === 'grand' ? 300 : 250}
+              hideTargetNote={settings.gameMode === 'ear_training' && !revealed}
+            />
+          </div>
 
           {!settings.zenMode && (
             <div className="feedback-area">
