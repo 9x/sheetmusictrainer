@@ -100,11 +100,11 @@ function App() {
     }
   }, [targetMidi, settings.gameMode, revealed, playNote]);
 
-  // Initial note
+  // Initial note, and whenever difficulty/tuning/gamemode changes
   useEffect(() => {
     generateNewNote();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.difficulty, settings.tuningId]);
+  }, [settings.difficulty, settings.tuningId, settings.gameMode]);
 
 
   // Metronome Logic
@@ -208,6 +208,12 @@ function App() {
         case 'r': // Replay
         case 'p': // Play
           playNote(targetMidi, 1.0);
+          break;
+        case 'm': // Toggle Game Mode
+          setSettings(s => ({
+            ...s,
+            gameMode: s.gameMode === 'sight_reading' ? 'ear_training' : 'sight_reading'
+          }));
           break;
       }
 
@@ -412,6 +418,10 @@ function App() {
             <div className="help-item">
               <span>Replay Note</span>
               <span className="shortcut-key">R</span>
+            </div>
+            <div className="help-item">
+              <span>Toggle Game Mode</span>
+              <span className="shortcut-key">M</span>
             </div>
             <div className="help-item">
               <span>Close Help / Exit Zen</span>
