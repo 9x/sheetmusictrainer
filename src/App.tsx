@@ -10,7 +10,9 @@ import {
 } from './music/NoteUtils';
 import {
   TUNINGS,
-  getFretboardPositions
+  getFretboardPositions,
+  getOpenStringNotes,
+  getFirstPositionNotes,
 } from './music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
 import { FretboardHint } from './components/FretboardHint';
@@ -44,7 +46,9 @@ function App() {
       volume: 0.5
     },
     zenMode: false,
-    gameMode: 'sight_reading'
+    gameMode: 'sight_reading',
+    customMinFret: 0,
+    customMaxFret: 12
   });
 
   const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
@@ -61,8 +65,46 @@ function App() {
 
     const getNotesFromConfig = (config: typeof rangeConfig) => {
       if (!config) return [];
+
+      // Dynamic logic based on type
+      if (config.type === 'open_strings') {
+        // Use current tuning if applicable (Guitar/Bass)
+        if (currentTuning) {
+          return getOpenStringNotes(currentTuning);
+        }
+        // Fallback for non-fretted if they happen to use this type (unlikely)
+        return config.notes || [];
+      }
+
+      if (config.type === 'first_position') {
+        if (currentTuning) {
+          return getFirstPositionNotes(currentTuning);
+        }
+        return config.notes || [];
+      }
+
+      if (config.type === 'custom_fret') {
+        if (currentTuning) {
+          const minFret = settings.customMinFret ?? config.defaultMinFret ?? 0;
+          const maxFret = settings.customMaxFret ?? config.defaultMaxFret ?? 12;
+
+          const notes = new Set<number>();
+          currentTuning.strings.forEach(stringMidi => {
+            for (let fret = minFret; fret <= maxFret; fret++) {
+              notes.add(stringMidi + fret);
+            }
+          });
+          return Array.from(notes).sort((a, b) => a - b);
+        }
+        return [];
+      }
+
+      // Static fallback
       if (config.notes) return config.notes;
-      return Array.from({ length: config.max - config.min + 1 }, (_, i) => config.min + i);
+      if (config.min !== undefined && config.max !== undefined) {
+        return Array.from({ length: config.max - config.min + 1 }, (_, i) => config.min! + i);
+      }
+      return [];
     };
 
     if (rangeConfig) {
@@ -74,7 +116,7 @@ function App() {
     const fallbackRange = currentInstrumentDef.ranges[0];
     return getNotesFromConfig(fallbackRange);
 
-  }, [settings.difficulty, currentInstrumentDef]);
+  }, [settings.difficulty, currentInstrumentDef, currentTuning, settings.customMinFret, settings.customMaxFret]);
 
   const generateNewNote = useCallback(() => {
     // Determine min/max based on available notes to avoid infinite loops if validNotes empty

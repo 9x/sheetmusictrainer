@@ -2,12 +2,17 @@ import type { Instrument } from './Tunings';
 
 export type ClefMode = 'treble' | 'bass' | 'grand';
 
+export type NoteSetType = 'static' | 'open_strings' | 'first_position' | 'custom_fret';
+
 export interface NoteSetConfig {
     id: string;
     label: string;
-    min: number; // MIDI number
-    max: number; // MIDI number
-    notes?: number[]; // Explicit list of notes (overrides min/max for generation if present)
+    type: NoteSetType;
+    min?: number; // MIDI number for static
+    max?: number; // MIDI number for static
+    notes?: number[]; // Explicit list for static
+    defaultMinFret?: number;
+    defaultMaxFret?: number;
 }
 
 export interface InstrumentDefinition {
@@ -30,17 +35,29 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
             {
                 id: 'open',
                 label: 'Open Strings',
-                min: 40,
-                max: 64,
-                notes: [40, 45, 50, 55, 59, 64] // E2, A2, D3, G3, B3, E4
+                type: 'open_strings',
+                // Legacy fallback if needed, but App should use type
+                min: 40, max: 64
             },
             {
                 id: 'first_pos',
                 label: 'First Position',
-                min: 40,
-                max: 68 // E2 to G#4 (First 4 frets on high E string e(64) -> g#(68))
+                type: 'first_position',
+                min: 40, max: 68
             },
-            { id: 'all', label: 'All Notes', min: 40, max: 76 }
+            {
+                id: 'all',
+                label: 'All Notes',
+                type: 'static',
+                min: 40, max: 76
+            },
+            {
+                id: 'custom',
+                label: 'Custom Fret Range',
+                type: 'custom_fret',
+                defaultMinFret: 0,
+                defaultMaxFret: 12
+            }
         ]
     },
     bass: {
@@ -51,7 +68,7 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
         showTuning: true,
         ranges: [
             // Bass Standard: E1 (28) -> G3 approx (55)
-            { id: 'all', label: 'All Notes', min: 28, max: 55 }
+            { id: 'all', label: 'All Notes', type: 'static', min: 28, max: 55 }
         ]
     },
     piano: {
@@ -61,9 +78,9 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
         transpose: 0,
         showTuning: false,
         ranges: [
-            { id: 'middle_c', label: 'Middle C Area', min: 53, max: 67 }, // F3 to G4
-            { id: 'two_octave', label: 'Two Octaves', min: 48, max: 72 }, // C3 to C5
-            { id: 'grand_staff', label: 'Grand Staff Wide', min: 36, max: 84 } // C2 to C6
+            { id: 'middle_c', label: 'Middle C Area', type: 'static', min: 53, max: 67 }, // F3 to G4
+            { id: 'two_octave', label: 'Two Octaves', type: 'static', min: 48, max: 72 }, // C3 to C5
+            { id: 'grand_staff', label: 'Grand Staff Wide', type: 'static', min: 36, max: 84 } // C2 to C6
         ]
     },
     voice: {
@@ -76,10 +93,10 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
         transpose: 0,
         showTuning: false,
         ranges: [
-            { id: 'soprano', label: 'Soprano (C4-A5)', min: 60, max: 81 },
-            { id: 'alto', label: 'Alto (G3-E5)', min: 55, max: 76 },
-            { id: 'tenor', label: 'Tenor (C3-A4)', min: 48, max: 69 },
-            { id: 'bass_voice', label: 'Bass (E2-E4)', min: 40, max: 64 }
+            { id: 'soprano', label: 'Soprano (C4-A5)', type: 'static', min: 60, max: 81 },
+            { id: 'alto', label: 'Alto (G3-E5)', type: 'static', min: 55, max: 76 },
+            { id: 'tenor', label: 'Tenor (C3-A4)', type: 'static', min: 48, max: 69 },
+            { id: 'bass_voice', label: 'Bass (E2-E4)', type: 'static', min: 40, max: 64 }
         ]
     },
     whistle: {
@@ -90,9 +107,9 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
         showTuning: false,
         ranges: [
             // "starts around E5 for men" -> E5 = 76.
-            { id: 'basic', label: 'Basic (E5-E6)', min: 76, max: 88 },
-            { id: 'extended', label: 'Extended (E5-E7)', min: 76, max: 100 },
-            { id: 'extreme', label: 'Whistle Register (C6-C8)', min: 84, max: 108 }
+            { id: 'basic', label: 'Basic (E5-E6)', type: 'static', min: 76, max: 88 },
+            { id: 'extended', label: 'Extended (E5-E7)', type: 'static', min: 76, max: 100 },
+            { id: 'extreme', label: 'Whistle Register (C6-C8)', type: 'static', min: 84, max: 108 }
         ]
     }
 };

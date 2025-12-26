@@ -19,6 +19,15 @@ export const DROP_D_TUNING: Tuning = {
     strings: [38, 45, 50, 55, 59, 64]
 };
 
+// D G D G B E - Drop D & G (D2, G2, D3, G3, B3, E4)
+// Standard: E2 A2 D3 G3 B3 E4
+// Drop D:   D2 A2 D3 G3 B3 E4
+// Drop DG:  D2 G2 D3 G3 B3 E4 (A string dropped to G)
+export const DROP_DG_TUNING: Tuning = {
+    name: "Drop D & G (Guitar)",
+    strings: [38, 43, 50, 55, 59, 64]
+};
+
 // Bass Standard: E1 (28), A1 (33), D2 (38), G2 (43)
 export const BASS_STANDARD_TUNING: Tuning = {
     name: "Standard (Bass)",
@@ -28,11 +37,12 @@ export const BASS_STANDARD_TUNING: Tuning = {
 export const TUNINGS: Record<string, Tuning> = {
     "standard": STANDARD_TUNING,
     "drop_d": DROP_D_TUNING,
+    "drop_dg": DROP_DG_TUNING,
     "bass_standard": BASS_STANDARD_TUNING,
 };
 
 export const INSTRUMENT_TUNINGS: Record<Instrument, string[]> = {
-    'guitar': ['standard', 'drop_d'],
+    'guitar': ['standard', 'drop_d', 'drop_dg'],
     'bass': ['bass_standard']
 };
 

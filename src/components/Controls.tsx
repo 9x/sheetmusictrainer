@@ -24,6 +24,8 @@ export interface AppSettings {
     rhythm: RhythmSettings;
     zenMode: boolean;
     gameMode: 'sight_reading' | 'ear_training';
+    customMinFret?: number;
+    customMaxFret?: number;
 }
 
 interface ControlsProps {
@@ -124,6 +126,41 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
                     ))}
                 </select>
             </div>
+
+            {/* Custom Fret Range Inputs */}
+            {currentInstrumentDef.ranges.find(r => r.id === settings.difficulty)?.type === 'custom_fret' && (
+                <div className="control-group">
+                    <label className="control-label">
+                        <span>Fret Range</span>
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '12px', opacity: 0.7 }}>Min</span>
+                            <input
+                                type="number"
+                                min="0"
+                                max="24"
+                                value={settings.customMinFret ?? 0}
+                                onChange={(e) => onUpdateSettings({ ...settings, customMinFret: parseInt(e.target.value) || 0 })}
+                                className="control-input"
+                                style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
+                            />
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '12px', opacity: 0.7 }}>Max</span>
+                            <input
+                                type="number"
+                                min="0"
+                                max="24"
+                                value={settings.customMaxFret ?? 12}
+                                onChange={(e) => onUpdateSettings({ ...settings, customMaxFret: parseInt(e.target.value) || 0 })}
+                                className="control-input"
+                                style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="control-group">
                 <label className="control-label">
