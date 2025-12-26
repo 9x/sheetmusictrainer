@@ -1,16 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+
 :root {
   /* HSL Colors for easy manipulation */
-  --hue-primary: 250;
+  /* Dark Red / Brownish Tone */
+  --hue-primary: 0;
   --hue-success: 150;
   --hue-error: 10;
-  --hue-text: 220;
+  --hue-text: 30;
+  /* Warmer text */
 
-  --color-bg: hsl(220, 20%, 97%);
+  --color-bg: hsl(30, 20%, 97%);
+  /* Warm paper-like bg */
   --color-surface: hsl(0, 0%, 100%);
-  --color-primary: hsl(var(--hue-primary), 60%, 50%);
-  --color-primary-dark: hsl(var(--hue-primary), 60%, 40%);
-  --color-text-main: hsl(var(--hue-text), 20%, 20%);
-  --color-text-muted: hsl(var(--hue-text), 10%, 60%);
+
+  /* Deep Classic Red */
+  --color-primary: hsl(var(--hue-primary), 65%, 40%);
+  --color-primary-dark: hsl(var(--hue-primary), 65%, 30%);
+
+  --color-text-main: hsl(var(--hue-text), 10%, 20%);
+  --color-text-muted: hsl(var(--hue-text), 5%, 60%);
 
   --color-success: hsl(var(--hue-success), 60%, 45%);
   --color-error: hsl(var(--hue-error), 70%, 55%);
@@ -26,6 +34,8 @@
 
   /* Typography */
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family-serif: 'Playfair Display', serif;
+
   --font-size-base: 16px;
   --font-size-lg: 1.25rem;
   --font-size-xl: 1.5rem;
@@ -44,10 +54,10 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: hsl(220, 20%, 10%);
-    --color-surface: hsl(220, 20%, 15%);
-    --color-text-main: hsl(220, 10%, 90%);
-    --color-text-muted: hsl(220, 10%, 60%);
+    --color-bg: hsl(30, 20%, 10%);
+    --color-surface: hsl(30, 20%, 15%);
+    --color-text-main: hsl(30, 10%, 90%);
+    --color-text-muted: hsl(30, 10%, 60%);
   }
 }
 

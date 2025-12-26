@@ -16,8 +16,10 @@
 }
 
 .logo {
+  font-family: var(--font-family-serif);
   font-weight: 700;
-  font-size: var(--font-size-lg);
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
   color: var(--color-primary);
 }
 
@@ -48,8 +50,12 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
+  max-width: 600px;
+  transition: max-width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.2s ease;
+}
+
+.card.has-hint {
   max-width: 850px;
-  transition: transform 0.2s ease;
 }
 
 .sheet-music-container {

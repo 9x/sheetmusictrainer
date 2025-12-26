@@ -342,7 +342,7 @@ function App() {
       )}
 
       <main className="main-stage">
-        <div className="card sheet-music-card">
+        <div className={`card sheet-music-card ${settings.showHint ? 'has-hint' : ''}`}>
           <div className="sheet-music-container">
             <SheetMusic
               targetMidi={targetMidi}
