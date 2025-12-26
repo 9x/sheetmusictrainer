@@ -59,14 +59,20 @@ function App() {
     // Find range config
     const rangeConfig = currentInstrumentDef.ranges.find(r => r.id === settings.difficulty);
 
+    const getNotesFromConfig = (config: typeof rangeConfig) => {
+      if (!config) return [];
+      if (config.notes) return config.notes;
+      return Array.from({ length: config.max - config.min + 1 }, (_, i) => config.min + i);
+    };
+
     if (rangeConfig) {
-      return Array.from({ length: rangeConfig.max - rangeConfig.min + 1 }, (_, i) => rangeConfig.min + i);
+      return getNotesFromConfig(rangeConfig);
     }
 
     // Fallback if difficulty ID doesn't match current instrument (e.g. after switch)
     // Return first range of current instrument
     const fallbackRange = currentInstrumentDef.ranges[0];
-    return Array.from({ length: fallbackRange.max - fallbackRange.min + 1 }, (_, i) => fallbackRange.min + i);
+    return getNotesFromConfig(fallbackRange);
 
   }, [settings.difficulty, currentInstrumentDef]);
 

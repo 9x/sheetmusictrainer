@@ -2,11 +2,12 @@ import type { Instrument } from './Tunings';
 
 export type ClefMode = 'treble' | 'bass' | 'grand';
 
-export interface RangeConfig {
+export interface NoteSetConfig {
     id: string;
     label: string;
     min: number; // MIDI number
     max: number; // MIDI number
+    notes?: number[]; // Explicit list of notes (overrides min/max for generation if present)
 }
 
 export interface InstrumentDefinition {
@@ -14,7 +15,7 @@ export interface InstrumentDefinition {
     displayName: string;
     clefMode: ClefMode;
     transpose: number; // Semitones to add to MIDI to get written note (e.g. +12 for guitar)
-    ranges: RangeConfig[];
+    ranges: NoteSetConfig[];
     showTuning: boolean;
 }
 
@@ -26,8 +27,19 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
         transpose: 12, // Guitar sounds octave lower than written, so we add 12 to played midi to show it
         showTuning: true,
         ranges: [
-            { id: 'open', label: 'Open Strings', min: 40, max: 64 }, // Dynamic logic handled in App for specific strings, but this is fallback
-            { id: 'first_pos', label: 'First Position', min: 40, max: 44 + 12 }, // Approx
+            {
+                id: 'open',
+                label: 'Open Strings',
+                min: 40,
+                max: 64,
+                notes: [40, 45, 50, 55, 59, 64] // E2, A2, D3, G3, B3, E4
+            },
+            {
+                id: 'first_pos',
+                label: 'First Position',
+                min: 40,
+                max: 68 // E2 to G#4 (First 4 frets on high E string e(64) -> g#(68))
+            },
             { id: 'all', label: 'All Notes', min: 40, max: 76 }
         ]
     },

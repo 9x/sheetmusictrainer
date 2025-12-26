@@ -2,7 +2,7 @@ import { Settings, Guitar, Music, Gauge } from 'lucide-react';
 import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 
-export type Difficulty = 'all' | 'first_pos' | 'open' | 'e_string';
+export type Difficulty = string;
 
 export interface RhythmSettings {
     mode: 'bpm' | 'seconds';
@@ -112,7 +112,7 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
             <div className="control-group">
                 <label className="control-label">
                     <Settings size={18} />
-                    <span>Range</span>
+                    <span>Note Set</span>
                 </label>
                 <select
                     value={settings.difficulty}
