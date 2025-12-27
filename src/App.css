@@ -66,21 +66,33 @@
 }
 
 .feedback-area {
-  height: 40px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  pointer-events: none;
+  width: auto;
+  height: auto;
+  margin: 0;
   display: flex;
-  align-items: center;
   justify-content: center;
-  margin-top: var(--spacing-md);
+  align-items: center;
 }
 
 .success-message {
-  color: var(--color-success);
-  font-size: var(--font-size-xl);
+  color: white;
+  font-size: 2.5rem;
   font-weight: 800;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 1rem 2rem;
+  border-radius: 50px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
 }
 
 .instruction-text {
-  color: var(--color-text-muted);
+  display: none;
 }
 
 .error-message {
@@ -550,6 +562,17 @@ button {
 @media (max-height: 500px) and (orientation: landscape) {
   .app-header {
     padding: 2px var(--spacing-md);
+    position: absolute;
+    /* Take out of flow to save space */
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 100;
+    background: transparent;
+    pointer-events: none;
+    /* Let clicks pass through to content */
+    box-shadow: none;
   }
 
   /* Hide Title/Logo to save space for content */
@@ -557,24 +580,42 @@ button {
     display: none;
   }
 
+  .header-controls {
+    pointer-events: auto;
+    /* Re-enable clicks for buttons */
+    margin-left: auto;
+    /* Push to right */
+    padding-right: 10px;
+  }
+
   .main-stage {
     padding: 0;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: center;
+    /* Center vertically */
     gap: 0;
+    height: 100vh;
+    /* Fixed viewport height */
+    overflow: hidden;
+    /* No scrolling for main game loop */
+    position: relative;
   }
 
   .card.sheet-music-card {
     max-width: 95vw;
+    height: 100%;
+    max-height: none;
     flex-direction: column;
     flex-wrap: nowrap;
-    justify-content: flex-start;
+    justify-content: center;
     align-items: center;
     padding: 0;
     width: 100%;
     background: transparent;
     box-shadow: none;
+    border: none;
+    flex-shrink: 0;
   }
 
   /* Staff Row: Horizontal Layout for Staff + Note Name */
@@ -583,91 +624,78 @@ button {
     justify-content: center;
     align-items: center;
     width: 100%;
-    margin-bottom: -10px;
+    margin-top: 20px;
+    /* Space from top */
+    margin-bottom: 0;
     gap: 16px;
-    /* Space between note and staff */
+    flex: 0 0 auto;
+    z-index: 1;
   }
 
   .side-hint-note {
     display: block;
-    /* Show it here */
     font-size: 1.5rem;
-    /* Reduced from 3rem */
     margin-right: 0;
     z-index: 10;
-    /* Prevent shrinking */
     flex-shrink: 0;
   }
 
-  /* Specific adjustment for sheet music container */
+  /* BIGGER STAFF */
   .sheet-music-container {
     width: 100%;
     flex: 0 0 auto;
+    min-height: 180px;
+    /* Increased from 150px */
     transform: scale(1.1);
-    transform-origin: center top;
-    /* Center it again */
+    /* Scale UP */
+    transform-origin: center center;
     justify-content: center;
-    margin-bottom: -15px;
-    /* Negative margin to reduce gap (adjusted from -30px to prevent overlap) */
+    margin-bottom: -10px;
+    /* Pull fretboard closer */
+    padding-top: 0;
+    z-index: 1;
   }
 
-  /* In Zen Mode, the feedback area is missing, so we need less negative margin (or even positive) to prevent overlap */
   .card.sheet-music-card.zen-mode .sheet-music-container {
-    margin-bottom: 5px;
-    /* Add some breathing room since the feedback spacer is gone */
+    margin-bottom: 0;
   }
 
   /* Hint card container (Fretboard + Note Name) */
   .hint-card {
     margin-top: 0;
-    /* Remove top margin */
-    flex: 1;
+    flex: 1 1 auto;
     width: 100%;
     max-width: 100%;
-    padding: 0;
+    padding: 0 10px;
     background: transparent;
     display: flex;
     flex-direction: row;
-    /* Side-by-side */
     justify-content: center;
     align-items: center;
     gap: 8px;
-    /* Reduced gap from 16px */
+    min-height: 0;
+    max-height: 200px;
+    /* Cap fretboard height */
   }
 
   /* The note name inside hint card */
   .hint-card .hint-note {
     display: block;
     font-size: 2rem;
-    /* Visible size */
     margin-bottom: 0;
     flex-shrink: 0;
     font-weight: 800;
     width: 4rem;
-    /* Fixed width to stabilize fretboard */
     text-align: center;
   }
 
-  /* Make fretboard larger */
+  /* Fretboard Container - Responsive adjustments */
   .fretboard-container {
-    max-height: 180px;
-    overflow-y: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transform: scale(1.3);
-    /* Larger scale as requested */
-    transform-origin: center center;
-    flex-grow: 1;
-    /* Allow it to take space */
+    transform: none;
     max-width: none;
-    /* Remove constraints */
-  }
-
-  .fretboard-container svg {
-    height: 130px;
-    width: auto;
-    max-width: 100%;
+    flex-grow: 1;
+    height: 100%;
+    /* Ensure it fills the space but respects container limits */
   }
 
   /* Hide Instruction Text ("Play note above") */
@@ -675,41 +703,75 @@ button {
     display: none;
   }
 
-  /* Move feedback and actions */
+  /* OVERLAY FEEDBACK - Replaces reserved space */
+  /* Remove local overrides since global is now overlay */
   .feedback-area {
-    width: 100%;
-    height: 30px;
-    margin-top: 15px;
-    /* Increased from 10px */
-    margin-bottom: 2px;
-    z-index: 20;
-    justify-content: center;
+    /* Use global settings but ensure visibility triggers work */
+    opacity: 0;
   }
 
-  .action-row {
-    margin-top: 5px !important;
-    /* Increased slightly */
-    width: 100%;
-    padding-bottom: 4px;
-  }
-
-  /* Hide Zen Toggle in Landscape Mobile to prevent cutoff/clutter
-     User can rotate to portrait to access it or we move it. 
-     For now, hiding it cleans up the view.
+  /* Show feedback overlay when it has content (requires slight JS tweak or CSS hack if empty div stays) 
+     Assuming .feedback-area always exists, we target the message inside
   */
+  .feedback-area:has(.success-message),
+  .feedback-area:has(.error-message) {
+    opacity: 1;
+  }
+
+  .success-message {
+    color: white;
+    /* Make text white for contrast on dark overlay */
+    font-size: 2rem;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Push settings way down so they don't interfere with main view */
+  .settings-footer {
+    margin-top: 50px;
+    padding-bottom: 50px;
+  }
+
+  /* Make main stage scrollable to reach settings */
+  .app-container {
+    overflow-y: auto;
+    height: 100vh;
+    display: block;
+    /* Break flex height lock */
+  }
+
+  /* Action Buttons - floating or tucked */
+  .action-row {
+    margin-top: 0 !important;
+    width: 100%;
+    padding-bottom: 5px;
+    flex-shrink: 0;
+    position: absolute;
+    bottom: 2px;
+    z-index: 20;
+    pointer-events: none;
+    /* Pass through clicks */
+    justify-content: center;
+    gap: 20px;
+  }
+
+  .action-row button {
+    pointer-events: auto;
+    /* Enable buttons */
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
   /* Restore Zen Toggle in Landscape Mobile */
   .exit-zen-button {
     display: block;
     transform: scale(0.8);
-    /* Scale down slightly */
-    bottom: 5px;
-    /* Stick to bottom */
+    bottom: 45px;
+    /* Move up above action row */
     right: 5px;
-    /* Stick to right */
     padding: 6px 12px;
     font-size: 0.8rem;
     background: rgba(255, 255, 255, 0.9);
-    /* Opaque enough to see */
     border: 1px solid #ccc;
     z-index: 100;
   }
@@ -718,29 +780,25 @@ button {
   .skip-button {
     padding: 4px 16px;
     font-size: 0.9rem;
+    height: 36px;
   }
 
-  /* Pitch monitor: Keep visible but compact */
+  /* Pitch monitor: Top left absolute */
   .pitch-monitor-bar {
-    display: flex;
-    margin-top: 2px;
+    position: absolute;
+    top: 5px;
+    left: 10px;
+    margin: 0;
     gap: var(--spacing-sm);
     transform: scale(0.7);
+    transform-origin: top left;
+    z-index: 100;
   }
 
   .mic-button {
     width: 48px;
     height: 48px;
-  }
-
-  .pitch-readout {
-    flex-direction: row;
-    gap: 8px;
-    align-items: baseline;
-  }
-
-  .detected-note {
-    font-size: 1.5rem;
+    background: rgba(255, 255, 255, 0.9);
   }
 }
 

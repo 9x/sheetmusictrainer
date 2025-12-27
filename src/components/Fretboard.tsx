@@ -63,11 +63,24 @@ export function Fretboard({
     };
 
     return (
-        <div className="fretboard-container" style={{ overflowX: 'auto', maxWidth: '100%', cursor: interactive ? 'pointer' : 'default' }}>
+        <div className="fretboard-container" style={{
+            width: '100%',
+            height: '100%',
+            overflow: 'hidden',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            cursor: interactive ? 'pointer' : 'default'
+        }}>
             <svg
-                width={width}
-                height={height}
-                style={{ display: 'block', margin: '0 auto' }}
+                viewBox={`0 0 ${width} ${height}`}
+                preserveAspectRatio="xMidYMid meet"
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    maxHeight: '100%',
+                    display: 'block'
+                }}
             >
                 {/* Fretboard background */}
                 <rect

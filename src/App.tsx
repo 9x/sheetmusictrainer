@@ -137,7 +137,7 @@ function App() {
 
   }, [settings.difficulty, currentInstrumentDef, currentTuning, settings.customMinFret, settings.customMaxFret]);
 
-  const generateNewNote = useCallback(() => {
+  const generateNewNote = useCallback((keepFeedback = false) => {
     // Determine min/max based on available notes to avoid infinite loops if validNotes empty
     if (validNotes.length === 0) return;
     const min = validNotes[0];
@@ -152,7 +152,9 @@ function App() {
       setTargetMidi(newNote);
     }
     setMatchStartTime(null);
-    setFeedbackMessage("");
+    if (!keepFeedback) {
+      setFeedbackMessage("");
+    }
     setRevealed(false);
   }, [validNotes, targetMidi]);
 
@@ -212,17 +214,27 @@ function App() {
 
     if (!isRhythmActive) {
       // Standard or Rhythm-Manual
+      // Immediate transition
+      generateNewNote(true); // Keep "Good!" message
+
+      // Allow visual feedback to persist for a moment before clearing text (optional, but requested layout changes handle visuals)
+      // We rely on CSS overlay fading or just keeping it briefly?
+      // With the new generateNewNote(true), "Good!" stays. We need to clear it eventually.
       setTimeout(() => {
-        generateNewNote();
-      }, 800);
+        setFeedbackMessage("");
+      }, 1500);
+
     } else {
       // Rhythm Active AND Auto-Advance
       if (isTimerMode) {
         // Dynamic Timer Mode: Success triggers advance
         restartMetronome(); // Reset the countdown
+        // Immediate transition here too?
+        generateNewNote(true);
         setTimeout(() => {
-          generateNewNote();
-        }, 200);
+          setFeedbackMessage("");
+        }, 1500);
+
         setMatchStartTime(null);
       } else {
         // Strict BPM Mode: Consumed success, but wait for tick.
@@ -466,7 +478,7 @@ function App() {
                 Play Note
               </button>
 
-              <button className="skip-button" onClick={generateNewNote} title="Keyboard Shortcut: Space">
+              <button className="skip-button" onClick={() => generateNewNote()} title="Keyboard Shortcut: Space">
                 <SkipForward size={18} />
                 Skip Note
               </button>
