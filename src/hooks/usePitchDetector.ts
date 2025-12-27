@@ -64,6 +64,7 @@ export function usePitchDetector(active: boolean) {
                 analyzerRef.current = null;
             }
             setIsListening(false);
+            setPitchData(null);
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
         }
 
