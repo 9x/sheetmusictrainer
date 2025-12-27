@@ -13,9 +13,9 @@
   /* Warm paper-like bg */
   --color-surface: hsl(0, 0%, 100%);
 
-  /* Deep Classic Red */
-  --color-primary: hsl(var(--hue-primary), 65%, 40%);
-  --color-primary-dark: hsl(var(--hue-primary), 65%, 30%);
+  /* Neutral / Black Accent */
+  --color-primary: hsl(0, 0%, 20%);
+  --color-primary-dark: hsl(0, 0%, 0%);
 
   --color-text-main: hsl(var(--hue-text), 10%, 20%);
   --color-text-muted: hsl(var(--hue-text), 5%, 60%);
@@ -58,6 +58,9 @@
     --color-surface: hsl(30, 20%, 15%);
     --color-text-main: hsl(30, 10%, 90%);
     --color-text-muted: hsl(30, 10%, 60%);
+    /* In dark mode, 'primary' (black) matches background too much, so we invert or use white */
+    --color-primary: hsl(0, 0%, 90%);
+    --color-primary-dark: hsl(0, 0%, 100%);
   }
 }
 

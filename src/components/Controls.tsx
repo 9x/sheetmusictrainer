@@ -26,6 +26,7 @@ export interface AppSettings {
     gameMode: 'sight_reading' | 'ear_training';
     customMinFret?: number;
     customMaxFret?: number;
+    autoPlaySightReading?: boolean;
 }
 
 interface ControlsProps {
@@ -77,213 +78,253 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
 
     return (
         <div className="controls-container">
-            <div className="control-group">
-                <label className="control-label">
-                    <Music size={18} />
-                    <span>Instrument</span>
-                </label>
-                <select
-                    value={settings.instrument}
-                    onChange={handleInstrumentChange}
-                    className="control-select"
-                >
-                    {Object.values(INSTRUMENT_DEFINITIONS).map(def => (
-                        <option key={def.id} value={def.id}>{def.displayName}</option>
-                    ))}
-                </select>
-            </div>
-
-            {currentInstrumentDef.showTuning && (
+            {/* Top Section: Settings Grid (2 Columns) */}
+            <div className="settings-grid">
+                {/* Row 1, Col 1 */}
                 <div className="control-group">
                     <label className="control-label">
-                        <Guitar size={18} />
-                        <span>Tuning</span>
+                        <Music size={18} />
+                        <span>Instrument</span>
                     </label>
                     <select
-                        value={settings.tuningId}
-                        onChange={handleTuningChange}
+                        value={settings.instrument}
+                        onChange={handleInstrumentChange}
                         className="control-select"
                     >
-                        {availableTunings.map(id => (
-                            <option key={id} value={id}>{TUNINGS[id].name}</option>
+                        {Object.values(INSTRUMENT_DEFINITIONS).map(def => (
+                            <option key={def.id} value={def.id}>{def.displayName}</option>
                         ))}
                     </select>
                 </div>
-            )}
 
-            <div className="control-group">
-                <label className="control-label">
-                    <Settings size={18} />
-                    <span>Note Set</span>
-                </label>
-                <select
-                    value={settings.difficulty}
-                    onChange={handleDifficultyChange}
-                    className="control-select"
-                >
-                    {currentInstrumentDef.ranges.map(r => (
-                        <option key={r.id} value={r.id}>{r.label}</option>
-                    ))}
-                </select>
-            </div>
+                {/* Row 1, Col 2 (Conditional) */}
+                {currentInstrumentDef.showTuning ? (
+                    <div className="control-group">
+                        <label className="control-label">
+                            <Guitar size={18} />
+                            <span>Tuning</span>
+                        </label>
+                        <select
+                            value={settings.tuningId}
+                            onChange={handleTuningChange}
+                            className="control-select"
+                        >
+                            {availableTunings.map(id => (
+                                <option key={id} value={id}>{TUNINGS[id].name}</option>
+                            ))}
+                        </select>
+                    </div>
+                ) : <div />} {/* Spacer to maintain grid flow if needed, or omit to let items flow. User asked for specific rows. 
+                             If I omit, Note Set goes here. Let's omit for "Dense" feel, or keep empty div for strict rows? 
+                             The request "Top row: instrument and tuning" implies if tuning is missing, maybe just 1 item? 
+                             I'll output an empty div if I want to FORCE strict placement, but generally flow is better. 
+                             However, "Second row: note set..." suggests structure. 
+                             I will use an empty div if tuning is hidden to push Note Set to next row? 
+                             Actually, grid-template-columns: 1fr 1fr. 
+                             If Tuning is hidden, Note Set becomes Item 2. 
+                             I'll forgo complexity and just render what's available. */}
 
-            {/* Custom Fret Range Inputs */}
-            {currentInstrumentDef.ranges.find(r => r.id === settings.difficulty)?.type === 'custom_fret' && (
+                {/* Row 2, Col 1 */}
                 <div className="control-group">
                     <label className="control-label">
-                        <span>Fret Range</span>
+                        <Settings size={18} />
+                        <span>Note Set</span>
                     </label>
-                    <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ fontSize: '12px', opacity: 0.7 }}>Min</span>
-                            <input
-                                type="number"
-                                min="0"
-                                max="24"
-                                value={settings.customMinFret ?? 0}
-                                onChange={(e) => onUpdateSettings({ ...settings, customMinFret: parseInt(e.target.value) || 0 })}
-                                className="control-input"
-                                style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
-                            />
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ fontSize: '12px', opacity: 0.7 }}>Max</span>
-                            <input
-                                type="number"
-                                min="0"
-                                max="24"
-                                value={settings.customMaxFret ?? 12}
-                                onChange={(e) => onUpdateSettings({ ...settings, customMaxFret: parseInt(e.target.value) || 0 })}
-                                className="control-input"
-                                style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <div className="control-group">
-                <label className="control-label">
-                    <span>Key</span>
-                </label>
-                <select
-                    value={settings.keySignature}
-                    onChange={(e) => onUpdateSettings({ ...settings, keySignature: e.target.value })}
-                    className="control-select"
-                >
-                    <optgroup label="Major Keys">
-                        <option value="C">C Major</option>
-                        <option value="G">G Major</option>
-                        <option value="D">D Major</option>
-                        <option value="A">A Major</option>
-                        <option value="E">E Major</option>
-                        <option value="F">F Major</option>
-                        <option value="Bb">Bb Major</option>
-                        <option value="Eb">Eb Major</option>
-                    </optgroup>
-                    <optgroup label="Minor Keys">
-                        <option value="Am">A Minor</option>
-                        <option value="Em">E Minor</option>
-                        <option value="Dm">D Minor</option>
-                    </optgroup>
-                </select>
-            </div>
-
-
-
-            {/* Rhythm Controls */}
-            <div className="control-group rhythm-group" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px', marginTop: '12px', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '8px' }}>
-                    <label className="control-label" style={{ marginBottom: 0 }}>
-                        <span>Metronome / Timer</span>
-                    </label>
-                    <button
-                        className={`switch-button ${settings.rhythm.active ? 'active' : ''}`}
-                        onClick={() => updateRhythm({ active: !settings.rhythm.active })}
-                        title={settings.rhythm.active ? "Turn Off" : "Turn On"}
+                    <select
+                        value={settings.difficulty}
+                        onChange={handleDifficultyChange}
+                        className="control-select"
                     >
-                        <div className="switch-thumb" />
-                    </button>
+                        {currentInstrumentDef.ranges.map(r => (
+                            <option key={r.id} value={r.id}>{r.label}</option>
+                        ))}
+                    </select>
                 </div>
 
-                {settings.rhythm.active && (
-                    <div className="rhythm-details" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                                className={`control-button small ${settings.rhythm.mode === 'bpm' ? 'active' : ''}`}
-                                onClick={() => updateRhythm({ mode: 'bpm' })}
-                            >BPM</button>
-                            <button
-                                className={`control-button small ${settings.rhythm.mode === 'seconds' ? 'active' : ''}`}
-                                onClick={() => updateRhythm({ mode: 'seconds' })}
-                            >Timer</button>
-                        </div>
+                {/* Row 2, Col 2 */}
+                <div className="control-group">
+                    <label className="control-label">
+                        <span>Key signature</span>
+                    </label>
+                    <select
+                        value={settings.keySignature}
+                        onChange={(e) => onUpdateSettings({ ...settings, keySignature: e.target.value })}
+                        className="control-select"
+                    >
+                        <optgroup label="Major Keys">
+                            <option value="C">C Major</option>
+                            <option value="G">G Major</option>
+                            <option value="D">D Major</option>
+                            <option value="A">A Major</option>
+                            <option value="E">E Major</option>
+                            <option value="F">F Major</option>
+                            <option value="Bb">Bb Major</option>
+                            <option value="Eb">Eb Major</option>
+                        </optgroup>
+                        <optgroup label="Minor Keys">
+                            <option value="Am">A Minor</option>
+                            <option value="Em">E Minor</option>
+                            <option value="Dm">D Minor</option>
+                        </optgroup>
+                    </select>
+                </div>
 
-                        {settings.rhythm.mode === 'bpm' ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '12px', minWidth: '40px' }}>{settings.rhythm.bpm} BPM</span>
+                {/* Row 3: Fret Range (Full Width) */}
+                {currentInstrumentDef.ranges.find(r => r.id === settings.difficulty)?.type === 'custom_fret' && (
+                    <div className="control-group" style={{ gridColumn: '1 / -1' }}>
+                        <label className="control-label">
+                            <span>Fret Range</span>
+                        </label>
+                        <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ fontSize: '12px', opacity: 0.7 }}>Min</span>
                                 <input
-                                    type="range"
-                                    min="30"
-                                    max="240"
-                                    step="5"
-                                    value={settings.rhythm.bpm}
-                                    onChange={(e) => updateRhythm({ bpm: Number(e.target.value) })}
-                                    style={{ flex: 1 }}
+                                    type="number"
+                                    min="0"
+                                    max="24"
+                                    value={settings.customMinFret ?? 0}
+                                    onChange={(e) => onUpdateSettings({ ...settings, customMinFret: parseInt(e.target.value) || 0 })}
+                                    className="control-input"
+                                    style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
                                 />
                             </div>
-                        ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '12px', minWidth: '40px' }}>{settings.rhythm.seconds}s</span>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ fontSize: '12px', opacity: 0.7 }}>Max</span>
                                 <input
-                                    type="range"
-                                    min="1"
-                                    max="60"
-                                    step="1"
-                                    value={settings.rhythm.seconds}
-                                    onChange={(e) => updateRhythm({ seconds: Number(e.target.value) })}
-                                    style={{ flex: 1 }}
+                                    type="number"
+                                    min="0"
+                                    max="24"
+                                    value={settings.customMaxFret ?? 12}
+                                    onChange={(e) => onUpdateSettings({ ...settings, customMaxFret: parseInt(e.target.value) || 0 })}
+                                    className="control-input"
+                                    style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
                                 />
                             </div>
-                        )}
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={settings.rhythm.autoAdvance}
-                                    onChange={(e) => updateRhythm({ autoAdvance: e.target.checked })}
-                                />
-                                Auto-Adv
-                            </label>
-
-                            <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={settings.rhythm.sound}
-                                    onChange={(e) => updateRhythm({ sound: e.target.checked })}
-                                />
-                                Sound
-                            </label>
                         </div>
                     </div>
                 )}
             </div>
-            <div className="control-group" style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '12px', marginTop: '12px', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label className="control-label" style={{ marginBottom: 0 }}>
-                    <Gauge size={18} />
-                    <span>Tuning Meter</span>
-                </label>
-                <button
-                    className={`switch-button ${settings.showTuningMeter ? 'active' : ''}`}
-                    onClick={() => onUpdateSettings({ ...settings, showTuningMeter: !settings.showTuningMeter })}
-                    title={settings.showTuningMeter ? "Hide Tuner" : "Show Tuner"}
-                >
-                    <div className="switch-thumb" />
-                </button>
+
+            {/* Bottom Section: Tools Grid (3 Columns) */}
+            <div className="tools-grid">
+                {/* Tool 1: Tuner */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <label className="control-label" style={{ marginBottom: 0 }}>
+                            <Gauge size={18} />
+                            <span>Tuner</span>
+                        </label>
+                        <button
+                            className={`switch-button ${settings.showTuningMeter ? 'active' : ''}`}
+                            onClick={() => onUpdateSettings({ ...settings, showTuningMeter: !settings.showTuningMeter })}
+                            title={settings.showTuningMeter ? "Hide Tuner" : "Show Tuner"}
+                        >
+                            <div className="switch-thumb" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Tool 2: Metronome */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <label className="control-label" style={{ marginBottom: 0 }}>
+                            <span>Metronome</span>
+                        </label>
+                        <button
+                            className={`switch-button ${settings.rhythm.active ? 'active' : ''}`}
+                            onClick={() => updateRhythm({ active: !settings.rhythm.active })}
+                            title={settings.rhythm.active ? "Turn Off" : "Turn On"}
+                        >
+                            <div className="switch-thumb" />
+                        </button>
+                    </div>
+
+                    {settings.rhythm.active && (
+                        <div className="rhythm-details" style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                <button
+                                    className={`control-button small ${settings.rhythm.mode === 'bpm' ? 'active' : ''}`}
+                                    onClick={() => updateRhythm({ mode: 'bpm' })}
+                                    style={{ flex: 1, fontSize: '10px' }}
+                                >BPM</button>
+                                <button
+                                    className={`control-button small ${settings.rhythm.mode === 'seconds' ? 'active' : ''}`}
+                                    onClick={() => updateRhythm({ mode: 'seconds' })}
+                                    style={{ flex: 1, fontSize: '10px' }}
+                                >Timer</button>
+                            </div>
+
+                            {settings.rhythm.mode === 'bpm' ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span style={{ fontSize: '12px', minWidth: '32px' }}>{settings.rhythm.bpm}</span>
+                                    <input
+                                        type="range"
+                                        min="30"
+                                        max="240"
+                                        step="5"
+                                        value={settings.rhythm.bpm}
+                                        onChange={(e) => updateRhythm({ bpm: Number(e.target.value) })}
+                                        style={{ flex: 1 }}
+                                    />
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <span style={{ fontSize: '12px', minWidth: '32px' }}>{settings.rhythm.seconds}s</span>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="60"
+                                        step="1"
+                                        value={settings.rhythm.seconds}
+                                        onChange={(e) => updateRhythm({ seconds: Number(e.target.value) })}
+                                        style={{ flex: 1 }}
+                                    />
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <label style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={settings.rhythm.autoAdvance}
+                                        onChange={(e) => updateRhythm({ autoAdvance: e.target.checked })}
+                                    />
+                                    Auto
+                                </label>
+
+                                <label style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={settings.rhythm.sound}
+                                        onChange={(e) => updateRhythm({ sound: e.target.checked })}
+                                    />
+                                    Sound
+                                </label>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Tool 3: Auto-play */}
+                {settings.gameMode === 'sight_reading' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <label className="control-label" style={{ marginBottom: 0, textTransform: 'none' }}>
+                                <span>Auto-play</span>
+                            </label>
+                            <button
+                                className={`switch-button ${settings.autoPlaySightReading ? 'active' : ''}`}
+                                onClick={() => onUpdateSettings({ ...settings, autoPlaySightReading: !settings.autoPlaySightReading })}
+                                style={{ transform: 'scale(1)' }} /* Reset scale for consistency */
+                            >
+                                <div className="switch-thumb" />
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div /> /* Empty placeholder for grid 3rd column if not sight reading? Or just 2 cols? */
+                )}
             </div>
-
-
         </div>
     );
 };

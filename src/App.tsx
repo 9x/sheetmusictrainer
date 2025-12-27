@@ -48,7 +48,8 @@ function App() {
     zenMode: false,
     gameMode: 'sight_reading',
     customMinFret: 0,
-    customMaxFret: 12
+    customMaxFret: 12,
+    autoPlaySightReading: false
   });
 
   const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
@@ -154,14 +155,16 @@ function App() {
 
   // Audio Playback trigger
   useEffect(() => {
-    if (settings.gameMode === 'ear_training' && !revealed) {
+    const shouldAutoPlay = settings.gameMode === 'ear_training' || (settings.gameMode === 'sight_reading' && settings.autoPlaySightReading);
+
+    if (shouldAutoPlay && !revealed) {
       // Add a small delay to ensure state settles or allow UI to update
       const timer = setTimeout(() => {
         playNote(targetMidi, 1.0); // Play for 1 second
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [targetMidi, settings.gameMode, revealed, playNote]);
+  }, [targetMidi, settings.gameMode, settings.autoPlaySightReading, revealed, playNote]);
 
   // Initial note, and whenever difficulty/tuning/gamemode changes
   useEffect(() => {
@@ -309,9 +312,6 @@ function App() {
         <header className="app-header">
           <div className="app-header-left">
             <div className="logo">Sheet music trainer</div>
-            <div className="app-subtitle">
-              <a href="http://jensmohrmann.de" target="_blank" rel="noopener noreferrer">jensmohrmann.de</a>
-            </div>
           </div>
 
           <div className="header-controls">
@@ -368,18 +368,7 @@ function App() {
             </div>
           )}
 
-          {settings.gameMode === 'ear_training' && !settings.zenMode && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
-              <button
-                className="control-button"
-                onClick={() => playNote(targetMidi, 1.0)}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px' }}
-              >
-                <Volume2 size={24} />
-                Play Note
-              </button>
-            </div>
-          )}
+
 
           {settings.showHint && (
             <div className="hint-card">
@@ -404,6 +393,16 @@ function App() {
                 <HelpCircle size={18} />
                 {settings.showHint ? "Hide Hint" : "Show Hint"}
               </button>
+
+              <button
+                className="hint-button"
+                onClick={() => playNote(targetMidi, 1.0)}
+                title="Keyboard Shortcut: P or R"
+              >
+                <Volume2 size={18} />
+                Play Note
+              </button>
+
               <button className="skip-button" onClick={generateNewNote} title="Keyboard Shortcut: Space">
                 <SkipForward size={18} />
                 Skip Note
@@ -448,6 +447,9 @@ function App() {
       {!settings.zenMode && (
         <footer className="settings-footer">
           <Controls settings={settings} onUpdateSettings={setSettings} />
+          <div className="app-subtitle">
+            <a href="http://jensmohrmann.de" target="_blank" rel="noopener noreferrer">jensmohrmann.de</a>
+          </div>
         </footer>
       )
       }
