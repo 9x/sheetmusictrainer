@@ -17,6 +17,7 @@ import {
 } from './music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
 import { Fretboard } from './components/Fretboard';
+import { PianoKeys } from './components/PianoKeys';
 
 import { Mic, MicOff, SkipForward, HelpCircle, Volume2, X, Guitar, Settings } from 'lucide-react';
 import './App.css';
@@ -262,8 +263,8 @@ function App() {
     }
   }, [settings.rhythm, restartMetronome, generateNewNote]);
 
-  // Virtual Guitar Handler
-  const handleVirtualGuitarPlay = useCallback((playedMidi: number) => {
+  // Virtual Instrument Handler (Guitar or Piano)
+  const handleVirtualInstrumentPlay = useCallback((playedMidi: number) => {
     if (!settings.virtualGuitarMute) {
       playNote(playedMidi, 0.5, settings.virtualGuitarVolume ?? 0.5); // Feedback sound
     }
@@ -469,15 +470,29 @@ function App() {
                   {getNoteDetails(targetMidi + activeTranspose).scientific}
                 </div>
               )}
-              {currentInstrumentDef.showTuning && currentTuning && (
-                <Fretboard
-                  tuning={currentTuning}
-                  positions={hintPositions}
-                  interactive={settings.showFretboard}
-                  onPlayNote={handleVirtualGuitarPlay}
-                  showHints={settings.showHint}
-                  maxFrets={15}
-                />
+
+              {/* Virtual Instrument Display */}
+              {currentInstrumentDef.showTuning && (
+                currentInstrumentDef.id === 'piano' ? (
+                  <PianoKeys
+                    minMidi={36} // C2
+                    maxMidi={84} // C6
+                    markedNotes={settings.showHint ? [targetMidi] : []}
+                    interactive={settings.showFretboard}
+                    onPlayNote={handleVirtualInstrumentPlay}
+                  />
+                ) : (
+                  currentTuning && (
+                    <Fretboard
+                      tuning={currentTuning}
+                      positions={hintPositions}
+                      interactive={settings.showFretboard}
+                      onPlayNote={handleVirtualInstrumentPlay}
+                      showHints={settings.showHint}
+                      maxFrets={15}
+                    />
+                  )
+                )
               )}
             </div>
           )}
@@ -490,10 +505,10 @@ function App() {
                 <button
                   className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
                   onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
-                  title="Toggle Virtual Guitar"
+                  title={`Toggle Virtual ${currentInstrumentDef.displayName}`}
                 >
                   <Guitar size={18} />
-                  Guitar
+                  {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
                 </button>
               )}
 

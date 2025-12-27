@@ -90,7 +90,7 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
         displayName: 'Piano',
         clefMode: 'grand',
         transpose: 0,
-        showTuning: false,
+        showTuning: true,
         ranges: [
             { id: 'middle_c', label: 'Middle C Area', type: 'static', min: 53, max: 67 }, // F3 to G4
             { id: 'two_octave', label: 'Two Octaves', type: 'static', min: 48, max: 72 }, // C3 to C5
