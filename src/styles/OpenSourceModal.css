@@ -1,0 +1,48 @@
+.open-source-modal {
+    max-width: 500px;
+    width: 90%;
+}
+
+.library-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.library-item {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 12px;
+}
+
+.library-item:last-child {
+    border-bottom: none;
+}
+
+.library-name {
+    font-weight: 600;
+    color: #646cff;
+    /* Vite purple or accent color */
+    text-decoration: none;
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+
+.library-name:hover {
+    text-decoration: underline;
+}
+
+.library-desc {
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+@media (prefers-color-scheme: light) {
+    .library-item {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+}

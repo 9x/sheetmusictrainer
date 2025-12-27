@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SheetMusic } from './components/SheetMusic';
 import { Controls, type AppSettings } from './components/Controls';
 import { SettingsModal } from './components/SettingsModal';
+import { OpenSourceModal } from './components/OpenSourceModal';
 import { usePitchDetector } from './hooks/usePitchDetector';
 import { useMetronome } from './hooks/useMetronome';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
@@ -66,6 +67,7 @@ function App() {
   const [revealed, setRevealed] = useState(false);
   const [virtualNote, setVirtualNote] = useState<number | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isOpenSourceModalOpen, setIsOpenSourceModalOpen] = useState(false);
 
   const currentTuning = TUNINGS[settings.tuningId];
   const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
@@ -575,6 +577,10 @@ function App() {
             currentPitch={pitchData ? { note: pitchData.note, cents: pitchData.cents } : null}
           />
           <div className="app-subtitle">
+            <button className="link-button" onClick={() => setIsOpenSourceModalOpen(true)}>Open Source Libraries</button>
+            <span className="separator">•</span>
+            <a href="https://github.com/9x/sheetmusictrainer" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <span className="separator">•</span>
             <a href="http://jensmohrmann.de" target="_blank" rel="noopener noreferrer">jensmohrmann.de</a>
           </div>
         </footer>
@@ -632,6 +638,11 @@ function App() {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onUpdateSettings={setSettings}
+      />
+
+      <OpenSourceModal
+        isOpen={isOpenSourceModalOpen}
+        onClose={() => setIsOpenSourceModalOpen(false)}
       />
     </div >
   );

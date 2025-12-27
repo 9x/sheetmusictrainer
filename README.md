@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# Sheet Music Trainer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A web-based application designed to help musicians practice sight-reading and ear training. It listens to your instrument (or voice) via the microphone and gives real-time feedback.
 
-Currently, two official plugins are available:
+[Live Demo](https://9x.github.io/sheetmusictrainer/) (If available)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+-   **Sight Reading Mode**: Read notes from the interactive staff and play them on your instrument. The app listens and confirms when you hit the correct note.
+-   **Ear Training Mode**: Listen to a reference note and try to reproduce it.
+-   **Real-time Pitch Detection**: Uses your device's microphone to detect notes instantly.
+-   **Instrument Support**: Optimized for Guitar and Piano, with configurable tunings for guitar.
+-   **Virtual Instruments**: On-screen interactive guitar fretboard and piano keys for visual reference or touch input.
+-   **Customizable**: Adjust difficulty (range, accidentals), key signatures, rhythm/metronome settings, and more.
+-   **Zen Mode**: Distraction-free practice interface.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Getting Started
 
-## Expanding the ESLint configuration
+### Prerequisites
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+-   Node.js (v18 or higher recommended)
+-   npm
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Installation
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/9x/sheetmusictrainer.git
+    cd sheetmusictrainer
+    ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+3.  Run the development server:
+    ```bash
+    npm run dev
+    ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+4.  Open your browser and navigate to the local URL provided (usually `http://localhost:5173`).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Technical Details
+
+100% vibe coded using Google Antigravity and Gemini 3 pro.
+
+This project is built with:
+-   React + TypeScript
+-   Vite
+-   VexFlow (for music notation)
+-   Pitchfinder (for audio detection)
+
+For more details on the architecture, see [TECHNICAL_REALIZATION.md](./TECHNICAL_REALIZATION.md).
+
+## License
+
+MIT

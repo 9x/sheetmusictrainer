@@ -511,6 +511,28 @@ button {
   color: var(--color-text-muted);
 }
 
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-primary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.link-button:hover {
+  color: var(--color-primary-dark);
+  text-decoration: underline;
+}
+
+.separator {
+  margin: 0 8px;
+  color: #666;
+}
+
 .app-subtitle a {
   color: var(--color-primary);
   text-decoration: none;
