@@ -31,6 +31,8 @@ export interface AppSettings {
     customMaxFret?: number;
     autoPlaySightReading?: boolean;
     autoPlayVolume?: number;
+    virtualGuitarVolume?: number;
+    virtualGuitarMute?: boolean;
     disableAnimation?: boolean;
 }
 

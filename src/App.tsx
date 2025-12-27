@@ -53,6 +53,8 @@ function App() {
     customMaxFret: 12,
     autoPlaySightReading: false,
     autoPlayVolume: 0.5,
+    virtualGuitarVolume: 0.5,
+    virtualGuitarMute: false,
     disableAnimation: false
   });
 
@@ -252,7 +254,9 @@ function App() {
 
   // Virtual Guitar Handler
   const handleVirtualGuitarPlay = useCallback((playedMidi: number) => {
-    playNote(playedMidi, 0.5); // Feedback sound
+    if (!settings.virtualGuitarMute) {
+      playNote(playedMidi, 0.5, settings.virtualGuitarVolume ?? 0.5); // Feedback sound
+    }
     setVirtualNote(playedMidi);
 
     // Clear the note visualization after a short delay
@@ -266,7 +270,7 @@ function App() {
         handleMatchSuccess();
       }
     }
-  }, [playNote, targetMidi, feedbackMessage, handleMatchSuccess]);
+  }, [playNote, targetMidi, feedbackMessage, handleMatchSuccess, settings]);
 
   // Match Logic
   useEffect(() => {
@@ -428,7 +432,16 @@ function App() {
           {!settings.zenMode && (
             <div className="feedback-area">
               {feedbackMessage ? (
-                <div className="success-message animate-pop">{feedbackMessage}</div>
+                <div className="success-message animate-pop">
+                  {feedbackMessage.startsWith("Good! ") ? (
+                    <>
+                      <div className="success-prefix">Good!</div>
+                      <div className="success-note">{feedbackMessage.replace("Good! ", "")}</div>
+                    </>
+                  ) : (
+                    feedbackMessage
+                  )}
+                </div>
               ) : (
                 <div className="instruction-text">
                   {settings.gameMode === 'ear_training' ? "Listen and play the note" : "Play the note above"}
