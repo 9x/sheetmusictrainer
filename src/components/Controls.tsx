@@ -2,6 +2,7 @@ import { Settings, Guitar, Music, Gauge } from 'lucide-react';
 import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 import { getTempoMarking } from '../music/TempoMarkings';
+import { TuningMeter } from './TuningMeter';
 
 export type Difficulty = string;
 
@@ -33,9 +34,10 @@ export interface AppSettings {
 interface ControlsProps {
     settings: AppSettings;
     onUpdateSettings: (s: AppSettings) => void;
+    currentPitch: { note: string; cents: number } | null;
 }
 
-export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }) => {
+export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings, currentPitch }) => {
     const handleDifficultyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         onUpdateSettings({ ...settings, difficulty: e.target.value as Difficulty });
     };
@@ -223,6 +225,16 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
                             <div className="switch-thumb" />
                         </button>
                     </div>
+                    {settings.showTuningMeter && currentPitch && (
+                        <div style={{ paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                            <TuningMeter cents={currentPitch.cents} noteName={currentPitch.note} />
+                        </div>
+                    )}
+                    {settings.showTuningMeter && !currentPitch && (
+                        <div style={{ paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', fontSize: '11px', opacity: 0.5, textAlign: 'center' }}>
+                            Listening...
+                        </div>
+                    )}
                 </div>
 
                 {/* Tool 2: Metronome */}

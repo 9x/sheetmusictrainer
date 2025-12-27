@@ -306,6 +306,13 @@ function App() {
     return getFretboardPositions(targetMidi, currentTuning);
   }, [settings.showHint, targetMidi, currentTuning, currentInstrumentDef]);
 
+  // Auto-enable mic when tuner is turned on
+  useEffect(() => {
+    if (settings.showTuningMeter && !listening) {
+      setListening(true);
+    }
+  }, [settings.showTuningMeter, listening]);
+
   return (
     <div className={`app-container ${settings.zenMode ? 'zen-mode' : ''}`}>
       {!settings.zenMode && (
@@ -423,22 +430,18 @@ function App() {
                 {listening ? <Mic size={28} /> : <MicOff size={28} />}
               </button>
 
-              {settings.showTuningMeter && pitchData ? (
-                <TuningMeter cents={pitchData.cents} noteName={pitchData.note} />
-              ) : (
-                <div className={`pitch-readout ${pitchData ? 'active' : ''}`}>
-                  {pitchData ? (
-                    <>
-                      <span className={`detected-note ${pitchData.midi === targetMidi ? 'match' : ''}`}>
-                        {pitchData.note}
-                      </span>
-                      <span className="detected-hz">{Math.round(pitchData.frequency)} Hz</span>
-                    </>
-                  ) : (
-                    <span className="placeholder">{listening ? "Listening..." : "Mic Off"}</span>
-                  )}
-                </div>
-              )}
+              <div className={`pitch-readout ${pitchData ? 'active' : ''}`}>
+                {pitchData ? (
+                  <>
+                    <span className={`detected-note ${pitchData.midi === targetMidi ? 'match' : ''}`}>
+                      {pitchData.note}
+                    </span>
+                    <span className="detected-hz">{Math.round(pitchData.frequency)} Hz</span>
+                  </>
+                ) : (
+                  <span className="placeholder">{listening ? "Listening..." : "Mic Off"}</span>
+                )}
+              </div>
             </div>
           )
         }
@@ -446,13 +449,17 @@ function App() {
 
       {!settings.zenMode && (
         <footer className="settings-footer">
-          <Controls settings={settings} onUpdateSettings={setSettings} />
+          <Controls
+            settings={settings}
+            onUpdateSettings={setSettings}
+            currentPitch={pitchData ? { note: pitchData.note, cents: pitchData.cents } : null}
+          />
           <div className="app-subtitle">
             <a href="http://jensmohrmann.de" target="_blank" rel="noopener noreferrer">jensmohrmann.de</a>
           </div>
         </footer>
-      )
-      }
+      )}
+
 
       {/* Floating Zen Mode Button (Toggle) */}
       <button
@@ -464,39 +471,41 @@ function App() {
       </button>
 
       {/* Help Popup */}
-      {showHelp && (
-        <div className="help-popup-overlay" onClick={() => setShowHelp(false)}>
-          <div className="help-popup" onClick={e => e.stopPropagation()}>
-            <button className="help-close" onClick={() => setShowHelp(false)}><X size={20} /></button>
-            <h2 style={{ marginTop: 0, marginBottom: '24px' }}>Keyboard Shortcuts</h2>
+      {
+        showHelp && (
+          <div className="help-popup-overlay" onClick={() => setShowHelp(false)}>
+            <div className="help-popup" onClick={e => e.stopPropagation()}>
+              <button className="help-close" onClick={() => setShowHelp(false)}><X size={20} /></button>
+              <h2 style={{ marginTop: 0, marginBottom: '24px' }}>Keyboard Shortcuts</h2>
 
-            <div className="help-item">
-              <span>Skip Note</span>
-              <span className="shortcut-key">Space</span>
-            </div>
-            <div className="help-item">
-              <span>Toggle Hint</span>
-              <span className="shortcut-key">H</span>
-            </div>
-            <div className="help-item">
-              <span>Toggle Zen Mode</span>
-              <span className="shortcut-key">Z</span>
-            </div>
-            <div className="help-item">
-              <span>Replay Note</span>
-              <span className="shortcut-key">R</span>
-            </div>
-            <div className="help-item">
-              <span>Toggle Game Mode</span>
-              <span className="shortcut-key">M</span>
-            </div>
-            <div className="help-item">
-              <span>Close Help / Exit Zen</span>
-              <span className="shortcut-key">Esc</span>
+              <div className="help-item">
+                <span>Skip Note</span>
+                <span className="shortcut-key">Space</span>
+              </div>
+              <div className="help-item">
+                <span>Toggle Hint</span>
+                <span className="shortcut-key">H</span>
+              </div>
+              <div className="help-item">
+                <span>Toggle Zen Mode</span>
+                <span className="shortcut-key">Z</span>
+              </div>
+              <div className="help-item">
+                <span>Replay Note</span>
+                <span className="shortcut-key">R</span>
+              </div>
+              <div className="help-item">
+                <span>Toggle Game Mode</span>
+                <span className="shortcut-key">M</span>
+              </div>
+              <div className="help-item">
+                <span>Close Help / Exit Zen</span>
+                <span className="shortcut-key">Esc</span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
     </div >
   );
 }
