@@ -206,15 +206,6 @@ export function PianoKeys({
                             }
 
                             const stroke = '#000';
-
-                            // Height needs to be converted if in px mode? No, SVG viewBox handles scale for Y if we used 100...
-                            // But wait.
-                            // If viewMode is 'zoomed', viewBox is `0 0 totalWidthVal 100`.
-                            // So Y coordinates are 0-100.
-                            // If viewMode is 'full', viewBox is `0 0 100 100`. 
-                            // So Y coordinates are 0-100.
-                            // Perfect.
-
                             const rectHeight = k.isBlack ? BLACK_KEY_HEIGHT_PERCENT * 100 : 100;
 
                             return (
@@ -227,35 +218,58 @@ export function PianoKeys({
                                         fill={fill}
                                         stroke={stroke}
                                         strokeWidth={0.5}
+                                        vectorEffect="non-scaling-stroke"
                                         rx={k.isBlack ? 0 : 2}
                                         ry={k.isBlack ? 0 : 2}
                                     />
-                                    {/* Labels for C notes on white keys */}
-                                    {!k.isBlack && k.label && (
-                                        <text
-                                            x={k.x + (k.width / 2)}
-                                            y={90}
-                                            textAnchor="middle"
-                                            fontSize={viewMode === 'full' ? "4" : "12"}
-                                            fill="#999"
-                                            style={{ pointerEvents: 'none', userSelect: 'none' }}
-                                        >
-                                            {k.label}
-                                        </text>
-                                    )}
-                                    {/* Marker dot if hinted? Existing marker logic just changes color, maybe dot is better? */}
+
                                     {isMarked && (
                                         <circle
                                             cx={k.x + (k.width / 2)}
                                             cy={k.isBlack ? rectHeight - 10 : 80}
-                                            r={viewMode === 'full' ? 1.5 : 4}
+                                            r={viewMode === 'full' ? 1.5 : 4} // This might still distort in circle shape if aspect ratio is wild?
+                                            // Circles in distorted SVG become ellipses.
+                                            // To verify: if viewMode is full, and we resize window...
+                                            // If we really want NO distortion, we should use non-scaling coordinate system.
+                                            // But let's try just fixing strokes first. Circles might be acceptable as ellipses or we fix them too.
+                                            // Actually, if we want perfect circles, we should not distort the SVG.
+                                            // But for now, user complained about "lines and labels".
                                             fill="red"
+                                            vectorEffect="non-scaling-stroke"
                                         />
                                     )}
                                 </g>
                             );
                         })}
                     </svg>
+
+                    {/* Overlay for Labels to avoid distortion */}
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+                        {keyRects.map(k => {
+                            if (k.isBlack || !k.label) return null;
+                            // Calculate left position as percentage or pixel
+                            const left = viewMode === 'full'
+                                ? `${k.x + (k.width / 2)}%`
+                                : `${k.x + (k.width / 2)}px`;
+
+                            return (
+                                <div
+                                    key={`lbl-${k.midi}`}
+                                    style={{
+                                        position: 'absolute',
+                                        left: left,
+                                        bottom: '8px',
+                                        transform: 'translateX(-50%)',
+                                        fontSize: '10px',
+                                        color: '#999',
+                                        userSelect: 'none'
+                                    }}
+                                >
+                                    {k.label}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </div>
