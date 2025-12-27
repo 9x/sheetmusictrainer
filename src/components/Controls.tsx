@@ -1,6 +1,7 @@
 import { Settings, Guitar, Music, Gauge } from 'lucide-react';
 import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
+import { getTempoMarking } from '../music/TempoMarkings';
 
 export type Difficulty = string;
 
@@ -255,17 +256,52 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings }
                             </div>
 
                             {settings.rhythm.mode === 'bpm' ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ fontSize: '12px', minWidth: '32px' }}>{settings.rhythm.bpm}</span>
-                                    <input
-                                        type="range"
-                                        min="30"
-                                        max="240"
-                                        step="5"
-                                        value={settings.rhythm.bpm}
-                                        onChange={(e) => updateRhythm({ bpm: Number(e.target.value) })}
-                                        style={{ flex: 1 }}
-                                    />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <button
+                                            className="control-button small"
+                                            onClick={() => updateRhythm({ bpm: Math.max(30, settings.rhythm.bpm - 1) })}
+                                            style={{ width: '24px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                            -
+                                        </button>
+                                        <input
+                                            type="number"
+                                            min="30"
+                                            max="300"
+                                            value={settings.rhythm.bpm}
+                                            onChange={(e) => updateRhythm({ bpm: Math.max(1, parseInt(e.target.value) || 60) })}
+                                            className="control-input"
+                                            style={{
+                                                width: '48px',
+                                                textAlign: 'center',
+                                                padding: '2px',
+                                                borderRadius: '4px',
+                                                border: '1px solid rgba(255,255,255,0.2)',
+                                                background: 'rgba(0,0,0,0.2)',
+                                                color: 'white'
+                                            }}
+                                        />
+                                        <button
+                                            className="control-button small"
+                                            onClick={() => updateRhythm({ bpm: Math.min(300, settings.rhythm.bpm + 1) })}
+                                            style={{ width: '24px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                            +
+                                        </button>
+                                        <input
+                                            type="range"
+                                            min="30"
+                                            max="240"
+                                            step="1"
+                                            value={settings.rhythm.bpm}
+                                            onChange={(e) => updateRhythm({ bpm: Number(e.target.value) })}
+                                            style={{ flex: 1 }}
+                                        />
+                                    </div>
+                                    <div style={{ fontSize: '11px', opacity: 0.7, textAlign: 'center' }}>
+                                        {getTempoMarking(settings.rhythm.bpm)}
+                                    </div>
                                 </div>
                             ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
