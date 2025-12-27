@@ -15,9 +15,9 @@ import {
   getFirstPositionNotes,
 } from './music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
-import { FretboardHint } from './components/FretboardHint';
-import { TuningMeter } from './components/TuningMeter';
-import { Mic, MicOff, SkipForward, HelpCircle, Volume2, X } from 'lucide-react';
+import { Fretboard } from './components/Fretboard';
+
+import { Mic, MicOff, SkipForward, HelpCircle, Volume2, X, Guitar } from 'lucide-react';
 import './App.css';
 import './styles/skip-button.css';
 
@@ -32,6 +32,7 @@ function App() {
   const [settings, setSettings] = useState<AppSettings>({
     difficulty: 'first_pos',
     showHint: false,
+    showFretboard: false,
     showTuningMeter: false,
     tuningId: 'standard',
     keySignature: 'C',
@@ -49,7 +50,8 @@ function App() {
     gameMode: 'sight_reading',
     customMinFret: 0,
     customMaxFret: 12,
-    autoPlaySightReading: false
+    autoPlaySightReading: false,
+    autoPlayVolume: 0.5
   });
 
   const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
@@ -160,7 +162,7 @@ function App() {
     if (shouldAutoPlay && !revealed) {
       // Add a small delay to ensure state settles or allow UI to update
       const timer = setTimeout(() => {
-        playNote(targetMidi, 1.0); // Play for 1 second
+        playNote(targetMidi, 1.0, settings.autoPlayVolume ?? 0.5); // Play for 1 second
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -197,6 +199,49 @@ function App() {
   });
 
 
+  // Common success handler
+  const handleMatchSuccess = useCallback(() => {
+    // Success!
+    setFeedbackMessage("Good!");
+    setRevealed(true);
+    setMatchStartTime(null);
+
+    const isRhythmActive = settings.rhythm.active && settings.rhythm.autoAdvance;
+    const isTimerMode = settings.rhythm.mode === 'seconds';
+
+    if (!isRhythmActive) {
+      // Standard or Rhythm-Manual
+      setTimeout(() => {
+        generateNewNote();
+      }, 800);
+    } else {
+      // Rhythm Active AND Auto-Advance
+      if (isTimerMode) {
+        // Dynamic Timer Mode: Success triggers advance
+        restartMetronome(); // Reset the countdown
+        setTimeout(() => {
+          generateNewNote();
+        }, 200);
+        setMatchStartTime(null);
+      } else {
+        // Strict BPM Mode: Consumed success, but wait for tick.
+        // Logic handled by tick
+      }
+    }
+  }, [settings.rhythm, restartMetronome, generateNewNote]);
+
+  // Virtual Guitar Handler
+  const handleVirtualGuitarPlay = useCallback((playedMidi: number) => {
+    playNote(playedMidi, 0.5); // Feedback sound
+
+    if (playedMidi === targetMidi) {
+      // Instant match
+      if (feedbackMessage !== "Good!") {
+        handleMatchSuccess();
+      }
+    }
+  }, [playNote, targetMidi, feedbackMessage, handleMatchSuccess]);
+
   // Match Logic
   useEffect(() => {
     if (!pitchData) {
@@ -213,43 +258,13 @@ function App() {
       } else {
         const duration = Date.now() - matchStartTime;
         if (duration > NOTE_MATCH_THRESHOLD_MS) {
-          // Success!
-          setFeedbackMessage("Good!");
-          setRevealed(true);
-          setMatchStartTime(null);
-
-          const isRhythmActive = settings.rhythm.active && settings.rhythm.autoAdvance;
-          const isTimerMode = settings.rhythm.mode === 'seconds';
-
-          if (!isRhythmActive) {
-            // Standard or Rhythm-Manual
-
-            setTimeout(() => {
-              generateNewNote();
-            }, 800);
-          } else {
-            // Rhythm Active AND Auto-Advance
-            if (isTimerMode) {
-              // Dynamic Timer Mode: Success triggers advance
-
-              restartMetronome(); // Reset the countdown
-              setTimeout(() => {
-                generateNewNote();
-              }, 200);
-              setMatchStartTime(null);
-            } else {
-              // Strict BPM Mode: Consumed success, but wait for tick.
-              if (feedbackMessage !== "Good!") { // Only increment if not already good
-
-              }
-            }
-          }
+          handleMatchSuccess();
         }
       }
     } else {
       setMatchStartTime(null);
     }
-  }, [pitchData, targetMidi, matchStartTime, generateNewNote, settings.rhythm, restartMetronome, feedbackMessage]);
+  }, [pitchData, targetMidi, matchStartTime, feedbackMessage, handleMatchSuccess]);
 
   /* Keyboard Shortcuts */
   const [showHelp, setShowHelp] = useState(false);
@@ -300,11 +315,25 @@ function App() {
 
   // Hint text construction
   const hintPositions = useMemo(() => {
+    // If showing full hint OR detecting via fretboard, we need positions? 
+    // Actually, showHint=true renders the red dots.
+    // If showFretboard=true but showHint=false, we render empty board (interactive).
+
+    if (!settings.showHint && !settings.showFretboard) return [];
+    if (!currentInstrumentDef.showTuning || !currentTuning) return [];
+
+    // If hint is hidden but board is explicit, we still need data if we want to support 'hint-on-hover' or similar later.
+    // But for now, if settings.showHint is FALSE, we pass EMPTY positions to Fretboard so it doesn't draw dots,
+    // UNLESS we want to decouple 'positions' prop from 'showHint' prop in the component.
+    // It's cleaner to pass the positions regardless and let the component decide based on a prop, 
+    // OR filter here. 
+    // The request says: "If hints are enabled simultaneously, they can be shown on the same fretboard"
+    // So if showHint is true -> pass positions. If false -> pass empty.
+
     if (!settings.showHint) return [];
-    if (!currentInstrumentDef.showTuning || !currentTuning) return []; // No fretboard hints for piano/voice
 
     return getFretboardPositions(targetMidi, currentTuning);
-  }, [settings.showHint, targetMidi, currentTuning, currentInstrumentDef]);
+  }, [settings.showHint, settings.showFretboard, targetMidi, currentTuning, currentInstrumentDef]);
 
   // Auto-enable mic when tuner is turned on
   useEffect(() => {
@@ -377,13 +406,21 @@ function App() {
 
 
 
-          {settings.showHint && (
+          {(settings.showHint || settings.showFretboard) && (
             <div className="hint-card">
-              <div className="hint-note landscape-hint-note">
-                {getNoteDetails(targetMidi + currentInstrumentDef.transpose).scientific}
-              </div>
+              {settings.showHint && (
+                <div className="hint-note landscape-hint-note">
+                  {getNoteDetails(targetMidi + currentInstrumentDef.transpose).scientific}
+                </div>
+              )}
               {currentInstrumentDef.showTuning && currentTuning && (
-                <FretboardHint tuning={currentTuning} positions={hintPositions} />
+                <Fretboard
+                  tuning={currentTuning}
+                  positions={hintPositions}
+                  interactive={settings.showFretboard}
+                  onPlayNote={handleVirtualGuitarPlay}
+                  showHints={settings.showHint}
+                />
               )}
             </div>
           )}
@@ -399,6 +436,15 @@ function App() {
               >
                 <HelpCircle size={18} />
                 {settings.showHint ? "Hide Hint" : "Show Hint"}
+              </button>
+
+              <button
+                className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
+                onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
+                title="Toggle Virtual Guitar"
+              >
+                <Guitar size={18} />
+                Guitar
               </button>
 
               <button

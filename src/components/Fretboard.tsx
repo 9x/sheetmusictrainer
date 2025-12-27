@@ -1,12 +1,22 @@
 import type { Tuning, FretPosition } from '../music/Tunings';
 
-interface FretboardHintProps {
+interface FretboardProps {
     tuning: Tuning;
     positions: FretPosition[];
-    maxFrets?: number; // How many frets to display
+    maxFrets?: number;
+    interactive?: boolean;
+    showHints?: boolean;
+    onPlayNote?: (midi: number) => void;
 }
 
-export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHintProps) {
+export function Fretboard({
+    tuning,
+    positions,
+    maxFrets = 15,
+    interactive = false,
+    showHints = true,
+    onPlayNote
+}: FretboardProps) {
     // Config
     const numStrings = tuning.strings.length;
     // Visual params
@@ -24,23 +34,18 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
     const markers = [3, 5, 7, 9, 12, 15, 17, 19, 21].filter(m => m <= maxFrets);
 
     // Helper to get Y coordinate for a string index
-    // String 0 is lowest pitch. In tab/charts, lowest pitch is usually the BOTTOM line.
-    // So index 0 -> max Y.
+    // String 0 is lowest pitch (Bottom line)
+    // String N is highest pitch (Top line)
     const getStringY = (stringIndex: number) => {
-        // stringIndex 0 (Low E) -> bottom line
-        // stringIndex N (High E) -> top line
         return height - paddingY - (stringIndex * stringSpacing);
     };
 
     // Helper to get X coordinate for a fret line
-    // Fret N line is at x = padding + nut + N * width
     const getFretLineX = (fretNum: number) => {
         return paddingX + nutWidth + (fretNum * fretWidth);
     };
 
     // Helper to get Center X for a note at fret N
-    // If fret 0 (open), place it to left of nut.
-    // If fret > 0, place it in middle of Fret N-1 and Fret N.
     const getNoteX = (fretNum: number) => {
         if (fretNum === 0) {
             return paddingX + (nutWidth / 2) - 15; // To the left of nut
@@ -50,13 +55,19 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
         return (startX + endX) / 2;
     };
 
+    const handleFretClick = (stringIndex: number, fret: number) => {
+        if (!interactive || !onPlayNote) return;
+        const baseMidi = tuning.strings[stringIndex];
+        const noteMidi = baseMidi + fret;
+        onPlayNote(noteMidi);
+    };
+
     return (
-        <div className="fretboard-container" style={{ overflowX: 'auto', maxWidth: '100%' }}>
+        <div className="fretboard-container" style={{ overflowX: 'auto', maxWidth: '100%', cursor: interactive ? 'pointer' : 'default' }}>
             <svg
-                width="100%"
-                height="100%"
-                viewBox={`0 0 ${width} ${height}`}
-                style={{ display: 'block', margin: '0 auto', maxHeight: '100%' }}
+                width={width}
+                height={height}
+                style={{ display: 'block', margin: '0 auto' }}
             >
                 {/* Fretboard background */}
                 <rect
@@ -64,7 +75,7 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                     y={paddingY}
                     width={width - (paddingX * 2) - nutWidth}
                     height={height - (paddingY * 2)}
-                    fill="#999999" // Requested dark gray
+                    fill="#999999"
                     stroke="none"
                 />
 
@@ -74,17 +85,15 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                     y={paddingY}
                     width={nutWidth}
                     height={height - (paddingY * 2)}
-                    fill="#333" // Dark nut
+                    fill="#333"
                 />
 
-                {/* Fret Markers (Dots) on fretboard */}
+                {/* Fret Markers (Dots) */}
                 {markers.map(m => {
                     const cx = getNoteX(m);
-                    const cy = height / 2;
                     const isDouble = m % 12 === 0;
 
                     if (isDouble) {
-                        // Draw two dots
                         return (
                             <g key={`marker-${m}`}>
                                 <circle cx={cx} cy={height / 2 - stringSpacing} r={6} fill="#777" />
@@ -92,15 +101,14 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                             </g>
                         );
                     }
-
                     return (
-                        <circle key={`marker-${m}`} cx={cx} cy={cy} r={6} fill="#777" />
+                        <circle key={`marker-${m}`} cx={cx} cy={height / 2} r={6} fill="#777" />
                     );
                 })}
 
                 {/* Frets (Vertical lines) */}
                 {Array.from({ length: maxFrets + 1 }).map((_, i) => {
-                    if (i === 0) return null; // Nut handles 0
+                    if (i === 0) return null;
                     const x = getFretLineX(i);
                     return (
                         <line
@@ -109,7 +117,7 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                             y1={paddingY}
                             x2={x}
                             y2={height - paddingY}
-                            stroke="#CCCCCC" // Lighter frets
+                            stroke="#CCCCCC"
                             strokeWidth={1}
                         />
                     );
@@ -118,11 +126,7 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                 {/* Strings (Horizontal lines) */}
                 {tuning.strings.map((_, i) => {
                     const y = getStringY(i);
-
-                    // i=0 is LOW pitch (thickest). 
-                    // Bolder: Increase base thick
-                    const visualThickness = 4 - (i * 0.4); // 4 down to ~2
-
+                    const visualThickness = 4 - (i * 0.4);
                     return (
                         <line
                             key={`string-${i}`}
@@ -130,22 +134,21 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                             y1={y}
                             x2={width - paddingX}
                             y2={y}
-                            stroke="#EEEEEE" // Lighter strings
+                            stroke="#EEEEEE"
                             strokeWidth={Math.max(1.5, visualThickness)}
                         />
                     );
                 })}
 
-                {/* Target Note Positions */}
-                {positions.map((p, idx) => {
-                    // Verify if fret is within range
+                {/* Target Note Positions (Hints) */}
+                {showHints && positions.map((p, idx) => {
                     if (p.fret > maxFrets) return null;
-
                     const cx = getNoteX(p.fret);
                     const cy = getStringY(p.stringIndex);
 
                     return (
-                        <g key={`pos-${idx}`}>
+                        <g key={`pos-${idx}`} style={{ pointerEvents: 'none' }}>
+                            {/* Add pointerEvents: none so hints don't block clicks if they overlay logic */}
                             <circle
                                 cx={cx}
                                 cy={cy}
@@ -167,6 +170,47 @@ export function FretboardHint({ tuning, positions, maxFrets = 15 }: FretboardHin
                             </text>
                         </g>
                     );
+                })}
+
+                {/* Interaction Overlay (Invisible hit targets) */}
+                {interactive && tuning.strings.map((_, stringIndex) => {
+                    const y = getStringY(stringIndex);
+                    // Hit area height (centered on string)
+                    const hitHeight = stringSpacing; // Full coverage between strings
+                    const yStart = y - (hitHeight / 2);
+
+                    return Array.from({ length: maxFrets + 1 }).map((_, fret) => {
+                        // Calculate X range for this fret
+                        let xStart = 0;
+                        let xEnd = 0;
+
+                        if (fret === 0) {
+                            xStart = paddingX - 25; // Extend left a bit
+                            xEnd = paddingX + nutWidth;
+                        } else {
+                            xStart = getFretLineX(fret - 1);
+                            xEnd = getFretLineX(fret);
+                        }
+
+                        const rectWidth = xEnd - xStart;
+
+                        return (
+                            <rect
+                                key={`hit-${stringIndex}-${fret}`}
+                                x={xStart}
+                                y={yStart}
+                                width={rectWidth}
+                                height={hitHeight}
+                                fill="transparent"
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => handleFretClick(stringIndex, fret)}
+                                // Hover effect could be added here via CSS class if we want
+                                className="fret-hit-target"
+                            >
+                                <title>String {stringIndex + 1}, Fret {fret}</title>
+                            </rect>
+                        );
+                    });
                 })}
             </svg>
         </div>
