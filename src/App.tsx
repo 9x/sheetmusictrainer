@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SheetMusic } from './components/SheetMusic';
 import { Controls, type AppSettings } from './components/Controls';
+import { SettingsModal } from './components/SettingsModal';
 import { usePitchDetector } from './hooks/usePitchDetector';
 import { useMetronome } from './hooks/useMetronome';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
@@ -17,7 +18,7 @@ import {
 import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
 import { Fretboard } from './components/Fretboard';
 
-import { Mic, MicOff, SkipForward, HelpCircle, Volume2, X, Guitar } from 'lucide-react';
+import { Mic, MicOff, SkipForward, HelpCircle, Volume2, X, Guitar, Settings } from 'lucide-react';
 import './App.css';
 import './styles/skip-button.css';
 
@@ -51,13 +52,15 @@ function App() {
     customMinFret: 0,
     customMaxFret: 12,
     autoPlaySightReading: false,
-    autoPlayVolume: 0.5
+    autoPlayVolume: 0.5,
+    disableAnimation: false
   });
 
   const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
   const [revealed, setRevealed] = useState(false);
   const [virtualNote, setVirtualNote] = useState<number | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const currentTuning = TUNINGS[settings.tuningId];
   const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
@@ -218,12 +221,15 @@ function App() {
       // Immediate transition
       generateNewNote(true); // Keep "Good!" message
 
-      // Allow visual feedback to persist for a moment before clearing text (optional, but requested layout changes handle visuals)
-      // We rely on CSS overlay fading or just keeping it briefly?
-      // With the new generateNewNote(true), "Good!" stays. We need to clear it eventually.
-      setTimeout(() => {
+      if (settings.disableAnimation) {
         setFeedbackMessage("");
-      }, 1500);
+        setRevealed(false);
+      } else {
+        // Allow visual feedback to persist for a moment before clearing text
+        setTimeout(() => {
+          setFeedbackMessage("");
+        }, 1500);
+      }
 
     } else {
       // Rhythm Active AND Auto-Advance
@@ -386,6 +392,13 @@ function App() {
               </button>
             </div>
 
+            <button
+              className="icon-button"
+              onClick={() => setIsSettingsOpen(true)}
+              title="Settings"
+            >
+              <Settings size={24} />
+            </button>
             <button
               className="icon-button"
               onClick={() => setShowHelp(true)}
@@ -575,6 +588,13 @@ function App() {
           </div>
         )
       }
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onUpdateSettings={setSettings}
+      />
     </div >
   );
 }

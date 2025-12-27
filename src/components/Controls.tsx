@@ -1,4 +1,4 @@
-import { Settings, Guitar, Music, Gauge, Volume2 } from 'lucide-react';
+import { Settings, Guitar, Music, Gauge } from 'lucide-react';
 import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 import { getTempoMarking } from '../music/TempoMarkings';
@@ -31,6 +31,7 @@ export interface AppSettings {
     customMaxFret?: number;
     autoPlaySightReading?: boolean;
     autoPlayVolume?: number;
+    disableAnimation?: boolean;
 }
 
 interface ControlsProps {
@@ -210,7 +211,7 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings, 
                 )}
             </div>
 
-            {/* Bottom Section: Tools Grid (3 Columns) */}
+            {/* Bottom Section: Tools Grid (2 Columns now) */}
             <div className="tools-grid">
                 {/* Tool 1: Tuner */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px' }}>
@@ -356,42 +357,7 @@ export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings, 
                 </div>
 
                 {/* Tool 3: Auto-play */}
-                {/* Tool 3: Auto-play */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <label className="control-label" style={{ marginBottom: 0, textTransform: 'none' }}>
-                            <span>Auto-play</span>
-                        </label>
-                        <button
-                            className={`switch-button ${settings.gameMode === 'ear_training' || settings.autoPlaySightReading ? 'active' : ''}`}
-                            onClick={() => {
-                                if (settings.gameMode !== 'ear_training') {
-                                    onUpdateSettings({ ...settings, autoPlaySightReading: !settings.autoPlaySightReading });
-                                }
-                            }}
-                            disabled={settings.gameMode === 'ear_training'}
-                            style={{ cursor: settings.gameMode === 'ear_training' ? 'not-allowed' : 'pointer', opacity: settings.gameMode === 'ear_training' ? 0.8 : 1 }}
-                            title={settings.gameMode === 'ear_training' ? "Forced On in Ear Training" : "Toggle Auto-play"}
-                        >
-                            <div className="switch-thumb" />
-                        </button>
-                    </div>
 
-                    {(settings.gameMode === 'ear_training' || settings.autoPlaySightReading) && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                            <Volume2 size={14} style={{ opacity: 0.7 }} />
-                            <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.05"
-                                value={settings.autoPlayVolume ?? 0.5}
-                                onChange={(e) => onUpdateSettings({ ...settings, autoPlayVolume: parseFloat(e.target.value) })}
-                                style={{ flex: 1 }}
-                            />
-                        </div>
-                    )}
-                </div>
             </div>
         </div>
     );
