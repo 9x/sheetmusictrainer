@@ -13,6 +13,28 @@ export class PitchAnalyzer {
         this.buffer = new Float32Array(2048); // Standard size
     }
 
+    private sensitivityThreshold = 0.03; // Default
+
+    /**
+     * Set sensitivity from 0.0 (least sensitive) to 1.0 (most sensitive).
+     * Maps to RMS threshold:
+     * 0.0 -> 0.1 (Requires loud input)
+     * 0.5 -> 0.03 (Default)
+     * 1.0 -> 0.005 (Very sensitive)
+     */
+    setSensitivity(value: number) {
+        // Clamp value 0-1
+        const v = Math.max(0, Math.min(1, value));
+
+        // Linear interpolation or something that feels right
+        // Let's do a simple mapping:
+        // 1.0 -> 0.002
+        // 0.0 -> 0.1
+        // linear: 0.1 - (0.098 * v) roughly
+
+        this.sensitivityThreshold = 0.1 - (0.095 * v);
+    }
+
     async start(): Promise<void> {
         if (this.audioContext) return;
 
@@ -58,12 +80,13 @@ export class PitchAnalyzer {
         }
         rms = Math.sqrt(rms / this.buffer.length);
 
-        if (rms < 0.05) return null; // Silence threshold increased to 0.05 for robustness because 0.01 picked up noise
+        if (rms < this.sensitivityThreshold) return null;
 
         const pitch = this.detector(this.buffer);
 
-        // Widen range for Bass (E1 ~41Hz) and Whistle (C8 ~4186Hz)
-        if (pitch && (pitch < 30 || pitch > 5000)) return null;
+        // Widen range for Bass (E1 ~41Hz, but A0 is 27.5Hz) and Whistle (C8 ~4186Hz, Harmonics go higher)
+        // Range 25Hz - 8000Hz covers Piano A0 to well above highest fundamental
+        if (pitch && (pitch < 25 || pitch > 8000)) return null;
 
         return pitch;
     }

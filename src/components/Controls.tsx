@@ -32,6 +32,7 @@ export interface AppSettings {
     autoPlaySightReading?: boolean;
     autoPlayVolume?: number;
     virtualGuitarVolume?: number;
+    micSensitivity?: number; // 0.0 to 1.0 (0=least sensitive, 1=most)
     virtualGuitarMute?: boolean;
     disableAnimation?: boolean;
 }

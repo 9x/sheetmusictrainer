@@ -10,15 +10,26 @@ interface PitchData {
     clarity: number; // Placeholder for now, maybe uses probability if YIN exposes it
 }
 
-export function usePitchDetector(active: boolean) {
+export function usePitchDetector(active: boolean, sensitivity: number = 0.5) {
     const analyzerRef = useRef<PitchAnalyzer | null>(null);
     const [pitchData, setPitchData] = useState<PitchData | null>(null);
     const [isListening, setIsListening] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const animationRef = useRef<number | null>(null);
 
+    // Update sensitivity when it changes
+    useEffect(() => {
+        if (analyzerRef.current) {
+            analyzerRef.current.setSensitivity(sensitivity);
+        }
+    }, [sensitivity]);
+
     const updatePitch = useCallback(() => {
         if (!analyzerRef.current) return;
+
+        // Ensure sensitivity is set on start
+        // (Though the effect above handles updates, safely re-asserting here doesn't hurt, 
+        // but let's trust the effect and the init sequence).
 
         const freq = analyzerRef.current.getPitch();
         if (freq) {
@@ -46,6 +57,7 @@ export function usePitchDetector(active: boolean) {
         if (active) {
             if (!analyzerRef.current) {
                 analyzerRef.current = new PitchAnalyzer();
+                analyzerRef.current.setSensitivity(sensitivity);
             }
 
             analyzerRef.current.start()

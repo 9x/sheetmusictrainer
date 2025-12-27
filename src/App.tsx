@@ -26,7 +26,6 @@ const NOTE_MATCH_THRESHOLD_MS = 300; // How long to convert hold note to confirm
 
 function App() {
   const [listening, setListening] = useState(false);
-  const { pitchData, error } = usePitchDetector(listening);
   const { playNote } = useAudioPlayer();
 
   const [targetMidi, setTargetMidi] = useState<number>(60); // Start with C4
@@ -55,8 +54,11 @@ function App() {
     autoPlayVolume: 0.5,
     virtualGuitarVolume: 0.5,
     virtualGuitarMute: false,
+    micSensitivity: 0.5,
     disableAnimation: false
   });
+
+  const { pitchData, error } = usePitchDetector(listening, settings.micSensitivity);
 
   const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");

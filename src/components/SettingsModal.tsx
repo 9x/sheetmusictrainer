@@ -111,6 +111,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                         ? "Automatically plays the note audio (Required for Ear Training)."
                         : "Automatically plays the note audio when a new note appears."}
                 </p>
+
+                <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '24px 0' }} />
+
+                {/* Mic Sensitivity */}
+                <div className="control-group">
+                    <label className="control-label" style={{ marginBottom: '12px', fontSize: '16px' }}>
+                        <span>Microphone Sensitivity</span>
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '12px', opacity: 0.7, minWidth: '30px' }}>Low</span>
+                        <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                            value={settings.micSensitivity ?? 0.5}
+                            onChange={(e) => onUpdateSettings({ ...settings, micSensitivity: parseFloat(e.target.value) })}
+                            style={{ flex: 1 }}
+                        />
+                        <span style={{ fontSize: '12px', opacity: 0.7, minWidth: '30px' }}>High</span>
+                    </div>
+                    <p style={{ fontSize: '12px', opacity: 0.7, margin: '8px 0 0 0' }}>
+                        Adjust if notes are not detected (increase) or if background noise triggers notes (decrease).
+                    </p>
+                </div>
             </div>
 
         </div>
