@@ -42,7 +42,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                 <div className="control-group" style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <label className="control-label" style={{ marginBottom: 0, fontSize: '16px' }}>
-                            <span>Virtual Guitar Sound</span>
+                            <span>Virtual Instrument Sound</span>
                         </label>
                         <button
                             className={`switch-button ${!settings.virtualGuitarMute ? 'active' : ''}`}

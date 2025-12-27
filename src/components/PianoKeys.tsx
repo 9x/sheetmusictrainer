@@ -201,7 +201,7 @@ export function PianoKeys({
 
                             // Styling
                             let fill = k.isBlack ? '#222' : '#fff';
-                            if (interactive && isMarked) {
+                            if (isMarked) {
                                 fill = k.isBlack ? '#d32f2f' : '#ffcdd2'; // Red-ish for marked
                             }
 
@@ -223,21 +223,7 @@ export function PianoKeys({
                                         ry={k.isBlack ? 0 : 2}
                                     />
 
-                                    {isMarked && (
-                                        <circle
-                                            cx={k.x + (k.width / 2)}
-                                            cy={k.isBlack ? rectHeight - 10 : 80}
-                                            r={viewMode === 'full' ? 1.5 : 4} // This might still distort in circle shape if aspect ratio is wild?
-                                            // Circles in distorted SVG become ellipses.
-                                            // To verify: if viewMode is full, and we resize window...
-                                            // If we really want NO distortion, we should use non-scaling coordinate system.
-                                            // But let's try just fixing strokes first. Circles might be acceptable as ellipses or we fix them too.
-                                            // Actually, if we want perfect circles, we should not distort the SVG.
-                                            // But for now, user complained about "lines and labels".
-                                            fill="red"
-                                            vectorEffect="non-scaling-stroke"
-                                        />
-                                    )}
+
                                 </g>
                             );
                         })}
