@@ -157,11 +157,8 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
             }
 
             if (type === 'played') {
-                if (midi === targetMidi) {
-                    staveNote.setStyle({ fillStyle: "var(--color-success)", strokeStyle: "var(--color-success)" });
-                } else {
-                    staveNote.setStyle({ fillStyle: "var(--color-error)", strokeStyle: "var(--color-error)" });
-                }
+                // Always use default style (text color), no green/red distinction
+                staveNote.setStyle({ fillStyle: "var(--color-text-main)", strokeStyle: "var(--color-text-main)" });
             }
 
             return { note: staveNote, clef: noteClef };

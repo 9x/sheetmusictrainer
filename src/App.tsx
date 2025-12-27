@@ -205,7 +205,8 @@ function App() {
   // Common success handler
   const handleMatchSuccess = useCallback(() => {
     // Success!
-    setFeedbackMessage("Good!");
+    const noteDetails = getNoteDetails(targetMidi);
+    setFeedbackMessage(`Good! ${noteDetails.name}`);
     setRevealed(true);
     setMatchStartTime(null);
 
@@ -255,7 +256,7 @@ function App() {
 
     if (playedMidi === targetMidi) {
       // Instant match
-      if (feedbackMessage !== "Good!") {
+      if (!feedbackMessage.startsWith("Good!")) {
         handleMatchSuccess();
       }
     }
@@ -270,7 +271,7 @@ function App() {
 
     if (pitchData.midi === targetMidi) {
       // Prevent re-triggering success if we're already in a success state
-      if (feedbackMessage === "Good!") return;
+      if (feedbackMessage.startsWith("Good!")) return;
 
       if (matchStartTime === null) {
         setMatchStartTime(Date.now());
