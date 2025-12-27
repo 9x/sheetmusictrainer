@@ -14,6 +14,8 @@ export interface NoteSetConfig {
     defaultMinFret?: number;
     defaultMaxFret?: number;
     stringIndex?: number; // 0-based index from lowest string (0) to highest
+    transpose?: number; // Override instrument default
+    clef?: ClefMode;   // Override instrument default
 }
 
 export interface InstrumentDefinition {
@@ -98,17 +100,27 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
     voice: {
         id: 'voice',
         displayName: 'Voice',
-        clefMode: 'treble', // Dynamic? Usually vocal music is specific clef OR treble w/ 8va. Let's stick to Treble/Bass per range?
-        // Actually, let's keep simple static clef or make App logic handle it. 
-        // For now, Voice is usually Treble unless Bass/Baritone. 
-        // Let's use Treble by default and maybe switch if range is low.
+        clefMode: 'treble', // Default
         transpose: 0,
         showTuning: false,
         ranges: [
             { id: 'soprano', label: 'Soprano (C4-A5)', type: 'static', min: 60, max: 81 },
             { id: 'alto', label: 'Alto (G3-E5)', type: 'static', min: 55, max: 76 },
-            { id: 'tenor', label: 'Tenor (C3-A4)', type: 'static', min: 48, max: 69 },
-            { id: 'bass_voice', label: 'Bass (E2-E4)', type: 'static', min: 40, max: 64 }
+            {
+                id: 'tenor',
+                label: 'Tenor (C3-A4) [8vb]',
+                type: 'static',
+                min: 48, max: 69,
+                transpose: 12 // Reads Treble, Sounds octave lower. 
+            },
+            {
+                id: 'bass_voice',
+                label: 'Bass (E2-E4)',
+                type: 'static',
+                min: 40, max: 64,
+                clef: 'bass', // Override to Bass Clef
+                transpose: 0    // Reads actual pitch on Bass Clef
+            }
         ]
     },
     whistle: {

@@ -69,6 +69,14 @@ function App() {
   const currentTuning = TUNINGS[settings.tuningId];
   const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
 
+  // Resolve overrides
+  const currentRangeDef = useMemo(() => {
+    return currentInstrumentDef.ranges.find(r => r.id === settings.difficulty);
+  }, [currentInstrumentDef, settings.difficulty]);
+
+  const activeClef = currentRangeDef?.clef ?? currentInstrumentDef.clefMode;
+  const activeTranspose = currentRangeDef?.transpose ?? currentInstrumentDef.transpose;
+
   // Generate valid notes based on difficulty
   const validNotes = useMemo(() => {
     // Find range config
@@ -423,10 +431,10 @@ function App() {
               targetMidi={targetMidi}
               playedMidi={virtualNote ?? pitchData?.midi}
               keySignature={settings.keySignature}
-              clef={currentInstrumentDef.clefMode}
-              transpose={currentInstrumentDef.transpose}
+              clef={activeClef}
+              transpose={activeTranspose}
               width={Math.min(window.innerWidth - 40, 500)}
-              height={currentInstrumentDef.clefMode === 'grand' ? 260 : 180}
+              height={activeClef === 'grand' ? 260 : 180}
               hideTargetNote={settings.gameMode === 'ear_training' && !revealed}
             />
           </div>
@@ -458,7 +466,7 @@ function App() {
             <div className="hint-card">
               {settings.showHint && (
                 <div className="hint-note landscape-hint-note">
-                  {getNoteDetails(targetMidi + currentInstrumentDef.transpose).scientific}
+                  {getNoteDetails(targetMidi + activeTranspose).scientific}
                 </div>
               )}
               {currentInstrumentDef.showTuning && currentTuning && (
