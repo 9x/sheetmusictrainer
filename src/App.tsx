@@ -57,6 +57,7 @@ function App() {
   const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
   const [revealed, setRevealed] = useState(false);
+  const [virtualNote, setVirtualNote] = useState<number | null>(null);
 
   const currentTuning = TUNINGS[settings.tuningId];
   const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
@@ -233,6 +234,12 @@ function App() {
   // Virtual Guitar Handler
   const handleVirtualGuitarPlay = useCallback((playedMidi: number) => {
     playNote(playedMidi, 0.5); // Feedback sound
+    setVirtualNote(playedMidi);
+
+    // Clear the note visualization after a short delay
+    setTimeout(() => {
+      setVirtualNote(null);
+    }, 500);
 
     if (playedMidi === targetMidi) {
       // Instant match
@@ -378,11 +385,11 @@ function App() {
       )}
 
       <main className="main-stage">
-        <div className={`card sheet-music-card ${settings.showHint ? 'has-hint' : ''} ${settings.zenMode ? 'zen-mode' : ''}`}>
+        <div className={`card sheet-music-card ${(settings.showHint || settings.showFretboard) ? 'has-hint' : ''} ${settings.zenMode ? 'zen-mode' : ''}`}>
           <div className="sheet-music-container">
             <SheetMusic
               targetMidi={targetMidi}
-              playedMidi={pitchData?.midi}
+              playedMidi={virtualNote ?? pitchData?.midi}
               keySignature={settings.keySignature}
               clef={currentInstrumentDef.clefMode}
               transpose={currentInstrumentDef.transpose}
@@ -420,6 +427,7 @@ function App() {
                   interactive={settings.showFretboard}
                   onPlayNote={handleVirtualGuitarPlay}
                   showHints={settings.showHint}
+                  maxFrets={15}
                 />
               )}
             </div>
@@ -429,6 +437,17 @@ function App() {
 
           {!settings.zenMode && (
             <div className="action-row" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
+              {currentInstrumentDef.showTuning && (
+                <button
+                  className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
+                  onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
+                  title="Toggle Virtual Guitar"
+                >
+                  <Guitar size={18} />
+                  Guitar
+                </button>
+              )}
+
               <button
                 className={`hint-button ${settings.showHint ? 'active' : ''}`}
                 onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
@@ -436,15 +455,6 @@ function App() {
               >
                 <HelpCircle size={18} />
                 {settings.showHint ? "Hide Hint" : "Show Hint"}
-              </button>
-
-              <button
-                className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
-                onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
-                title="Toggle Virtual Guitar"
-              >
-                <Guitar size={18} />
-                Guitar
               </button>
 
               <button

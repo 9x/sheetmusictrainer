@@ -336,6 +336,16 @@ button {
   transform: translateY(-2px);
 }
 
+.hint-button.active {
+  background-color: var(--color-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(var(--hue-primary), 0.3);
+}
+
+.hint-button.active:hover {
+  background-color: var(--color-primary-dark);
+}
+
 .zen-button {
   background-color: transparent;
   border: 2px solid var(--color-text-muted);
