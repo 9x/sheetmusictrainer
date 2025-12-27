@@ -17,22 +17,20 @@ export class PitchAnalyzer {
 
     /**
      * Set sensitivity from 0.0 (least sensitive) to 1.0 (most sensitive).
-     * Maps to RMS threshold:
-     * 0.0 -> 0.1 (Requires loud input)
-     * 0.5 -> 0.03 (Default)
-     * 1.0 -> 0.005 (Very sensitive)
+     * Maps to approximate dB Thresholds:
+     * 0.0 -> -20 dB (0.1 RMS) - Requires loud input
+     * 1.0 -> -60 dB (0.001 RMS) - Very sensitive, picks up background noise
      */
     setSensitivity(value: number) {
         // Clamp value 0-1
         const v = Math.max(0, Math.min(1, value));
 
-        // Linear interpolation or something that feels right
-        // Let's do a simple mapping:
-        // 1.0 -> 0.002
-        // 0.0 -> 0.1
-        // linear: 0.1 - (0.098 * v) roughly
+        // Linear map to dB: -20dB to -60dB
+        // High sensitivity (1.0) = Lower Threshold (-60dB)
+        const db = -20 - (v * 40);
 
-        this.sensitivityThreshold = 0.1 - (0.095 * v);
+        // Convert dB to RMS amplitude
+        this.sensitivityThreshold = Math.pow(10, db / 20);
     }
 
     async start(): Promise<void> {

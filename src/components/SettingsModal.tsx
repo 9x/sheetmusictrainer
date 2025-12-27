@@ -119,8 +119,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                     <label className="control-label" style={{ marginBottom: '12px', fontSize: '16px' }}>
                         <span>Microphone Sensitivity</span>
                     </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ fontSize: '12px', opacity: 0.7, minWidth: '30px' }}>Low</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', opacity: 0.7 }}>
+                            <span>Low (-20dB)</span>
+                            <span style={{ color: '#4cc9f0' }}>
+                                {Math.round(-20 - ((settings.micSensitivity ?? 0.5) * 40))} dB
+                            </span>
+                            <span>High (-60dB)</span>
+                        </div>
                         <input
                             type="range"
                             min="0"
@@ -128,12 +134,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                             step="0.05"
                             value={settings.micSensitivity ?? 0.5}
                             onChange={(e) => onUpdateSettings({ ...settings, micSensitivity: parseFloat(e.target.value) })}
-                            style={{ flex: 1 }}
+                            style={{ width: '100%' }}
                         />
-                        <span style={{ fontSize: '12px', opacity: 0.7, minWidth: '30px' }}>High</span>
                     </div>
                     <p style={{ fontSize: '12px', opacity: 0.7, margin: '8px 0 0 0' }}>
-                        Adjust if notes are not detected (increase) or if background noise triggers notes (decrease).
+                        Adjust if notes are not detected (increase/right) or if background noise triggers notes (decrease/left).
                     </p>
                 </div>
             </div>
