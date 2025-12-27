@@ -37,57 +37,99 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         const context = renderer.getContext();
 
         // IMPORTANT: Set global styles for the context to ensure everything draws with correct color
-        // VexFlow uses context properties for default colors.
-        // We can't easily extract CSS var value here without getComputedStyle, which is expensive inside render.
-        // However, VexFlow SVGContext just adds attributes. 
-        // We can set fillStyle/strokeStyle to the var string.
         context.setFillStyle("var(--color-text-main)");
         context.setStrokeStyle("var(--color-text-main)");
 
         // --- Helper: Decide which clef a note belongs to in Grand Staff ---
-        // For Grand Staff: usually Split at Middle C (C4 / Midi 60). 
-        // >= 60 -> Treble, < 60 -> Bass.
         const getGrandStaffClef = (midi: number): 'treble' | 'bass' => {
             return midi >= 60 ? 'treble' : 'bass';
         };
 
-        let staves: Record<string, Stave> = {};
+        // --- Measure Calculation ---
+        const numMeasures = playedMidi ? 2 : 1;
+        // If 2 measures, split total width. 
+        // We want a bit of padding. width is total width.
+        // Let's reserve 10px on Left/Right.
+        // Measure 1 Start: 10
+        // Measure 1 Width: (width - 20) / numMeasures
+        // Measure 2 Start: 10 + Width
 
+        const availableWidth = width - 20;
+        const measureWidth = availableWidth / numMeasures;
+        const startX = 10;
 
+        let stavesMeasure1: Record<string, Stave> = {};
+        let stavesMeasure2: Record<string, Stave> = {};
+
+        // --- Create Staves for Measure 1 ---
         if (clef === 'grand') {
-            // Create Treble Stave
-            const topStave = new Stave(20, 20, width - 30);
-            topStave.addClef('treble').addKeySignature(keySignature);
-            topStave.setContext(context).draw();
+            // Measure 1: Treble
+            const m1Treble = new Stave(startX, 20, measureWidth);
+            m1Treble.addClef('treble').addKeySignature(keySignature);
+            m1Treble.setContext(context).draw();
 
-            // Create Bass Stave
-            const bottomStave = new Stave(20, 110, width - 30);
-            bottomStave.addClef('bass').addKeySignature(keySignature);
-            bottomStave.setContext(context).draw();
+            // Measure 1: Bass
+            const m1Bass = new Stave(startX, 110, measureWidth);
+            m1Bass.addClef('bass').addKeySignature(keySignature);
+            m1Bass.setContext(context).draw();
 
-            // Connect them
-            const brace = new StaveConnector(topStave, bottomStave);
+            stavesMeasure1 = { treble: m1Treble, bass: m1Bass };
+
+            // Connectors (Start of Measure 1 only)
+            const brace = new StaveConnector(m1Treble, m1Bass);
             brace.setType(StaveConnector.type.BRACE);
             brace.setContext(context).draw();
 
-            const leftLine = new StaveConnector(topStave, bottomStave);
+            const leftLine = new StaveConnector(m1Treble, m1Bass);
             leftLine.setType(StaveConnector.type.SINGLE_LEFT);
             leftLine.setContext(context).draw();
 
-            const rightLine = new StaveConnector(topStave, bottomStave);
-            rightLine.setType(StaveConnector.type.SINGLE_RIGHT);
-            rightLine.setContext(context).draw();
+            // Right line for Measure 1 if it's the only measure, or end of system
+            // Actually, we usually want a barline at end of M1 if M2 exists.
+            // VexFlow Stave draws end barline by default or setBegBarType/setEndBarType.
+            // By default it draws a single bar line at end.
 
-            staves = { treble: topStave, bass: bottomStave };
+            if (numMeasures === 2) {
+                // Measure 2: Treble
+                const m2Treble = new Stave(startX + measureWidth, 20, measureWidth);
+                // No clef/key sig repeated typically for just next measure in same system, 
+                // UNLESS it's a new system. Here it's same system.
+                // But VexFlow might require setting context context.
+                m2Treble.setContext(context).draw();
+
+                // Measure 2: Bass
+                const m2Bass = new Stave(startX + measureWidth, 110, measureWidth);
+                m2Bass.setContext(context).draw();
+
+                stavesMeasure2 = { treble: m2Treble, bass: m2Bass };
+
+                // Connect line between M1 and M2?
+                // Visual continuity is handled by them abiding. 
+                // We might want a SINGLE_RIGHT connector at the very end of M2?
+                const rightLineEnd = new StaveConnector(m2Treble, m2Bass);
+                rightLineEnd.setType(StaveConnector.type.SINGLE_RIGHT); // Or BOLD_DOUBLE_RIGHT for end
+                rightLineEnd.setContext(context).draw();
+            } else {
+                const rightLineEnd = new StaveConnector(m1Treble, m1Bass);
+                rightLineEnd.setType(StaveConnector.type.SINGLE_RIGHT);
+                rightLineEnd.setContext(context).draw();
+            }
 
         } else {
             // Single Stave
-            const stave = new Stave(10, 30, width - 20); // Centered vertically (tighter)
-            stave.addClef(clef).addKeySignature(keySignature);
-            stave.setContext(context).draw();
-            // Map the single clef to the key matching the 'clef' prop so logic below works
-            staves = { [clef]: stave };
+            const m1Stave = new Stave(startX, 30, measureWidth);
+            m1Stave.addClef(clef).addKeySignature(keySignature);
+            m1Stave.setContext(context).draw();
+
+            stavesMeasure1 = { [clef]: m1Stave };
+
+            if (numMeasures === 2) {
+                const m2Stave = new Stave(startX + measureWidth, 30, measureWidth);
+                m2Stave.setContext(context).draw();
+                stavesMeasure2 = { [clef]: m2Stave };
+            }
         }
+
 
         // --- Helper: Create VexFlow Note ---
         const createStaveNote = (midi: number, duration: string, type: 'target' | 'played') => {
@@ -106,14 +148,11 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
                 clef: noteClef as 'treble' | 'bass'
             });
 
-            // Set styles for all notes to use CSS variables if not colored specifically
+            // Set styles
             staveNote.setStyle({ fillStyle: "var(--color-text-main)", strokeStyle: "var(--color-text-main)" });
 
             if (data.accidental) {
                 const accidental = new Accidental(data.accidental);
-                // Ensure accidentals also use the color
-                // VexFlow 4 might not inherit automatically in all contexts, but good to be safe. 
-                // However, StaveNote.setStyle usually propagates.
                 staveNote.addModifier(accidental);
             }
 
@@ -128,193 +167,51 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
             return { note: staveNote, clef: noteClef };
         };
 
-        // --- Create Notes ---
-        let targetObj: { note: StaveNote | GhostNote, clef: string };
+        const voicesToDraw: { stave: Stave, voice: Voice }[] = [];
+
+        // --- Render Target Note (Measure 1) ---
+        // Always Whole Note
+        let targetNoteObj: { note: StaveNote | GhostNote, clef: string };
 
         if (hideTargetNote) {
             const visualMidi = targetMidi + transpose;
             let noteClef = clef;
-            if (clef === 'grand') {
-                noteClef = getGrandStaffClef(visualMidi);
-            }
-
-            // Create a GhostNote (invisible) instead of a StaveNote
-            // We use the same keys to ensure it takes up the right vertical space/clef logic
+            if (clef === 'grand') noteClef = getGrandStaffClef(visualMidi);
             const data = getNoteInKey(visualMidi, keySignature);
+
             const ghost = new GhostNote({
                 keys: data.keys,
                 duration: "w"
             });
-
-            // Add a Question Mark Annotation
-            const annotation = new Annotation("?");
-            annotation.setVerticalJustification(Annotation.VerticalJustify.CENTER);
-            // Annotations don't natively support setStyle in older VexFlow, but let's see. 
-            // In VexFlow 4, Font settings are different. 
-            // We can try to rely on current contexts or just standard fill. 
-            // Actually, context fillStyle affects it.
-
-            ghost.addModifier(annotation);
-
-            targetObj = { note: ghost, clef: noteClef };
+            ghost.addModifier(new Annotation("?").setVerticalJustification(Annotation.VerticalJustify.CENTER));
+            targetNoteObj = { note: ghost, clef: noteClef };
         } else {
-            targetObj = createStaveNote(targetMidi, "w", 'target');
+            targetNoteObj = createStaveNote(targetMidi, "w", 'target');
         }
 
-        const voicesToDraw: { stave: Stave, voice: Voice }[] = [];
-
-        // Helper to push voice
-        const addVoice = (stave: Stave, notes: (StaveNote | GhostNote)[]) => {
+        // Add Target to Measure 1 Stave
+        const m1StaveForKey = stavesMeasure1[targetNoteObj.clef];
+        if (m1StaveForKey) {
             const voice = new Voice({ numBeats: 4, beatValue: 4 });
-            voice.addTickables(notes as any[]);
-            new Formatter().joinVoices([voice]).format([voice], width - 60);
-            voicesToDraw.push({ stave, voice });
-        };
-
-
-        if (playedMidi) {
-            const playedObj = createStaveNote(playedMidi, "h", 'played');
-
-            let targetHalfObj: { note: StaveNote | GhostNote, clef: string };
-            if (hideTargetNote) {
-                const visualMidi = targetMidi + transpose;
-                let noteClef = clef;
-                if (clef === 'grand') noteClef = getGrandStaffClef(visualMidi);
-                const data = getNoteInKey(visualMidi, keySignature);
-
-                const ghost = new GhostNote({ keys: data.keys, duration: "h" });
-                ghost.addModifier(new Annotation("?").setVerticalJustification(Annotation.VerticalJustify.CENTER));
-                targetHalfObj = { note: ghost, clef: noteClef };
-            } else {
-                targetHalfObj = createStaveNote(targetMidi, "h", 'target');
-            }
-
-            // If Grand Staff: Notes might be on DIFFERENT staves.
-            // We need to group notes by Stave.
-
-            const groupedNotes: Record<string, StaveNote[]> = {};
-
-            // Initialize relevant keys
-            if (clef === 'grand') {
-                groupedNotes['treble'] = [];
-                groupedNotes['bass'] = [];
-            } else {
-                groupedNotes[clef] = [];
-            }
-
-            // Logic:
-            // If Single Stave: Both notes go on that stave.
-            // If Grand Staff: Target goes on its clef. Played goes on its clef.
-            // BUT: If they are on the SAME clef, we render them in one voice (or same stave).
-            // VexFlow requires Formatter to format voices.
-
-            // Target Half
-            // If clef is grand, use targetHalfObj.clef. If single, use prop clef.
-            const targetClefKey = clef === 'grand' ? targetHalfObj.clef : clef;
-            // Played
-            const playedClefKey = clef === 'grand' ? playedObj.clef : clef;
-
-            // Wait, if we want them to align in time (same measure), we need to put them in the same voice OR separate voices in same Context?
-            // VexFlow: To draw notes side-by-side (sequentially), they are in the same Voice.
-            // The prompt implies "Target note as half / Played as half".
-
-            // COMPLEXITY: In Grand Staff, if Target is Treble and Played is Bass, they are on different staves.
-            // They are distinct events visually.
-            // If both are Treble, they are side-by-side.
-
-            // Let's create a map of Voice-per-Stave.
-
-            // We need to fill "rests" or manage timing if they are split across staves? 
-            // Simplified: Just draw them. If they are on different staves, they won't align horizontally perfectly unless we coordinate formatters.
-            // For this app, simply drawing them on their respective staves is fine.
-
-            // However, to ensure they look like a "measure", we should probably put Rests? 
-            // Let's keep it simple: Just draw the notes.
-
-            // Problem: If I play C3 (Bass) and Target is C5 (Treble).
-            // Treble Stave: [C5 (h), Rest (h)] ? Or just C5 at pos 0?
-            // If we just addtickables, they render at start.
-
-            // To align them:
-            // Ideally:
-            // Target (h) -> Beat 1
-            // Played (h) -> Beat 3
-            // So: 
-            // Voice 1 (Target's Stave): Note(h) + Rest(h) (if played is elsewhere?) 
-            // Actually, existing code did: [Target(h), Played(h)]. Sequence.
-
-            // Scenario 1: Both on same stave.
-            if (targetClefKey === playedClefKey) {
-                // Same stave. Add both to voice.
-                const stv = staves[targetClefKey as string];
-                addVoice(stv, [targetHalfObj.note, playedObj.note]);
-            } else {
-                // Different staves (Grand Staff split).
-                // Target on Stave A. Played on Stave B.
-                // Stave A: Target(h) + Rest(h) (invisible?)
-                // Stave B: Rest(h) + Played(h)
-
-                // Constructing invisible rests is tedious in Vexflow without dedicated Rest classes.
-                // Let's try separate Voices?
-                // Visual separation might be okay.
-
-                const staveT = staves[targetClefKey as string];
-                const staveP = staves[playedClefKey as string];
-
-                // Just draw them.
-                // Note: They will both appear at the start (Beat 1) if we don't padding.
-                // We want Played to be "next" to Target.
-
-                // Let's stick to the "Sequence": Target then Played.
-                // If separate staves, we lose the "sequence" visual left-to-right if we just draw them at beat 1.
-
-                // SOLUTION: Use a "Ghost Note" (Invisible) of Half duration on the other stave?
-                // Or proper VexFlow StaveGhostNote?
-
-                // Simpler hack: 
-                // Render Target at Beat 1.
-                // Render Played at Beat 3.
-
-                // For Stave A (Target): Note(h), Rest(h)
-                // For Stave B (Played): Rest(h), Note(h)
-
-                // Vexflow `StaveNote({ keys: ["b/4"], duration: "hqr" })` for rest?
-
-                const createRest = (clefStr: string) => new StaveNote({ keys: ["b/4"], duration: "hr", clef: clefStr });
-
-                // Stave T (Target's stave)
-                const voiceT = new Voice({ numBeats: 4, beatValue: 4 });
-                voiceT.addTickables([targetHalfObj.note, createRest(targetClefKey as string)]);
-
-                // Stave P (Played's stave)
-                const voiceP = new Voice({ numBeats: 4, beatValue: 4 });
-                voiceP.addTickables([createRest(playedClefKey as string), playedObj.note]);
-
-                // We need to format them together to align beats?
-                // Yes, formatters can take multiple voices to align specific ticks.
-
-                new Formatter().joinVoices([voiceT]).format([voiceT], width - 60);
-                new Formatter().joinVoices([voiceP]).format([voiceP], width - 60);
-
-                // But wait, if we format separately, they might not align vertically across staves?
-                // Actually they will if width is same.
-                // But generally `joinVoices([v1, v2])` is better.
-
-                // But vT and vP are on different staves!
-                // VexFlow Formatter doesn't care about staves, just X alignment.
-                // So we can format them together!
-
-                new Formatter().joinVoices([voiceT, voiceP]).format([voiceT, voiceP], width - 60);
-
-                voicesToDraw.push({ stave: staveT, voice: voiceT });
-                voicesToDraw.push({ stave: staveP, voice: voiceP });
-            }
-
-        } else {
-            // Target Only (Whole note)
-            const stave = staves[targetObj.clef as string];
-            addVoice(stave, [targetObj.note]);
+            voice.addTickables([targetNoteObj.note]);
+            new Formatter().joinVoices([voice]).format([voice], measureWidth - 50); // Less width for padding
+            voicesToDraw.push({ stave: m1StaveForKey, voice });
         }
+
+        // --- Render Played Note (Measure 2) ---
+        if (playedMidi && numMeasures === 2) {
+            const playedNoteObj = createStaveNote(playedMidi, "w", 'played');
+
+            // Add Played to Measure 2 Stave
+            const m2StaveForKey = stavesMeasure2[playedNoteObj.clef];
+            if (m2StaveForKey) {
+                const voice = new Voice({ numBeats: 4, beatValue: 4 });
+                voice.addTickables([playedNoteObj.note]);
+                new Formatter().joinVoices([voice]).format([voice], measureWidth - 50);
+                voicesToDraw.push({ stave: m2StaveForKey, voice });
+            }
+        }
+
 
         // Draw all voices
         voicesToDraw.forEach(({ stave, voice }) => {
@@ -322,7 +219,8 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         });
 
 
-    }, [targetMidi, playedMidi, clef, width, height, transpose, keySignature]);
+    }, [targetMidi, playedMidi, clef, width, height, transpose, keySignature, hideTargetNote]);
 
     return <div ref={containerRef} className="sheet-music-container" />;
 };
+
