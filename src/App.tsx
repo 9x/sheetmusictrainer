@@ -593,7 +593,7 @@ function App() {
             <span className="separator">•</span>
             <a href="https://github.com/9x/sheetmusictrainer" target="_blank" rel="noopener noreferrer">GitHub</a>
             <span className="separator">•</span>
-            <a href="http://jensmohrmann.de" target="_blank" rel="noopener noreferrer">jensmohrmann.de</a>
+            <a href="http://jensmohrmann.de" target="_blank" rel="noopener noreferrer">JensMohrmann.de</a>
           </div>
         </footer>
       )}
