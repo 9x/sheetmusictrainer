@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Logo } from './components/Logo';
+
+
 import { SheetMusic } from './components/SheetMusic';
 import { Controls, type AppSettings } from './components/Controls';
 import { SettingsModal } from './components/SettingsModal';
@@ -398,7 +401,7 @@ function App() {
       {!settings.zenMode && (
         <header className="app-header">
           <div className="app-header-left">
-            <div className="logo">Sheet music trainer</div>
+            <Logo className="logo" />
           </div>
 
           <div className="header-controls">
