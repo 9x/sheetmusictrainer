@@ -422,17 +422,17 @@ function App() {
 
             <button
               className="icon-button"
-              onClick={() => setIsSettingsOpen(true)}
-              title="Settings"
-            >
-              <Settings size={24} />
-            </button>
-            <button
-              className="icon-button"
               onClick={() => setShowHelp(true)}
               title="Shortcuts Help"
             >
               <HelpCircle size={24} />
+            </button>
+            <button
+              className="icon-button"
+              onClick={() => setIsSettingsOpen(true)}
+              title="Settings"
+            >
+              <Settings size={24} />
             </button>
           </div>
         </header>

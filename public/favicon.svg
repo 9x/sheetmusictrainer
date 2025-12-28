@@ -1,0 +1,17 @@
+<svg width="64" height="64" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <path
+    d="M 2 18 Q 15 -5 28 18"
+    fill="none"
+    stroke="black"
+    stroke-width="3"
+    stroke-linecap="round"
+  />
+  <circle cx="15" cy="18" r="4" fill="black" />
+  
+  <style>
+    @media (prefers-color-scheme: dark) {
+      path { stroke: white; }
+      circle { fill: white; }
+    }
+  </style>
+</svg>

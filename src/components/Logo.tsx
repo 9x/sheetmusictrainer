@@ -3,9 +3,9 @@ import React from 'react';
 export const Logo: React.FC<{ className?: string }> = ({ className }) => {
     return (
         <svg
-            width="250"
+            width="260"
             height="40"
-            viewBox="0 0 250 40"
+            viewBox="0 0 260 40"
             xmlns="http://www.w3.org/2000/svg"
             className={className}
             aria-label="sight-reading.de logo"
@@ -18,7 +18,7 @@ export const Logo: React.FC<{ className?: string }> = ({ className }) => {
             </defs>
 
             {/* Icon: Stylized Fermata (Eye) */}
-            <g transform="translate(10, 8) scale(0.8)">
+            <g transform="translate(5, 5) scale(1.1)">
                 {/* The Arc (Eyelid) */}
                 <path
                     d="M 2 18 Q 15 -5 28 18"
@@ -33,8 +33,8 @@ export const Logo: React.FC<{ className?: string }> = ({ className }) => {
 
             {/* Text */}
             <text
-                x="45"
-                y="25"
+                x="48"
+                y="28"
                 fontFamily='"Inter", system-ui, -apple-system, sans-serif'
                 fontSize="20"
                 fill="currentColor"
