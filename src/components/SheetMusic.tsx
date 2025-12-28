@@ -12,6 +12,7 @@ interface SheetMusicProps {
     transpose?: number; // Transposition in semitones for visualization (e.g., +12 for guitar)
     keySignature?: string;
     hideTargetNote?: boolean;
+    hoverMidi?: number | null;
 }
 
 export const SheetMusic: React.FC<SheetMusicProps> = ({
@@ -22,7 +23,8 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
     height = 250, // Increased default height for Grand Staff
     transpose = 12, // Default to +1 octave (Guitar Notation)
     keySignature = 'C',
-    hideTargetNote = false
+    hideTargetNote = false,
+    hoverMidi = null
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +48,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         };
 
         // --- Measure Calculation ---
-        const numMeasures = playedMidi ? 2 : 1;
+        const numMeasures = (playedMidi || hoverMidi) ? 2 : 1;
         // If 2 measures, split total width. 
         // We want a bit of padding. width is total width.
         // Let's reserve 10px on Left/Right.
@@ -195,15 +197,26 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
             voicesToDraw.push({ stave: m1StaveForKey, voice });
         }
 
-        // --- Render Played Note (Measure 2) ---
-        if (playedMidi && numMeasures === 2) {
-            const playedNoteObj = createStaveNote(playedMidi, "w", 'played');
+        // --- Render Played Note OR Hover Preview (Measure 2) ---
+        // If playedMidi exists, it takes precedence.
+        // If not, we show hoverMidi as a preview (ghost/grey).
+        const noteToShowMidi = playedMidi ?? (hoverMidi || null);
+        const isPreview = !playedMidi && hoverMidi;
 
-            // Add Played to Measure 2 Stave
-            const m2StaveForKey = stavesMeasure2[playedNoteObj.clef];
+        if (noteToShowMidi && numMeasures === 2) {
+            // We reuse 'played' logic for creation but handle style manually if preview
+            const noteObj = createStaveNote(noteToShowMidi, "w", 'played');
+
+            if (isPreview) {
+                // Apply grey style for preview
+                noteObj.note.setStyle({ fillStyle: "#888888", strokeStyle: "#888888" });
+            }
+
+            // Add Played/Preview to Measure 2 Stave
+            const m2StaveForKey = stavesMeasure2[noteObj.clef];
             if (m2StaveForKey) {
                 const voice = new Voice({ numBeats: 4, beatValue: 4 });
-                voice.addTickables([playedNoteObj.note]);
+                voice.addTickables([noteObj.note]);
                 new Formatter().joinVoices([voice]).format([voice], measureWidth - 50);
                 voicesToDraw.push({ stave: m2StaveForKey, voice });
             }
@@ -216,7 +229,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         });
 
 
-    }, [targetMidi, playedMidi, clef, width, height, transpose, keySignature, hideTargetNote]);
+    }, [targetMidi, playedMidi, hoverMidi, clef, width, height, transpose, keySignature, hideTargetNote]);
 
     return <div ref={containerRef} className="sheet-music-container" />;
 };

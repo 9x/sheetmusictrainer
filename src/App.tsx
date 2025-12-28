@@ -71,6 +71,7 @@ function App() {
   const [virtualNote, setVirtualNote] = useState<number | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isOpenSourceModalOpen, setIsOpenSourceModalOpen] = useState(false);
+  const [hoveredMidi, setHoveredMidi] = useState<number | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentTuning = TUNINGS[settings.tuningId];
@@ -450,6 +451,7 @@ function App() {
               width={Math.min(window.innerWidth - 40, 500)}
               height={activeClef === 'grand' ? 260 : 180}
               hideTargetNote={settings.gameMode === 'ear_training' && !revealed}
+              hoverMidi={settings.showHint ? hoveredMidi : null}
             />
           </div>
 
@@ -491,16 +493,22 @@ function App() {
                     minMidi={36} // C2
                     maxMidi={84} // C6
                     markedNotes={settings.showHint ? [targetMidi] : []}
-                    interactive={settings.showFretboard}
+                    interactive={settings.showFretboard || settings.showHint}
+                    showTooltips={settings.showHint}
+                    displayTranspose={activeTranspose}
                     onPlayNote={handleVirtualInstrumentPlay}
+                    onHover={setHoveredMidi}
                   />
                 ) : (
                   currentTuning && (
                     <Fretboard
                       tuning={currentTuning}
                       positions={hintPositions}
-                      interactive={settings.showFretboard}
+                      interactive={settings.showFretboard || settings.showHint}
+                      showTooltips={settings.showHint}
+                      displayTranspose={activeTranspose}
                       onPlayNote={handleVirtualInstrumentPlay}
+                      onHover={setHoveredMidi}
                       showHints={settings.showHint}
                       maxFrets={15}
                     />

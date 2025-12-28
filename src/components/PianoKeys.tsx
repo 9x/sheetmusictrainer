@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { getNoteDetails } from '../music/NoteUtils';
 
 // Constants
 const WHITE_KEY_WIDTH_PX = 40;
@@ -11,6 +12,9 @@ interface PianoKeysProps {
     markedNotes?: number[]; // Notes to highlight (e.g. hints)
     interactive?: boolean;
     onPlayNote?: (midi: number) => void;
+    onHover?: (midi: number | null) => void;
+    showTooltips?: boolean;
+    displayTranspose?: number;
     height?: number;
 }
 
@@ -20,9 +24,13 @@ export function PianoKeys({
     markedNotes = [],
     interactive = true,
     onPlayNote,
+    onHover,
+    showTooltips = false,
+    displayTranspose = 0,
     height = 160
 }: PianoKeysProps) {
     const [viewMode, setViewMode] = useState<'full' | 'zoomed'>('zoomed');
+    const [hoverMidi, setHoverMidi] = useState<number | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Helpers to determine key type and position
@@ -203,13 +211,31 @@ export function PianoKeys({
                             let fill = k.isBlack ? '#222' : '#fff';
                             if (isMarked) {
                                 fill = k.isBlack ? '#d32f2f' : '#ffcdd2'; // Red-ish for marked
+                            } else if (interactive && hoverMidi === k.midi) {
+                                fill = k.isBlack ? '#444' : '#eee'; // Subtle hover
                             }
 
                             const stroke = '#000';
                             const rectHeight = k.isBlack ? BLACK_KEY_HEIGHT_PERCENT * 100 : 100;
 
                             return (
-                                <g key={k.midi} onClick={() => interactive && onPlayNote?.(k.midi)} style={{ cursor: interactive ? 'pointer' : 'default' }}>
+                                <g
+                                    key={k.midi}
+                                    onClick={() => interactive && onPlayNote?.(k.midi)}
+                                    onMouseEnter={() => {
+                                        if (interactive) {
+                                            setHoverMidi(k.midi);
+                                            onHover?.(k.midi);
+                                        }
+                                    }}
+                                    onMouseLeave={() => {
+                                        if (interactive) {
+                                            setHoverMidi(null);
+                                            onHover?.(null);
+                                        }
+                                    }}
+                                    style={{ cursor: interactive ? 'pointer' : 'default' }}
+                                >
                                     <rect
                                         x={k.x}
                                         y={0}
@@ -255,9 +281,52 @@ export function PianoKeys({
                                 </div>
                             );
                         })}
+
+                        {/* HTML Tooltip Overlay (Prevents distortion) */}
+                        {interactive && showTooltips && hoverMidi && (() => {
+                            const k = keyRects.find(k => k.midi === hoverMidi);
+                            if (!k) return null;
+
+                            const left = viewMode === 'full'
+                                ? `${k.x + (k.width / 2)}%`
+                                : `${k.x + (k.width / 2)}px`;
+
+                            return (
+                                <div
+                                    key={`tooltip-${k.midi}`}
+                                    style={{
+                                        position: 'absolute',
+                                        left: left,
+                                        bottom: '40px', // Positioned above labels
+                                        transform: 'translateX(-50%)',
+                                        background: '#333',
+                                        color: 'white',
+                                        padding: '4px 8px',
+                                        borderRadius: '6px',
+                                        fontSize: '14px',
+                                        fontWeight: 'bold',
+                                        zIndex: 10,
+                                        opacity: 0.9,
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    {getNoteDetails(hoverMidi + displayTranspose).scientific}
+                                    {/* Simple CSS Arrow */}
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        left: '50%',
+                                        transform: 'translateX(-50%)',
+                                        borderLeft: '6px solid transparent',
+                                        borderRight: '6px solid transparent',
+                                        borderTop: '6px solid #333'
+                                    }} />
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

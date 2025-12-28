@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { Tuning, FretPosition } from '../music/Tunings';
+import { getNoteDetails } from '../music/NoteUtils';
 
 interface FretboardProps {
     tuning: Tuning;
@@ -6,7 +8,10 @@ interface FretboardProps {
     maxFrets?: number;
     interactive?: boolean;
     showHints?: boolean;
+    showTooltips?: boolean;
+    displayTranspose?: number;
     onPlayNote?: (midi: number) => void;
+    onHover?: (midi: number | null) => void;
 }
 
 export function Fretboard({
@@ -15,8 +20,13 @@ export function Fretboard({
     maxFrets = 15,
     interactive = false,
     showHints = true,
-    onPlayNote
+    showTooltips = false,
+    displayTranspose = 0,
+    onPlayNote,
+    onHover
 }: FretboardProps) {
+    const [hoverPos, setHoverPos] = useState<{ stringIndex: number, fret: number } | null>(null);
+
     // Config
     const numStrings = tuning.strings.length;
     // Visual params
@@ -66,7 +76,8 @@ export function Fretboard({
         <div className="fretboard-container" style={{
             width: '100%',
             height: '100%',
-            overflow: 'hidden',
+            overflow: 'visible', // Allow tooltips to pop out
+            position: 'relative',
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
@@ -185,6 +196,27 @@ export function Fretboard({
                     );
                 })}
 
+                {/* Hover Highlight (Ghost Dot) */}
+                {interactive && hoverPos && (
+                    (() => {
+                        const cx = getNoteX(hoverPos.fret);
+                        const cy = getStringY(hoverPos.stringIndex);
+
+                        return (
+                            <g style={{ pointerEvents: 'none' }}>
+                                <circle
+                                    cx={cx}
+                                    cy={cy}
+                                    r={8}
+                                    fill="transparent"
+                                    stroke="#888"
+                                    strokeWidth={2}
+                                />
+                            </g>
+                        );
+                    })()
+                )}
+
                 {/* Interaction Overlay (Invisible hit targets) */}
                 {interactive && tuning.strings.map((_, stringIndex) => {
                     const y = getStringY(stringIndex);
@@ -206,6 +238,7 @@ export function Fretboard({
                         }
 
                         const rectWidth = xEnd - xStart;
+                        const midi = tuning.strings[stringIndex] + fret;
 
                         return (
                             <rect
@@ -217,7 +250,14 @@ export function Fretboard({
                                 fill="transparent"
                                 style={{ cursor: 'pointer' }}
                                 onClick={() => handleFretClick(stringIndex, fret)}
-                                // Hover effect could be added here via CSS class if we want
+                                onMouseEnter={() => {
+                                    setHoverPos({ stringIndex, fret });
+                                    onHover?.(midi);
+                                }}
+                                onMouseLeave={() => {
+                                    setHoverPos(null);
+                                    onHover?.(null);
+                                }}
                                 className="fret-hit-target"
                             >
                                 <title>String {stringIndex + 1}, Fret {fret}</title>
@@ -226,6 +266,48 @@ export function Fretboard({
                     });
                 })}
             </svg>
+
+            {/* HTML Tooltip Overlay */}
+            {interactive && showTooltips && hoverPos && (() => {
+                const cx = getNoteX(hoverPos.fret);
+                const cy = getStringY(hoverPos.stringIndex);
+                const midi = tuning.strings[hoverPos.stringIndex] + hoverPos.fret;
+
+                // Convert to percentages to handle SVG scaling
+                const left = (cx / width) * 100;
+                const top = (cy / height) * 100;
+
+                return (
+                    <div style={{
+                        position: 'absolute',
+                        left: `${left}%`,
+                        top: `${top}%`,
+                        transform: 'translate(-50%, -100%) translateY(-15px)', // Center X, Move Y up.
+                        background: '#333',
+                        color: 'white',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        zIndex: 10,
+                        opacity: 0.9,
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none'
+                    }}>
+                        {getNoteDetails(midi + displayTranspose).scientific}
+                        {/* CSS Arrow */}
+                        <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            borderLeft: '6px solid transparent',
+                            borderRight: '6px solid transparent',
+                            borderTop: '6px solid #333'
+                        }} />
+                    </div>
+                );
+            })()}
         </div>
     );
 }
