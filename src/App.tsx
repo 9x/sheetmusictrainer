@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { SheetMusic } from './components/SheetMusic';
 import { Controls, type AppSettings } from './components/Controls';
 import { SettingsModal } from './components/SettingsModal';
@@ -68,6 +68,7 @@ function App() {
   const [virtualNote, setVirtualNote] = useState<number | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isOpenSourceModalOpen, setIsOpenSourceModalOpen] = useState(false);
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentTuning = TUNINGS[settings.tuningId];
   const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
@@ -223,6 +224,10 @@ function App() {
   // Common success handler
   const handleMatchSuccess = useCallback(() => {
     // Success!
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
+
     const noteDetails = getNoteDetails(targetMidi);
     setFeedbackMessage(`Good! ${noteDetails.name}`);
     setRevealed(true);
@@ -241,7 +246,7 @@ function App() {
         setRevealed(false);
       } else {
         // Allow visual feedback to persist for a moment before clearing text
-        setTimeout(() => {
+        feedbackTimeoutRef.current = setTimeout(() => {
           setFeedbackMessage("");
         }, 1500);
       }
@@ -253,7 +258,7 @@ function App() {
         restartMetronome(); // Reset the countdown
         // Immediate transition here too?
         generateNewNote(true);
-        setTimeout(() => {
+        feedbackTimeoutRef.current = setTimeout(() => {
           setFeedbackMessage("");
         }, 1500);
 
@@ -263,7 +268,7 @@ function App() {
         // Logic handled by tick
       }
     }
-  }, [settings.rhythm, restartMetronome, generateNewNote]);
+  }, [targetMidi, settings.rhythm, settings.disableAnimation, restartMetronome, generateNewNote]);
 
   // Virtual Instrument Handler (Guitar or Piano)
   const handleVirtualInstrumentPlay = useCallback((playedMidi: number) => {
@@ -279,9 +284,7 @@ function App() {
 
     if (playedMidi === targetMidi) {
       // Instant match
-      if (!feedbackMessage.startsWith("Good!")) {
-        handleMatchSuccess();
-      }
+      handleMatchSuccess();
     }
   }, [playNote, targetMidi, feedbackMessage, handleMatchSuccess, settings]);
 
@@ -293,8 +296,7 @@ function App() {
     }
 
     if (pitchData.midi === targetMidi) {
-      // Prevent re-triggering success if we're already in a success state
-      if (feedbackMessage.startsWith("Good!")) return;
+
 
       if (matchStartTime === null) {
         setMatchStartTime(Date.now());
@@ -445,7 +447,7 @@ function App() {
           {!settings.zenMode && (
             <div className="feedback-area">
               {feedbackMessage ? (
-                <div className="success-message animate-pop">
+                <div key={feedbackMessage} className="success-message animate-pop">
                   {feedbackMessage.startsWith("Good! ") ? (
                     <>
                       <div className="success-prefix">Good!</div>
