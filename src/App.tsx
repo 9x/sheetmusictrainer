@@ -341,6 +341,12 @@ function App() {
             gameMode: s.gameMode === 'sight_reading' ? 'ear_training' : 'sight_reading'
           }));
           break;
+        case 'v': // Virtual Instrument
+          setSettings(s => ({ ...s, showFretboard: !s.showFretboard }));
+          break;
+        case 'l': // Listening (Mic)
+          setListening(l => !l);
+          break;
       }
 
       // Check non-character keys via code to avoid layout issues for function keys
@@ -509,7 +515,7 @@ function App() {
                 <button
                   className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
                   onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
-                  title={`Toggle Virtual ${currentInstrumentDef.displayName}`}
+                  title={`Toggle Virtual ${currentInstrumentDef.displayName} (Keyboard Shortcut: V)`}
                 >
                   <Guitar size={18} />
                   {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
@@ -550,6 +556,7 @@ function App() {
                 className={`mic-button ${listening ? 'listening' : ''}`}
                 onClick={() => setListening(!listening)}
                 aria-label={listening ? "Stop Listening" : "Start Listening"}
+                title="Toggle Monitor (Keyboard Shortcut: L)"
               >
                 {listening ? <Mic size={28} /> : <MicOff size={28} />}
               </button>
@@ -613,6 +620,14 @@ function App() {
               <div className="help-item">
                 <span>Toggle Hint</span>
                 <span className="shortcut-key">H</span>
+              </div>
+              <div className="help-item">
+                <span>Toggle Virtual Instrument</span>
+                <span className="shortcut-key">V</span>
+              </div>
+              <div className="help-item">
+                <span>Toggle Mic</span>
+                <span className="shortcut-key">L</span>
               </div>
               <div className="help-item">
                 <span>Toggle Zen Mode</span>
