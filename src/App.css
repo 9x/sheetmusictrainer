@@ -685,22 +685,24 @@ button {
     align-items: center;
     justify-content: flex-start;
     gap: 0;
-    height: 100vh;
-    overflow: hidden;
-    /* Prevent scroll - fit everything on one screen */
+    min-height: 100vh;
+    /* Allow growing */
+    height: auto;
+    overflow-y: auto;
+    /* Allow scrolling */
   }
 
   .card.sheet-music-card {
     max-width: 100%;
     width: 100%;
-    height: 100vh;
-    /* Fit within viewport */
-    max-height: 100vh;
+    height: auto;
+    /* Let it grow naturally */
+    min-height: 100vh;
+    /* Fill at least the screen */
     margin: 0;
     border-radius: 0;
     align-items: stretch;
     box-sizing: border-box;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
   }
@@ -818,15 +820,20 @@ button {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   }
 
-  /* Hide settings footer in landscape - accessible via settings modal */
+  /* Show settings footer in landscape */
   .settings-footer {
-    display: none;
+    display: flex;
+    margin-top: 20px;
+    padding-bottom: 40px;
   }
 
   /* App container in landscape */
   .app-container {
-    overflow: hidden;
-    height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+    display: block;
   }
 
   .action-row {
