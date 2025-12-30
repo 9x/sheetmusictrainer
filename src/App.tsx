@@ -75,6 +75,15 @@ function App() {
   const [hoveredMidi, setHoveredMidi] = useState<number | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -485,7 +494,7 @@ function App() {
               keySignature={settings.keySignature}
               clef={activeClef}
               transpose={activeTranspose}
-              width={Math.min(window.innerWidth - 40, 500)}
+              width={Math.min(windowWidth - 40, 500)}
               height={activeClef === 'grand' ? 260 : 180}
               hideTargetNote={settings.gameMode === 'ear_training' && !revealed}
               hoverMidi={settings.showHint ? hoveredMidi : null}
@@ -708,6 +717,7 @@ function App() {
         audioLevel={audioLevel}
         debugInfo={debugInfo}
         isListening={isListening}
+        onMicToggle={() => setListening(l => !l)}
       />
 
       <OpenSourceModal

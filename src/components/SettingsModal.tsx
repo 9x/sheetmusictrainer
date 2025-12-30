@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Volume2, VolumeX, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Volume2, VolumeX, ChevronDown, ChevronUp, Mic, MicOff } from 'lucide-react';
 import type { AppSettings } from './Controls';
 import type { MicrophoneDebugInfo } from '../hooks/usePitchDetector';
 
@@ -11,6 +11,7 @@ interface SettingsModalProps {
     audioLevel?: number;
     debugInfo?: MicrophoneDebugInfo | null;
     isListening?: boolean;
+    onMicToggle?: () => void;
 }
 
 // Level meter component
@@ -58,7 +59,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     onUpdateSettings,
     audioLevel = 0,
     debugInfo,
-    isListening = false
+    isListening = false,
+    onMicToggle
 }) => {
     const [showDebugInfo, setShowDebugInfo] = useState(false);
 
@@ -165,6 +167,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </p>
 
                 <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '24px 0' }} />
+
+                {/* Microphone Toggle */}
+                <div className="control-group" style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <label className="control-label" style={{ marginBottom: 0, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {isListening ? <Mic size={18} /> : <MicOff size={18} />}
+                            <span>Microphone</span>
+                        </label>
+                        <button
+                            className={`switch-button ${isListening ? 'active' : ''}`}
+                            onClick={onMicToggle}
+                            title={isListening ? "Turn Off Microphone" : "Turn On Microphone"}
+                        >
+                            <div className="switch-thumb" />
+                        </button>
+                    </div>
+                    <p style={{ fontSize: '12px', opacity: 0.7, margin: 0 }}>
+                        {isListening ? 'Microphone is active and listening for notes.' : 'Enable microphone to detect your playing.'}
+                    </p>
+                </div>
 
                 {/* Mic Sensitivity */}
                 <div className="control-group">
