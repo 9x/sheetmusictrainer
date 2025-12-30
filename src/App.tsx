@@ -24,7 +24,7 @@ import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
 import { Fretboard } from './components/Fretboard';
 import { PianoKeys } from './components/PianoKeys';
 
-import { Mic, MicOff, SkipForward, HelpCircle, Volume2, X, Guitar, Settings } from 'lucide-react';
+import { Mic, MicOff, SkipForward, HelpCircle, Volume2, X, Guitar, Settings, Maximize, Minimize } from 'lucide-react';
 import './App.css';
 import './styles/skip-button.css';
 
@@ -74,6 +74,27 @@ function App() {
   const [isOpenSourceModalOpen, setIsOpenSourceModalOpen] = useState(false);
   const [hoveredMidi, setHoveredMidi] = useState<number | null>(null);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error("Error toggling fullscreen:", err);
+    }
+  }, []);
 
   const currentTuning = TUNINGS[settings.tuningId];
   const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
@@ -424,6 +445,20 @@ function App() {
             </div>
 
             <button
+              className="icon-button"
+              onClick={toggleFullscreen}
+              title="Toggle Fullscreen"
+            >
+              {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
+            </button>
+            <button
+              className="icon-button"
+              onClick={() => setSettings(s => ({ ...s, zenMode: !s.zenMode }))}
+              title="Enter Zen Mode (Z)"
+            >
+              <Maximize size={24} style={{ transform: 'rotate(45deg)' }} />
+            </button>
+            <button
               className="icon-button help-btn"
               onClick={() => setShowHelp(true)}
               title="Shortcuts Help"
@@ -609,14 +644,16 @@ function App() {
       )}
 
 
-      {/* Floating Zen Mode Button (Toggle) */}
-      <button
-        className="exit-zen-button"
-        onClick={() => setSettings(s => ({ ...s, zenMode: !s.zenMode }))}
-        title="Keyboard Shortcut: Z"
-      >
-        {settings.zenMode ? "Exit Zen Mode" : "Zen Mode"}
-      </button>
+      {/* Exit Zen Mode Button - Only shown in Zen Mode */}
+      {settings.zenMode && (
+        <button
+          className="exit-zen-button"
+          onClick={() => setSettings(s => ({ ...s, zenMode: false }))}
+          title="Keyboard Shortcut: Z"
+        >
+          Exit Zen Mode
+        </button>
+      )}
 
       {/* Help Popup */}
       {

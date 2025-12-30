@@ -23,7 +23,7 @@
   color: var(--color-primary);
 }
 
-@media (max-width: 400px) {
+@media (max-width: 600px) {
   .logo {
     display: none;
   }
@@ -407,7 +407,7 @@ button {
 
 .exit-zen-button {
   position: fixed;
-  bottom: 20px;
+  top: 20px;
   right: 20px;
   padding: 10px 20px;
   background: var(--color-surface);
@@ -594,7 +594,7 @@ button {
   transition: all 0.2s;
 }
 
-@media (max-width: 450px) {
+@media (max-width: 600px) {
   .toggle-option {
     padding: 4px 8px;
     font-size: 0.75rem;
@@ -666,12 +666,13 @@ button {
   }
 
   .card.sheet-music-card {
-    max-width: 100vw;
-    width: 100vw;
+    max-width: 100%;
+    width: 100%;
     min-height: 100vh;
     margin: 0;
     border-radius: 0;
     align-items: stretch;
+    box-sizing: border-box;
   }
 
   /* Staff Row: Horizontal Layout for Staff + Note Name */
@@ -871,13 +872,14 @@ button {
     height: 20px;
   }
 
-  /* Restore Zen Toggle in Landscape Mobile */
+  /* Restore Zen Toggle in Landscape Mobile - Move to top right to avoid Skip button */
   .exit-zen-button {
     display: block;
     transform: scale(0.8);
-    bottom: 45px;
-    /* Move up above action row */
-    right: 5px;
+    top: 10px;
+    bottom: auto;
+    right: 60px;
+    /* Left of the settings/help/fullscreen if present, or just top right */
     padding: 6px 12px;
     font-size: 0.8rem;
     background: rgba(255, 255, 255, 0.9);
