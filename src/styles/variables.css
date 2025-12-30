@@ -9,17 +9,14 @@
   --hue-text: 30;
   /* Warmer text */
 
+  /* Default Light Theme */
   --color-bg: hsl(30, 20%, 97%);
   /* Warm paper-like bg */
   --color-surface: hsl(0, 0%, 100%);
-
-  /* Neutral / Black Accent */
   --color-primary: hsl(0, 0%, 20%);
   --color-primary-dark: hsl(0, 0%, 0%);
-
   --color-text-main: hsl(var(--hue-text), 10%, 20%);
   --color-text-muted: hsl(var(--hue-text), 5%, 60%);
-
   --color-success: hsl(var(--hue-success), 60%, 45%);
   --color-error: hsl(var(--hue-error), 70%, 55%);
   --color-warning: hsl(35, 90%, 50%);
@@ -52,16 +49,38 @@
   --radius-lg: 24px;
 }
 
+
+
+/* Auto Dark Mode (System Preference) */
 @media (prefers-color-scheme: dark) {
   :root {
     --color-bg: hsl(30, 20%, 10%);
     --color-surface: hsl(30, 20%, 15%);
     --color-text-main: hsl(30, 10%, 90%);
     --color-text-muted: hsl(30, 10%, 60%);
-    /* In dark mode, 'primary' (black) matches background too much, so we invert or use white */
     --color-primary: hsl(0, 0%, 90%);
     --color-primary-dark: hsl(0, 0%, 100%);
   }
+}
+
+/* Manual Dark Mode Override */
+html[data-theme="dark"] {
+  --color-bg: hsl(30, 20%, 10%);
+  --color-surface: hsl(30, 20%, 15%);
+  --color-text-main: hsl(30, 10%, 90%);
+  --color-text-muted: hsl(30, 10%, 60%);
+  --color-primary: hsl(0, 0%, 90%);
+  --color-primary-dark: hsl(0, 0%, 100%);
+}
+
+/* Manual Light Mode Override */
+html[data-theme="light"] {
+  --color-bg: hsl(30, 20%, 97%);
+  --color-surface: hsl(0, 0%, 100%);
+  --color-primary: hsl(0, 0%, 20%);
+  --color-primary-dark: hsl(0, 0%, 0%);
+  --color-text-main: hsl(var(--hue-text), 10%, 20%);
+  --color-text-muted: hsl(var(--hue-text), 5%, 60%);
 }
 
 body {

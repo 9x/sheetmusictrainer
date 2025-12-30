@@ -99,7 +99,8 @@ export function Fretboard({
                     y={paddingY}
                     width={width - (paddingX * 2) - nutWidth}
                     height={height - (paddingY * 2)}
-                    fill="#999999"
+                    fill="var(--color-text-muted)"
+                    fillOpacity={0.3}
                     stroke="none"
                 />
 
@@ -109,7 +110,7 @@ export function Fretboard({
                     y={paddingY}
                     width={nutWidth}
                     height={height - (paddingY * 2)}
-                    fill="#333"
+                    fill="var(--color-primary)"
                 />
 
                 {/* Fret Markers (Dots) */}
@@ -120,13 +121,13 @@ export function Fretboard({
                     if (isDouble) {
                         return (
                             <g key={`marker-${m}`}>
-                                <circle cx={cx} cy={height / 2 - stringSpacing} r={6} fill="#777" />
-                                <circle cx={cx} cy={height / 2 + stringSpacing} r={6} fill="#777" />
+                                <circle cx={cx} cy={height / 2 - stringSpacing} r={6} fill="var(--color-bg)" />
+                                <circle cx={cx} cy={height / 2 + stringSpacing} r={6} fill="var(--color-bg)" />
                             </g>
                         );
                     }
                     return (
-                        <circle key={`marker-${m}`} cx={cx} cy={height / 2} r={6} fill="#777" />
+                        <circle key={`marker-${m}`} cx={cx} cy={height / 2} r={6} fill="var(--color-bg)" />
                     );
                 })}
 
@@ -141,7 +142,7 @@ export function Fretboard({
                             y1={paddingY}
                             x2={x}
                             y2={height - paddingY}
-                            stroke="#CCCCCC"
+                            stroke="var(--color-text-muted)"
                             strokeWidth={1}
                         />
                     );
@@ -158,7 +159,7 @@ export function Fretboard({
                             y1={y}
                             x2={width - paddingX}
                             y2={y}
-                            stroke="#EEEEEE"
+                            stroke="var(--color-text-main)"
                             strokeWidth={Math.max(1.5, visualThickness)}
                         />
                     );

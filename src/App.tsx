@@ -61,7 +61,8 @@ function App() {
     virtualGuitarVolume: 0.5,
     virtualGuitarMute: false,
     micSensitivity: 0.5,
-    disableAnimation: false
+    disableAnimation: false,
+    theme: 'auto'
   });
 
   const { pitchData, error, audioLevel, debugInfo, isListening } = usePitchDetector(listening, settings.micSensitivity);
@@ -84,6 +85,17 @@ function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Theme support
+  useEffect(() => {
+    const root = document.documentElement;
+    const theme = settings.theme || 'auto';
+    if (theme === 'auto') {
+      root.removeAttribute('data-theme');
+    } else {
+      root.setAttribute('data-theme', theme);
+    }
+  }, [settings.theme]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {

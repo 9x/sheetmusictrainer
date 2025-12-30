@@ -35,6 +35,7 @@ export interface AppSettings {
     micSensitivity?: number; // 0.0 to 1.0 (0=least sensitive, 1=most)
     virtualGuitarMute?: boolean;
     disableAnimation?: boolean;
+    theme?: 'light' | 'dark' | 'auto';
 }
 
 interface ControlsProps {

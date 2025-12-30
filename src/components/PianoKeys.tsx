@@ -157,12 +157,12 @@ export function PianoKeys({
                     Range: {keys.list[0]?.midi} - {keys.list[keys.list.length - 1]?.midi}
                 </div>
 
-                <div className="view-toggles" style={{ display: 'flex', gap: '8px', background: '#333', padding: '2px', borderRadius: '4px' }}>
+                <div className="view-toggles" style={{ display: 'flex', gap: '8px', background: 'var(--color-surface)', padding: '2px', borderRadius: '4px', border: '1px solid var(--color-text-muted)' }}>
                     <button
                         onClick={() => setViewMode('zoomed')}
                         style={{
-                            background: viewMode === 'zoomed' ? '#666' : 'transparent',
-                            border: 'none', color: 'white', padding: '2px 8px', borderRadius: '2px', cursor: 'pointer', fontSize: '10px'
+                            background: viewMode === 'zoomed' ? 'var(--color-primary)' : 'transparent',
+                            border: 'none', color: viewMode === 'zoomed' ? 'var(--color-bg)' : 'var(--color-text-main)', padding: '2px 8px', borderRadius: '2px', cursor: 'pointer', fontSize: '10px'
                         }}
                     >
                         Zoom
@@ -170,8 +170,8 @@ export function PianoKeys({
                     <button
                         onClick={() => setViewMode('full')}
                         style={{
-                            background: viewMode === 'full' ? '#666' : 'transparent',
-                            border: 'none', color: 'white', padding: '2px 8px', borderRadius: '2px', cursor: 'pointer', fontSize: '10px'
+                            background: viewMode === 'full' ? 'var(--color-primary)' : 'transparent',
+                            border: 'none', color: viewMode === 'full' ? 'var(--color-bg)' : 'var(--color-text-main)', padding: '2px 8px', borderRadius: '2px', cursor: 'pointer', fontSize: '10px'
                         }}
                     >
                         Full
@@ -187,8 +187,8 @@ export function PianoKeys({
                 style={{
                     width: '100%',
                     overflowX: viewMode === 'full' ? 'hidden' : 'auto',
-                    borderTop: '1px solid #444',
-                    background: '#222',
+                    borderTop: '1px solid var(--color-text-muted)',
+                    background: 'var(--color-bg)',
                     position: 'relative'
                 }}
             >
@@ -208,14 +208,14 @@ export function PianoKeys({
                             const isMarked = markedNotes.includes(k.midi);
 
                             // Styling
-                            let fill = k.isBlack ? '#222' : '#fff';
+                            let fill = k.isBlack ? 'var(--color-primary)' : 'var(--color-surface)';
                             if (isMarked) {
-                                fill = k.isBlack ? '#d32f2f' : '#ffcdd2'; // Red-ish for marked
+                                fill = k.isBlack ? 'var(--color-error)' : 'var(--color-success)'; // Use theme vars
                             } else if (interactive && hoverMidi === k.midi) {
-                                fill = k.isBlack ? '#444' : '#eee'; // Subtle hover
+                                fill = k.isBlack ? 'var(--color-text-muted)' : 'var(--color-bg)'; // Subtle hover
                             }
 
-                            const stroke = '#000';
+                            const stroke = 'var(--color-text-main)';
                             const rectHeight = k.isBlack ? BLACK_KEY_HEIGHT_PERCENT * 100 : 100;
 
                             return (

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Volume2, VolumeX, ChevronDown, ChevronUp, Mic, MicOff } from 'lucide-react';
+import { X, Volume2, VolumeX, ChevronDown, ChevronUp, Mic, MicOff, Sun, Moon, Monitor } from 'lucide-react';
 import type { AppSettings } from './Controls';
 import type { MicrophoneDebugInfo } from '../hooks/usePitchDetector';
 
@@ -71,6 +71,47 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="help-popup" onClick={e => e.stopPropagation()}>
                 <button className="help-close" onClick={onClose}><X size={20} /></button>
                 <h2 style={{ marginTop: 0, marginBottom: '24px' }}>Settings</h2>
+
+                {/* Theme Settings */}
+                <div className="control-group" style={{ marginBottom: '24px' }}>
+                    <label className="control-label" style={{ marginBottom: '8px', fontSize: '16px' }}>
+                        <span>Theme</span>
+                    </label>
+                    <div style={{ display: 'flex', background: 'rgba(128,128,128,0.1)', padding: '4px', borderRadius: '8px', gap: '4px' }}>
+                        {[
+                            { id: 'light', icon: Sun, label: 'Light' },
+                            { id: 'dark', icon: Moon, label: 'Dark' },
+                            { id: 'auto', icon: Monitor, label: 'Auto' }
+                        ].map(mode => (
+                            <button
+                                key={mode.id}
+                                onClick={() => onUpdateSettings({ ...settings, theme: mode.id as any })}
+                                style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px',
+                                    padding: '8px',
+                                    border: 'none',
+                                    background: (settings.theme || 'auto') === mode.id ? 'var(--color-surface)' : 'transparent',
+                                    color: (settings.theme || 'auto') === mode.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    boxShadow: (settings.theme || 'auto') === mode.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                                    fontWeight: 500,
+                                    fontSize: '13px',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <mode.icon size={16} />
+                                {mode.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '24px 0' }} />
 
                 {/* Animation Settings */}
                 <div className="control-group" style={{ marginBottom: '24px' }}>
