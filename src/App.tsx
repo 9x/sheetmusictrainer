@@ -64,7 +64,7 @@ function App() {
     disableAnimation: false
   });
 
-  const { pitchData, error } = usePitchDetector(listening, settings.micSensitivity);
+  const { pitchData, error, audioLevel, debugInfo, isListening } = usePitchDetector(listening, settings.micSensitivity);
 
   const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string>("");
@@ -705,6 +705,9 @@ function App() {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onUpdateSettings={setSettings}
+        audioLevel={audioLevel}
+        debugInfo={debugInfo}
+        isListening={isListening}
       />
 
       <OpenSourceModal

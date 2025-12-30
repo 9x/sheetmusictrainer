@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { PitchAnalyzer } from '../audio/PitchAnalyzer';
+import { PitchAnalyzer, type MicrophoneDebugInfo } from '../audio/PitchAnalyzer';
 import { frequencyToMidi, getNoteDetails, getCentDifference } from '../music/NoteUtils';
 
 interface PitchData {
@@ -10,11 +10,15 @@ interface PitchData {
     clarity: number; // Placeholder for now, maybe uses probability if YIN exposes it
 }
 
+export type { MicrophoneDebugInfo };
+
 export function usePitchDetector(active: boolean, sensitivity: number = 0.5) {
     const analyzerRef = useRef<PitchAnalyzer | null>(null);
     const [pitchData, setPitchData] = useState<PitchData | null>(null);
     const [isListening, setIsListening] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [audioLevel, setAudioLevel] = useState<number>(0);
+    const [debugInfo, setDebugInfo] = useState<MicrophoneDebugInfo | null>(null);
     const animationRef = useRef<number | null>(null);
 
     // Update sensitivity when it changes
@@ -27,17 +31,10 @@ export function usePitchDetector(active: boolean, sensitivity: number = 0.5) {
     const updatePitch = useCallback(() => {
         if (!analyzerRef.current) return;
 
-        // Ensure sensitivity is set on start
-        // (Though the effect above handles updates, safely re-asserting here doesn't hurt, 
-        // but let's trust the effect and the init sequence).
-
         const freq = analyzerRef.current.getPitch();
         if (freq) {
             const midi = frequencyToMidi(freq);
             const { scientific } = getNoteDetails(midi);
-
-            // Calculate cents off purely for display if needed, 
-            // but for training we usually care if midi matches.
 
             const cents = getCentDifference(freq, midi);
 
@@ -49,6 +46,10 @@ export function usePitchDetector(active: boolean, sensitivity: number = 0.5) {
                 clarity: 1
             });
         }
+
+        // Always update level and debug info
+        setAudioLevel(analyzerRef.current.getCurrentLevel());
+        setDebugInfo(analyzerRef.current.getDebugInfo());
 
         animationRef.current = requestAnimationFrame(updatePitch);
     }, []);
@@ -63,11 +64,21 @@ export function usePitchDetector(active: boolean, sensitivity: number = 0.5) {
             analyzerRef.current.start()
                 .then(() => {
                     setIsListening(true);
+                    setError(null);
                     updatePitch();
                 })
                 .catch(err => {
                     console.error(err);
-                    setError("Could not access microphone.");
+                    // Provide more specific error messages
+                    if (err.name === 'NotAllowedError') {
+                        setError("Microphone access denied. Please allow microphone access.");
+                    } else if (err.name === 'NotFoundError') {
+                        setError("No microphone found. Please connect a microphone.");
+                    } else if (err.name === 'NotReadableError') {
+                        setError("Microphone is in use by another app.");
+                    } else {
+                        setError("Could not access microphone.");
+                    }
                     setIsListening(false);
                 });
         } else {
@@ -77,6 +88,8 @@ export function usePitchDetector(active: boolean, sensitivity: number = 0.5) {
             }
             setIsListening(false);
             setPitchData(null);
+            setAudioLevel(0);
+            setDebugInfo(null);
             if (animationRef.current) cancelAnimationFrame(animationRef.current);
         }
 
@@ -88,5 +101,5 @@ export function usePitchDetector(active: boolean, sensitivity: number = 0.5) {
         };
     }, [active, updatePitch]);
 
-    return { pitchData, isListening, error };
+    return { pitchData, isListening, error, audioLevel, debugInfo };
 }

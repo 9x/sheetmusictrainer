@@ -1,15 +1,67 @@
-import React from 'react';
-import { X, Volume2, VolumeX } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Volume2, VolumeX, ChevronDown, ChevronUp } from 'lucide-react';
 import type { AppSettings } from './Controls';
+import type { MicrophoneDebugInfo } from '../hooks/usePitchDetector';
 
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     settings: AppSettings;
     onUpdateSettings: (s: AppSettings) => void;
+    audioLevel?: number;
+    debugInfo?: MicrophoneDebugInfo | null;
+    isListening?: boolean;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onUpdateSettings }) => {
+// Level meter component
+const LevelMeter: React.FC<{ level: number; isActive: boolean }> = ({ level, isActive }) => {
+    // Convert RMS to dB for display, then normalize to 0-100%
+    // RMS of 0.001 = -60dB, RMS of 1.0 = 0dB
+    const db = level > 0 ? 20 * Math.log10(level) : -100;
+    // Map -60dB to 0dB => 0% to 100%
+    const percentage = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
+
+    return (
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            opacity: isActive ? 1 : 0.5
+        }}>
+            <div style={{
+                flex: 1,
+                height: '12px',
+                background: 'rgba(0,0,0,0.3)',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+                <div style={{
+                    height: '100%',
+                    width: `${percentage}%`,
+                    background: percentage > 80 ? '#ef4444' : percentage > 50 ? '#f59e0b' : '#22c55e',
+                    borderRadius: '6px',
+                    transition: 'width 0.05s ease-out'
+                }} />
+            </div>
+            <span style={{ fontSize: '11px', opacity: 0.7, minWidth: '45px', textAlign: 'right' }}>
+                {isActive ? `${Math.round(db)} dB` : '— dB'}
+            </span>
+        </div>
+    );
+};
+
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+    isOpen,
+    onClose,
+    settings,
+    onUpdateSettings,
+    audioLevel = 0,
+    debugInfo,
+    isListening = false
+}) => {
+    const [showDebugInfo, setShowDebugInfo] = useState(false);
+
     if (!isOpen) return null;
 
     return (
@@ -141,6 +193,125 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, s
                         Adjust if notes are not detected (increase/right) or if background noise triggers notes (decrease/left).
                     </p>
                 </div>
+
+                {/* Microphone Level Meter */}
+                <div className="control-group" style={{ marginTop: '16px' }}>
+                    <label className="control-label" style={{ marginBottom: '8px', fontSize: '14px' }}>
+                        <span>Microphone Level</span>
+                        <span style={{ fontSize: '11px', opacity: 0.6, marginLeft: '8px' }}>
+                            {isListening ? '(active)' : '(inactive)'}
+                        </span>
+                    </label>
+                    <LevelMeter level={audioLevel} isActive={isListening} />
+                    {!isListening && (
+                        <p style={{ fontSize: '11px', opacity: 0.5, margin: '4px 0 0 0' }}>
+                            Enable microphone to see audio levels
+                        </p>
+                    )}
+                </div>
+
+                {/* Debug Info Toggle */}
+                <button
+                    onClick={() => setShowDebugInfo(!showDebugInfo)}
+                    style={{
+                        marginTop: '16px',
+                        background: 'transparent',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        borderRadius: '4px',
+                        padding: '8px 12px',
+                        color: 'inherit',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '12px',
+                        opacity: 0.7,
+                        width: '100%',
+                        justifyContent: 'center'
+                    }}
+                >
+                    {showDebugInfo ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    Microphone Debug Info
+                </button>
+
+                {/* Debug Info Panel */}
+                {showDebugInfo && (
+                    <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        background: 'rgba(0,0,0,0.3)',
+                        borderRadius: '8px',
+                        fontSize: '11px',
+                        fontFamily: 'monospace'
+                    }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px' }}>
+                            <span style={{ opacity: 0.6 }}>Status:</span>
+                            <span style={{
+                                color: debugInfo?.isCapturing ? '#22c55e' :
+                                    debugInfo?.audioContextState === 'suspended' ? '#f59e0b' : '#ef4444'
+                            }}>
+                                {debugInfo?.isCapturing ? '✓ Capturing' :
+                                    debugInfo?.audioContextState === 'suspended' ? '⚠ Suspended' :
+                                        isListening ? '✗ Not Capturing' : '○ Inactive'}
+                            </span>
+
+                            <span style={{ opacity: 0.6 }}>AudioContext:</span>
+                            <span>{debugInfo?.audioContextState || 'N/A'}</span>
+
+                            <span style={{ opacity: 0.6 }}>Sample Rate:</span>
+                            <span>{debugInfo?.sampleRate ? `${debugInfo.sampleRate} Hz` : 'N/A'}</span>
+
+                            <span style={{ opacity: 0.6 }}>Input Device:</span>
+                            <span style={{ wordBreak: 'break-word' }}>
+                                {debugInfo?.inputDeviceLabel || 'N/A'}
+                            </span>
+
+                            <span style={{ opacity: 0.6 }}>Permission:</span>
+                            <span style={{
+                                color: debugInfo?.permissionState === 'granted' ? '#22c55e' :
+                                    debugInfo?.permissionState === 'denied' ? '#ef4444' : '#f59e0b'
+                            }}>
+                                {debugInfo?.permissionState || 'unknown'}
+                            </span>
+
+                            <span style={{ opacity: 0.6 }}>RMS Level:</span>
+                            <span>
+                                {debugInfo?.currentRmsLevel !== undefined
+                                    ? `${debugInfo.currentRmsLevel.toFixed(4)} (${Math.round(debugInfo.currentRmsDb)} dB)`
+                                    : 'N/A'}
+                            </span>
+
+                            <span style={{ opacity: 0.6 }}>Browser:</span>
+                            <span style={{ wordBreak: 'break-word', fontSize: '10px' }}>
+                                {typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 60) + '...' : 'N/A'}
+                            </span>
+                        </div>
+
+                        {debugInfo?.audioContextState === 'suspended' && (
+                            <div style={{
+                                marginTop: '12px',
+                                padding: '8px',
+                                background: 'rgba(245, 158, 11, 0.2)',
+                                borderRadius: '4px',
+                                color: '#f59e0b'
+                            }}>
+                                ⚠ AudioContext is suspended. Try tapping the mic button again or interacting with the page.
+                            </div>
+                        )}
+
+                        {isListening && !debugInfo?.isCapturing && debugInfo?.audioContextState === 'running' && (
+                            <div style={{
+                                marginTop: '12px',
+                                padding: '8px',
+                                background: 'rgba(239, 68, 68, 0.2)',
+                                borderRadius: '4px',
+                                color: '#ef4444'
+                            }}>
+                                ✗ AudioContext is running but no audio is being captured. Check if another app is using the microphone.
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
         </div>

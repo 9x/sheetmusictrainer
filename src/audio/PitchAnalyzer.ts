@@ -1,5 +1,16 @@
 import { YIN } from "pitchfinder";
 
+export interface MicrophoneDebugInfo {
+    audioContextState: AudioContextState | 'inactive';
+    sampleRate: number | null;
+    inputDeviceLabel: string;
+    inputDeviceId: string;
+    permissionState: PermissionState | 'unknown';
+    currentRmsLevel: number;
+    currentRmsDb: number;
+    isCapturing: boolean;
+}
+
 export class PitchAnalyzer {
     private detector: (buffer: Float32Array) => number | null;
     private audioContext: AudioContext | null = null;
@@ -7,6 +18,12 @@ export class PitchAnalyzer {
     private mediaStream: MediaStream | null = null;
     private source: MediaStreamAudioSourceNode | null = null;
     private buffer: Float32Array;
+
+    // Debug info
+    private inputDeviceLabel: string = 'Not detected';
+    private inputDeviceId: string = '';
+    private permissionState: PermissionState | 'unknown' = 'unknown';
+    private currentRmsLevel: number = 0;
 
     constructor() {
         this.detector = YIN({ sampleRate: 44100 }); // Default, will update on start
@@ -36,17 +53,66 @@ export class PitchAnalyzer {
     async start(): Promise<void> {
         if (this.audioContext) return;
 
+        // Check permission state if available
+        try {
+            if (navigator.permissions && navigator.permissions.query) {
+                const result = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+                this.permissionState = result.state;
+            }
+        } catch {
+            // permissions API not available on all browsers
+            this.permissionState = 'unknown';
+        }
+
         this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         this.detector = YIN({ sampleRate: this.audioContext.sampleRate });
 
         try {
-            this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Use more explicit audio constraints for better Android compatibility
+            const constraints: MediaStreamConstraints = {
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                }
+            };
+
+            this.mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            // Get device info
+            const audioTracks = this.mediaStream.getAudioTracks();
+            if (audioTracks.length > 0) {
+                const track = audioTracks[0];
+                const settings = track.getSettings();
+                this.inputDeviceId = settings.deviceId || '';
+                this.inputDeviceLabel = track.label || 'Unknown Device';
+
+                // If label is empty, try to get it from enumerateDevices
+                if (!track.label && settings.deviceId) {
+                    try {
+                        const devices = await navigator.mediaDevices.enumerateDevices();
+                        const matchedDevice = devices.find(d => d.deviceId === settings.deviceId);
+                        if (matchedDevice && matchedDevice.label) {
+                            this.inputDeviceLabel = matchedDevice.label;
+                        }
+                    } catch {
+                        // enumerateDevices not available
+                    }
+                }
+            }
+
             this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
             this.analyser = this.audioContext.createAnalyser();
             this.analyser.fftSize = 4096; // Higher FFT size for better resolution at low frequencies
             this.buffer = new Float32Array(this.analyser.fftSize);
 
             this.source.connect(this.analyser);
+
+            // CRITICAL for Android: Resume AudioContext after user interaction
+            // Android Chrome suspends AudioContext by default
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
         } catch (e) {
             console.error("Error accessing microphone:", e);
             throw e;
@@ -62,6 +128,36 @@ export class PitchAnalyzer {
             this.audioContext.close();
             this.audioContext = null;
         }
+        this.currentRmsLevel = 0;
+        this.inputDeviceLabel = 'Not detected';
+        this.inputDeviceId = '';
+    }
+
+    /**
+     * Get current debug/diagnostic information
+     */
+    getDebugInfo(): MicrophoneDebugInfo {
+        const rmsDb = this.currentRmsLevel > 0
+            ? 20 * Math.log10(this.currentRmsLevel)
+            : -Infinity;
+
+        return {
+            audioContextState: this.audioContext?.state || 'inactive',
+            sampleRate: this.audioContext?.sampleRate || null,
+            inputDeviceLabel: this.inputDeviceLabel,
+            inputDeviceId: this.inputDeviceId,
+            permissionState: this.permissionState,
+            currentRmsLevel: this.currentRmsLevel,
+            currentRmsDb: isFinite(rmsDb) ? rmsDb : -100,
+            isCapturing: this.analyser !== null && this.audioContext?.state === 'running',
+        };
+    }
+
+    /**
+     * Get current RMS level (0-1 range, useful for level meters)
+     */
+    getCurrentLevel(): number {
+        return this.currentRmsLevel;
     }
 
     /**
@@ -77,6 +173,9 @@ export class PitchAnalyzer {
             rms += this.buffer[i] * this.buffer[i];
         }
         rms = Math.sqrt(rms / this.buffer.length);
+
+        // Store RMS for level meter
+        this.currentRmsLevel = rms;
 
         if (rms < this.sensitivityThreshold) return null;
 
