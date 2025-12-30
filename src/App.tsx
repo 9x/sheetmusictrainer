@@ -28,7 +28,10 @@ import { Mic, MicOff, SkipForward, HelpCircle, Volume2, X, Guitar, Settings, Max
 import './App.css';
 import './styles/skip-button.css';
 
-const NOTE_MATCH_THRESHOLD_MS = 300; // How long to convert hold note to confirm
+import { NOTE_MATCH_THRESHOLD_MS } from './AppConfig';
+
+
+
 
 function App() {
   const [listening, setListening] = useState(false);
