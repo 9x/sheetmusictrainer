@@ -10,7 +10,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--spacing-sm) var(--spacing-xl);
+  padding: var(--spacing-sm) var(--spacing-md);
   background-color: var(--color-surface);
   box-shadow: var(--shadow-sm);
 }
@@ -21,6 +21,12 @@
   font-size: 1.5rem;
   letter-spacing: -0.02em;
   color: var(--color-primary);
+}
+
+@media (max-width: 400px) {
+  .logo {
+    display: none;
+  }
 }
 
 .streak-badge {
@@ -588,6 +594,22 @@ button {
   transition: all 0.2s;
 }
 
+@media (max-width: 450px) {
+  .toggle-option {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+
+  /* Hide help button in favor of settings on small screens */
+  .help-btn {
+    display: none;
+  }
+
+  .header-controls {
+    gap: 4px;
+  }
+}
+
 .toggle-option.active {
   background-color: var(--color-surface);
   color: var(--color-primary);
@@ -636,27 +658,20 @@ button {
     justify-content: center;
     /* Center vertically */
     gap: 0;
-    height: 100vh;
-    /* Fixed viewport height */
-    overflow: hidden;
-    /* No scrolling for main game loop */
-    position: relative;
+    /* Allow scrolling */
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+    display: block;
   }
 
   .card.sheet-music-card {
-    max-width: 95vw;
-    height: 100%;
-    max-height: none;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    padding: 0;
-    width: 100%;
-    background: transparent;
-    box-shadow: none;
-    border: none;
-    flex-shrink: 0;
+    max-width: 100vw;
+    width: 100vw;
+    min-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+    align-items: stretch;
   }
 
   /* Staff Row: Horizontal Layout for Staff + Note Name */
@@ -691,9 +706,8 @@ button {
     /* Scale UP */
     transform-origin: center center;
     justify-content: center;
-    margin-bottom: -10px;
-    /* Pull fretboard closer */
-    padding-top: 0;
+    margin-bottom: 0;
+    padding-top: 10px;
     z-index: 1;
   }
 
@@ -704,19 +718,16 @@ button {
   /* Hint card container (Fretboard + Note Name) */
   .hint-card {
     margin-top: 0;
-    flex: 1 1 auto;
+    flex: 1;
     width: 100%;
     max-width: 100%;
-    padding: 0 10px;
-    background: transparent;
+    padding: 0;
     display: flex;
-    flex-direction: row;
-    justify-content: center;
+    flex-direction: column;
+    justify-content: flex-start;
     align-items: center;
-    gap: 8px;
     min-height: 0;
-    max-height: 200px;
-    /* Cap fretboard height */
+    height: auto;
   }
 
   /* The note name inside hint card */
@@ -734,9 +745,15 @@ button {
   .fretboard-container {
     transform: none;
     max-width: none;
+    width: 100%;
     flex-grow: 1;
-    height: 100%;
-    /* Ensure it fills the space but respects container limits */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #2a2a2a;
+    /* distinct bg for full width feel */
+    min-height: 200px;
+    padding: 10px 0;
   }
 
   /* Hide Instruction Text ("Play note above") */
@@ -780,27 +797,78 @@ button {
     /* Break flex height lock */
   }
 
-  /* Action Buttons - floating or tucked */
   .action-row {
-    margin-top: 0 !important;
+    margin-top: 20px !important;
     width: 100%;
-    padding-bottom: 5px;
-    flex-shrink: 0;
-    position: absolute;
-    bottom: 2px;
-    z-index: 20;
-    pointer-events: none;
-    /* Pass through clicks */
+    padding: 20px;
+    position: static;
+    /* Flow naturally below */
+    display: flex;
+    flex-direction: row;
     justify-content: center;
-    gap: 20px;
+    gap: 16px;
+    background: var(--color-bg);
+    pointer-events: auto;
   }
 
   .action-row button {
+    /* Reset styles for scrolling row */
     pointer-events: auto;
-    /* Enable buttons */
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid #ccc;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    width: auto;
+    height: auto;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    /* Stack icon/text */
+    align-items: center;
+    color: var(--color-text-main);
+  }
+
+  /* Specific Floating Skip Button logic */
+  .skip-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 999;
+    background-color: var(--color-primary) !important;
+    color: white !important;
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    border: none !important;
+  }
+
+  /* Hide text in floating button, show icon */
+  .skip-button svg {
+    width: 24px !important;
+    height: 24px !important;
+    margin: 0;
+  }
+
+  .skip-button:active {
+    transform: scale(0.95);
+  }
+
+  /* Show text labels in scrollable row for others */
+  .action-row button span,
+  .action-row button text {
+    display: block;
+    font-size: 0.7rem;
+    margin-top: 4px;
+  }
+
+  /* Adjust icon sizes */
+  .action-row button svg {
+    width: 20px;
+    height: 20px;
   }
 
   /* Restore Zen Toggle in Landscape Mobile */

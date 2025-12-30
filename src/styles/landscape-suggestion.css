@@ -1,0 +1,68 @@
+.landscape-suggestion {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 400px;
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.rotate-icon {
+    animation: rotate 2s infinite ease-in-out;
+    flex-shrink: 0;
+}
+
+.dismiss-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1.5rem;
+    cursor: pointer;
+    margin-left: auto;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.dismiss-btn:hover {
+    color: white;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translate(-50%, 100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+}
+
+@keyframes rotate {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    25% {
+        transform: rotate(90deg);
+    }
+
+    75% {
+        transform: rotate(90deg);
+    }
+}

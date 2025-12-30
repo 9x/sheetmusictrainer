@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Logo } from './components/Logo';
+import { LandscapeSuggestion } from './components/LandscapeSuggestion';
 
 
 import { SheetMusic } from './components/SheetMusic';
@@ -399,6 +400,7 @@ function App() {
 
   return (
     <div className={`app-container ${settings.zenMode ? 'zen-mode' : ''}`}>
+      <LandscapeSuggestion />
       {!settings.zenMode && (
         <header className="app-header">
           <div className="app-header-left">
@@ -422,7 +424,7 @@ function App() {
             </div>
 
             <button
-              className="icon-button"
+              className="icon-button help-btn"
               onClick={() => setShowHelp(true)}
               title="Shortcuts Help"
             >
