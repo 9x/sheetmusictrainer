@@ -735,13 +735,13 @@ button {
     flex: 0 0 auto;
     min-height: 120px;
     /* Reduced to allow more space for fretboard */
-    max-height: 180px;
+    /* max-height removed to allow full staff visibility */
     transform: scale(1.0);
     /* No scaling to prevent overflow */
     transform-origin: center center;
     justify-content: center;
-    margin-bottom: 0;
-    padding-top: 10px;
+    margin-bottom: 5px;
+    padding-top: 5px;
     z-index: 1;
   }
 

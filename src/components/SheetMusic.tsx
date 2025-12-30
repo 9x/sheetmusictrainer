@@ -63,15 +63,20 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         let stavesMeasure1: Record<string, Stave> = {};
         let stavesMeasure2: Record<string, Stave> = {};
 
+        const isCompact = height < 200;
+        const trebleY = isCompact ? 10 : 20;
+        const bassY = isCompact ? 85 : 110;
+        // Gap reduced from 90 (110-20) to 75 (85-10) in compact mode
+
         // --- Create Staves for Measure 1 ---
         if (clef === 'grand') {
             // Measure 1: Treble
-            const m1Treble = new Stave(startX, 20, measureWidth);
+            const m1Treble = new Stave(startX, trebleY, measureWidth);
             m1Treble.addClef('treble').addKeySignature(keySignature);
             m1Treble.setContext(context).draw();
 
             // Measure 1: Bass
-            const m1Bass = new Stave(startX, 110, measureWidth);
+            const m1Bass = new Stave(startX, bassY, measureWidth);
             m1Bass.addClef('bass').addKeySignature(keySignature);
             m1Bass.setContext(context).draw();
 
@@ -93,14 +98,14 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
 
             if (numMeasures === 2) {
                 // Measure 2: Treble
-                const m2Treble = new Stave(startX + measureWidth, 20, measureWidth);
+                const m2Treble = new Stave(startX + measureWidth, trebleY, measureWidth);
                 // No clef/key sig repeated typically for just next measure in same system, 
                 // UNLESS it's a new system. Here it's same system.
                 // But VexFlow might require setting context context.
                 m2Treble.setContext(context).draw();
 
                 // Measure 2: Bass
-                const m2Bass = new Stave(startX + measureWidth, 110, measureWidth);
+                const m2Bass = new Stave(startX + measureWidth, bassY, measureWidth);
                 m2Bass.setContext(context).draw();
 
                 stavesMeasure2 = { treble: m2Treble, bass: m2Bass };
@@ -119,14 +124,15 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
 
         } else {
             // Single Stave
-            const m1Stave = new Stave(startX, 30, measureWidth);
+            const staveY = isCompact ? 10 : 30;
+            const m1Stave = new Stave(startX, staveY, measureWidth);
             m1Stave.addClef(clef).addKeySignature(keySignature);
             m1Stave.setContext(context).draw();
 
             stavesMeasure1 = { [clef]: m1Stave };
 
             if (numMeasures === 2) {
-                const m2Stave = new Stave(startX + measureWidth, 30, measureWidth);
+                const m2Stave = new Stave(startX + measureWidth, staveY, measureWidth);
                 m2Stave.setContext(context).draw();
                 stavesMeasure2 = { [clef]: m2Stave };
             }

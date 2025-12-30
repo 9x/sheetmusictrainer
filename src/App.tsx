@@ -77,10 +77,12 @@ function App() {
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [windowHeight, setWindowHeight] = useState(window.innerHeight);
 
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
+      setWindowHeight(window.innerHeight);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -507,7 +509,11 @@ function App() {
               clef={activeClef}
               transpose={activeTranspose}
               width={Math.min(windowWidth - 40, 500)}
-              height={activeClef === 'grand' ? 260 : 180}
+              height={
+                activeClef === 'grand'
+                  ? (windowHeight < 500 ? 190 : 260) // Compact Grand Staff if short screen
+                  : (windowHeight < 500 ? 120 : 180) // Compact Single Staff
+              }
               hideTargetNote={settings.gameMode === 'ear_training' && !revealed}
               hoverMidi={settings.showHint ? hoveredMidi : null}
             />
