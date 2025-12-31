@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Volume2, VolumeX, ChevronDown, ChevronUp, Mic, MicOff, Sun, Moon, Monitor } from 'lucide-react';
-import type { AppSettings } from './Controls';
+import type { AppSettings } from '../types/SettingsTypes';
 import type { MicrophoneDebugInfo } from '../hooks/usePitchDetector';
 
 interface SettingsModalProps {

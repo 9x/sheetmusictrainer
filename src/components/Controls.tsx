@@ -4,47 +4,19 @@ import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 import { getTempoMarking } from '../music/TempoMarkings';
 import { TuningMeter } from './TuningMeter';
 
-export type Difficulty = string;
+import { useSettings } from '../context/SettingsContext';
+import { type Difficulty, type RhythmSettings } from '../types/SettingsTypes';
 
-export interface RhythmSettings {
-    mode: 'bpm' | 'seconds';
-    bpm: number;
-    seconds: number;
-    active: boolean;
-    autoAdvance: boolean;
-    sound: boolean;
-    volume: number;
-}
 
-export interface AppSettings {
-    difficulty: Difficulty;
-    showHint: boolean;
-    showFretboard: boolean;
-    tuningId: string;
-    keySignature: string;
-    instrument: string;
-    showTuningMeter: boolean;
-    rhythm: RhythmSettings;
-    zenMode: boolean;
-    gameMode: 'sight_reading' | 'ear_training';
-    customMinFret?: number;
-    customMaxFret?: number;
-    autoPlaySightReading?: boolean;
-    autoPlayVolume?: number;
-    virtualGuitarVolume?: number;
-    micSensitivity?: number; // 0.0 to 1.0 (0=least sensitive, 1=most)
-    virtualGuitarMute?: boolean;
-    disableAnimation?: boolean;
-    theme?: 'light' | 'dark' | 'auto';
-}
 
 interface ControlsProps {
-    settings: AppSettings;
-    onUpdateSettings: (s: AppSettings) => void;
     currentPitch: { note: string; cents: number } | null;
 }
 
-export const Controls: React.FC<ControlsProps> = ({ settings, onUpdateSettings, currentPitch }) => {
+export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
+    const { settings, updateSettings } = useSettings();
+    // Alias to minimize refactor, or just use updateSettings. 
+    const onUpdateSettings = updateSettings;
     const handleDifficultyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         onUpdateSettings({ ...settings, difficulty: e.target.value as Difficulty });
     };

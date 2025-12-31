@@ -1,24 +1,20 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Logo } from './components/Logo';
 import { LandscapeSuggestion } from './components/LandscapeSuggestion';
 
 
 import { SheetMusic } from './components/SheetMusic';
-import { Controls, type AppSettings } from './components/Controls';
+import { Controls } from './components/Controls';
 import { SettingsModal } from './components/SettingsModal';
 import { OpenSourceModal } from './components/OpenSourceModal';
 import { usePitchDetector } from './hooks/usePitchDetector';
-import { useMetronome } from './hooks/useMetronome';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
-import {
-  getRandomNote,
-  getNoteDetails
-} from './music/NoteUtils';
+import { useSettings } from './context/SettingsContext';
+import { useGameLogic } from './hooks/useGameLogic';
+import { getNoteDetails } from './music/NoteUtils';
 import {
   TUNINGS,
   getFretboardPositions,
-  getOpenStringNotes,
-  getFirstPositionNotes,
 } from './music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from './music/InstrumentConfigs';
 import { Fretboard } from './components/Fretboard';
@@ -28,8 +24,6 @@ import { Mic, MicOff, SkipForward, HelpCircle, Volume2, X, Guitar, Settings, Max
 import './App.css';
 import './styles/skip-button.css';
 
-import { NOTE_MATCH_THRESHOLD_MS } from './AppConfig';
-
 
 
 
@@ -37,47 +31,25 @@ function App() {
   const [listening, setListening] = useState(false);
   const { playNote } = useAudioPlayer();
 
-  const [targetMidi, setTargetMidi] = useState<number>(60); // Start with C4
-  const [settings, setSettings] = useState<AppSettings>({
-    difficulty: 'first_pos',
-    showHint: false,
-    showFretboard: false,
-    showTuningMeter: false,
-    tuningId: 'standard',
-    keySignature: 'C',
-    instrument: 'guitar',
-    rhythm: {
-      mode: 'bpm',
-      bpm: 60,
-      seconds: 5,
-      active: false,
-      autoAdvance: false,
-      sound: true,
-      volume: 0.5
-    },
-    zenMode: false,
-    gameMode: 'sight_reading',
-    customMinFret: 0,
-    customMaxFret: 12,
-    autoPlaySightReading: false,
-    autoPlayVolume: 0.5,
-    virtualGuitarVolume: 0.5,
-    virtualGuitarMute: false,
-    micSensitivity: 0.5,
-    disableAnimation: false,
-    theme: 'auto'
-  });
+  const { settings, updateSettings } = useSettings();
+  // Alias to keep existing code working with minimal changes
+  const setSettings = updateSettings;
 
   const { pitchData, error, audioLevel, debugInfo, isListening } = usePitchDetector(listening, settings.micSensitivity);
 
-  const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState<string>("");
-  const [revealed, setRevealed] = useState(false);
-  const [virtualNote, setVirtualNote] = useState<number | null>(null);
+  // Game Logic Hook
+  const {
+    targetMidi,
+    feedbackMessage,
+    revealed,
+    virtualNote,
+    generateNewNote,
+    handleVirtualInstrumentPlay
+  } = useGameLogic(pitchData);
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isOpenSourceModalOpen, setIsOpenSourceModalOpen] = useState(false);
   const [hoveredMidi, setHoveredMidi] = useState<number | null>(null);
-  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
@@ -130,238 +102,9 @@ function App() {
     return currentInstrumentDef.ranges.find(r => r.id === settings.difficulty);
   }, [currentInstrumentDef, settings.difficulty]);
 
+  // Determine active clef/transpose for rendering
   const activeClef = currentRangeDef?.clef ?? currentInstrumentDef.clefMode;
   const activeTranspose = currentRangeDef?.transpose ?? currentInstrumentDef.transpose;
-
-  // Generate valid notes based on difficulty
-  const validNotes = useMemo(() => {
-    // Find range config
-    const rangeConfig = currentInstrumentDef.ranges.find(r => r.id === settings.difficulty);
-
-    const getNotesFromConfig = (config: typeof rangeConfig) => {
-      if (!config) return [];
-
-      // Dynamic logic based on type
-      if (config.type === 'open_strings') {
-        // Use current tuning if applicable (Guitar/Bass)
-        if (currentTuning) {
-          return getOpenStringNotes(currentTuning);
-        }
-        // Fallback for non-fretted if they happen to use this type (unlikely)
-        return config.notes || [];
-      }
-
-      if (config.type === 'first_position') {
-        if (currentTuning) {
-          return getFirstPositionNotes(currentTuning);
-        }
-        return config.notes || [];
-      }
-
-      if (config.type === 'custom_fret') {
-        if (currentTuning) {
-          const minFret = settings.customMinFret ?? config.defaultMinFret ?? 0;
-          const maxFret = settings.customMaxFret ?? config.defaultMaxFret ?? 12;
-
-          const notes = new Set<number>();
-          currentTuning.strings.forEach(stringMidi => {
-            for (let fret = minFret; fret <= maxFret; fret++) {
-              notes.add(stringMidi + fret);
-            }
-          });
-          return Array.from(notes).sort((a, b) => a - b);
-        }
-        return [];
-      }
-
-      if (config.type === 'specific_string') {
-        if (currentTuning && config.stringIndex !== undefined) {
-          const openNote = currentTuning.strings[config.stringIndex];
-          if (openNote === undefined) return [];
-
-          // Generate frets 0 to 12 for this string
-          const notes = [];
-          for (let i = 0; i <= 12; i++) {
-            notes.push(openNote + i);
-          }
-          return notes;
-        }
-        return [];
-      }
-
-      // Static fallback
-      if (config.notes) return config.notes;
-      if (config.min !== undefined && config.max !== undefined) {
-        return Array.from({ length: config.max - config.min + 1 }, (_, i) => config.min! + i);
-      }
-      return [];
-    };
-
-    if (rangeConfig) {
-      return getNotesFromConfig(rangeConfig);
-    }
-
-    // Fallback if difficulty ID doesn't match current instrument (e.g. after switch)
-    // Return first range of current instrument
-    const fallbackRange = currentInstrumentDef.ranges[0];
-    return getNotesFromConfig(fallbackRange);
-
-  }, [settings.difficulty, currentInstrumentDef, currentTuning, settings.customMinFret, settings.customMaxFret]);
-
-  const generateNewNote = useCallback((keepFeedback = false) => {
-    // Determine min/max based on available notes to avoid infinite loops if validNotes empty
-    if (validNotes.length === 0) return;
-    const min = validNotes[0];
-    const max = validNotes[validNotes.length - 1];
-
-    const newNote = getRandomNote(min, max, validNotes);
-    if (newNote === targetMidi && validNotes.length > 1) {
-      // Try once to get a different note
-      const retry = getRandomNote(min, max, validNotes);
-      setTargetMidi(retry);
-    } else {
-      setTargetMidi(newNote);
-    }
-    setMatchStartTime(null);
-    if (!keepFeedback) {
-      setFeedbackMessage("");
-    }
-    setRevealed(false);
-  }, [validNotes, targetMidi]);
-
-  // Audio Playback trigger
-  useEffect(() => {
-    const shouldAutoPlay = settings.gameMode === 'ear_training' || (settings.gameMode === 'sight_reading' && settings.autoPlaySightReading);
-
-    if (shouldAutoPlay && !revealed) {
-      // Add a small delay to ensure state settles or allow UI to update
-      const timer = setTimeout(() => {
-        playNote(targetMidi, 1.0, settings.autoPlayVolume ?? 0.5); // Play for 1 second
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [targetMidi, settings.gameMode, settings.autoPlaySightReading, revealed, playNote]);
-
-  // Initial note, and whenever difficulty/tuning/gamemode changes
-  useEffect(() => {
-    generateNewNote();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.difficulty, settings.tuningId, settings.gameMode]);
-
-
-  // Metronome Logic
-  // Calculate effective BPM based on mode
-  const effectiveBpm = useMemo(() => {
-    if (settings.rhythm.mode === 'bpm') return settings.rhythm.bpm;
-    // In seconds mode, BPM = 60 / seconds
-    return 60 / settings.rhythm.seconds;
-  }, [settings.rhythm.mode, settings.rhythm.bpm, settings.rhythm.seconds]);
-
-  const handleTick = useCallback(() => {
-    if (settings.rhythm.autoAdvance && settings.rhythm.active) {
-      generateNewNote();
-      // Reset feedback message on auto-tick
-      setFeedbackMessage("");
-    }
-  }, [settings.rhythm.autoAdvance, settings.rhythm.active, generateNewNote]);
-
-  const { restart: restartMetronome } = useMetronome({
-    bpm: effectiveBpm,
-    volume: settings.rhythm.sound ? settings.rhythm.volume : 0,
-    playing: settings.rhythm.active,
-    onTick: handleTick
-  });
-
-
-  // Common success handler
-  const handleMatchSuccess = useCallback(() => {
-    // Success!
-    if (feedbackTimeoutRef.current) {
-      clearTimeout(feedbackTimeoutRef.current);
-    }
-
-    const noteDetails = getNoteDetails(targetMidi);
-    setFeedbackMessage(`Good! ${noteDetails.name}`);
-    setRevealed(true);
-    setMatchStartTime(null);
-
-    const isRhythmActive = settings.rhythm.active && settings.rhythm.autoAdvance;
-    const isTimerMode = settings.rhythm.mode === 'seconds';
-
-    if (!isRhythmActive) {
-      // Standard or Rhythm-Manual
-      // Immediate transition
-      generateNewNote(true); // Keep "Good!" message
-
-      if (settings.disableAnimation) {
-        setFeedbackMessage("");
-        setRevealed(false);
-      } else {
-        // Allow visual feedback to persist for a moment before clearing text
-        feedbackTimeoutRef.current = setTimeout(() => {
-          setFeedbackMessage("");
-        }, 1500);
-      }
-
-    } else {
-      // Rhythm Active AND Auto-Advance
-      if (isTimerMode) {
-        // Dynamic Timer Mode: Success triggers advance
-        restartMetronome(); // Reset the countdown
-        // Immediate transition here too?
-        generateNewNote(true);
-        feedbackTimeoutRef.current = setTimeout(() => {
-          setFeedbackMessage("");
-        }, 1500);
-
-        setMatchStartTime(null);
-      } else {
-        // Strict BPM Mode: Consumed success, but wait for tick.
-        // Logic handled by tick
-      }
-    }
-  }, [targetMidi, settings.rhythm, settings.disableAnimation, restartMetronome, generateNewNote]);
-
-  // Virtual Instrument Handler (Guitar or Piano)
-  const handleVirtualInstrumentPlay = useCallback((playedMidi: number) => {
-    if (!settings.virtualGuitarMute) {
-      playNote(playedMidi, 0.5, settings.virtualGuitarVolume ?? 0.5); // Feedback sound
-    }
-    setVirtualNote(playedMidi);
-
-    // Clear the note visualization after a short delay
-    setTimeout(() => {
-      setVirtualNote(null);
-    }, 500);
-
-    if (playedMidi === targetMidi) {
-      // Instant match
-      handleMatchSuccess();
-    }
-  }, [playNote, targetMidi, feedbackMessage, handleMatchSuccess, settings]);
-
-  // Match Logic
-  useEffect(() => {
-    if (!pitchData) {
-      setMatchStartTime(null);
-      return;
-    }
-
-    if (pitchData.midi === targetMidi) {
-
-
-      if (matchStartTime === null) {
-        setMatchStartTime(Date.now());
-      } else {
-        const duration = Date.now() - matchStartTime;
-        if (duration > NOTE_MATCH_THRESHOLD_MS) {
-          handleMatchSuccess();
-        }
-      }
-    } else {
-      setMatchStartTime(null);
-    }
-  }, [pitchData, targetMidi, matchStartTime, feedbackMessage, handleMatchSuccess]);
 
   /* Keyboard Shortcuts */
   const [showHelp, setShowHelp] = useState(false);
@@ -659,8 +402,6 @@ function App() {
       {!settings.zenMode && (
         <footer className="settings-footer">
           <Controls
-            settings={settings}
-            onUpdateSettings={setSettings}
             currentPitch={pitchData ? { note: pitchData.note, cents: pitchData.cents } : null}
           />
           <div className="app-subtitle">
