@@ -10,9 +10,11 @@ interface PitchData {
     clarity: number; // Placeholder for now, maybe uses probability if YIN exposes it
 }
 
+import { MIC_DEFAULT_SENSITIVITY } from '../AppConfig';
+
 export type { MicrophoneDebugInfo };
 
-export function usePitchDetector(active: boolean, sensitivity: number = 0.5) {
+export function usePitchDetector(active: boolean, sensitivity: number = MIC_DEFAULT_SENSITIVITY) {
     const analyzerRef = useRef<PitchAnalyzer | null>(null);
     const [pitchData, setPitchData] = useState<PitchData | null>(null);
     const [isListening, setIsListening] = useState(false);

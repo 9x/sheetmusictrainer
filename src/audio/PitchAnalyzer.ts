@@ -1,4 +1,5 @@
 import { YIN } from "pitchfinder";
+import { MIC_SENSITIVITY_DB_RANGE, AUDIO_CONSTRAINTS } from "../AppConfig";
 
 export interface MicrophoneDebugInfo {
     audioContextState: AudioContextState | 'inactive';
@@ -34,17 +35,15 @@ export class PitchAnalyzer {
 
     /**
      * Set sensitivity from 0.0 (least sensitive) to 1.0 (most sensitive).
-     * Maps to approximate dB Thresholds:
-     * 0.0 -> -20 dB (0.1 RMS) - Requires loud input
-     * 1.0 -> -60 dB (0.001 RMS) - Very sensitive, picks up background noise
+     * Maps to approximate dB Thresholds based on AppConfig
      */
     setSensitivity(value: number) {
         // Clamp value 0-1
         const v = Math.max(0, Math.min(1, value));
 
-        // Linear map to dB: -20dB to -60dB
-        // High sensitivity (1.0) = Lower Threshold (-60dB)
-        const db = -20 - (v * 40);
+        // Linear map to dB using Config Range
+        const { min, max } = MIC_SENSITIVITY_DB_RANGE;
+        const db = min + (v * (max - min));
 
         // Convert dB to RMS amplitude
         this.sensitivityThreshold = Math.pow(10, db / 20);
@@ -68,13 +67,9 @@ export class PitchAnalyzer {
         this.detector = YIN({ sampleRate: this.audioContext.sampleRate });
 
         try {
-            // Use more explicit audio constraints for better Android compatibility
+            // Use configured audio constraints
             const constraints: MediaStreamConstraints = {
-                audio: {
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false,
-                }
+                audio: AUDIO_CONSTRAINTS
             };
 
             this.mediaStream = await navigator.mediaDevices.getUserMedia(constraints);

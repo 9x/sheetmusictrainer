@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import type { Tuning, FretPosition } from '../music/Tunings';
+import { useState, useMemo } from 'react';
+import { getFretboardPositions, type Tuning, type FretPosition } from '../music/Tunings';
 import { getNoteDetails } from '../music/NoteUtils';
 
 interface FretboardProps {
@@ -26,6 +26,14 @@ export function Fretboard({
     onHover
 }: FretboardProps) {
     const [hoverPos, setHoverPos] = useState<{ stringIndex: number, fret: number } | null>(null);
+
+    const alternatePositions = useMemo(() => {
+        if (!showHints || !hoverPos) return [];
+        const midi = tuning.strings[hoverPos.stringIndex] + hoverPos.fret;
+        return getFretboardPositions(midi, tuning, maxFrets).filter(
+            p => p.stringIndex !== hoverPos.stringIndex || p.fret !== hoverPos.fret
+        );
+    }, [hoverPos, tuning, maxFrets, showHints]);
 
     // Config
     const numStrings = tuning.strings.length;
@@ -199,12 +207,29 @@ export function Fretboard({
 
                 {/* Hover Highlight (Ghost Dot) */}
                 {interactive && hoverPos && (
-                    (() => {
-                        const cx = getNoteX(hoverPos.fret);
-                        const cy = getStringY(hoverPos.stringIndex);
+                    <g style={{ pointerEvents: 'none' }}>
+                        {/* Alternate Positions */}
+                        {alternatePositions.map((p, idx) => {
+                            const cx = getNoteX(p.fret);
+                            const cy = getStringY(p.stringIndex);
+                            return (
+                                <circle
+                                    key={`alt-${idx}`}
+                                    cx={cx}
+                                    cy={cy}
+                                    r={6}
+                                    fill="var(--color-primary)"
+                                    fillOpacity={0.4}
+                                    stroke="none"
+                                />
+                            );
+                        })}
 
-                        return (
-                            <g style={{ pointerEvents: 'none' }}>
+                        {/* Main Hover Selection */}
+                        {(() => {
+                            const cx = getNoteX(hoverPos.fret);
+                            const cy = getStringY(hoverPos.stringIndex);
+                            return (
                                 <circle
                                     cx={cx}
                                     cy={cy}
@@ -213,9 +238,9 @@ export function Fretboard({
                                     stroke="#888"
                                     strokeWidth={2}
                                 />
-                            </g>
-                        );
-                    })()
+                            );
+                        })()}
+                    </g>
                 )}
 
                 {/* Interaction Overlay (Invisible hit targets) */}

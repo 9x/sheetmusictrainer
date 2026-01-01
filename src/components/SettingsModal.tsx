@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Volume2, VolumeX, ChevronDown, ChevronUp, Mic, MicOff, Sun, Moon, Monitor } from 'lucide-react';
 import type { AppSettings } from '../types/SettingsTypes';
+import { MIC_SENSITIVITY_DB_RANGE, MIC_DEFAULT_SENSITIVITY } from '../AppConfig';
 import type { MicrophoneDebugInfo } from '../hooks/usePitchDetector';
 
 interface SettingsModalProps {
@@ -18,9 +19,14 @@ interface SettingsModalProps {
 const LevelMeter: React.FC<{ level: number; isActive: boolean }> = ({ level, isActive }) => {
     // Convert RMS to dB for display, then normalize to 0-100%
     // RMS of 0.001 = -60dB, RMS of 1.0 = 0dB
-    const db = level > 0 ? 20 * Math.log10(level) : -100;
-    // Map -60dB to 0dB => 0% to 100%
-    const percentage = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
+    const db = level > 0 ? 20 * Math.log10(level) : -120;
+
+    // Map full range from -100dB to 0dB => 0% to 100%
+    // This ensures even very quiet inputs (-80 or -90dB) show on the meter
+    const minDb = MIC_SENSITIVITY_DB_RANGE.max; // e.g. -100
+    const maxDb = 0; // 0dB is full scale
+
+    const percentage = Math.max(0, Math.min(100, ((db - minDb) / (maxDb - minDb)) * 100));
 
     return (
         <div style={{
@@ -46,7 +52,7 @@ const LevelMeter: React.FC<{ level: number; isActive: boolean }> = ({ level, isA
                 }} />
             </div>
             <span style={{ fontSize: '11px', opacity: 0.7, minWidth: '45px', textAlign: 'right' }}>
-                {isActive ? `${Math.round(db)} dB` : '— dB'}
+                {isActive && db > -120 ? `${Math.round(db)} dB` : '— dB'}
             </span>
         </div>
     );
@@ -236,18 +242,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', opacity: 0.7 }}>
-                            <span>Low (-20dB)</span>
+                            <span>Low ({MIC_SENSITIVITY_DB_RANGE.min}dB)</span>
                             <span style={{ color: '#4cc9f0' }}>
-                                {Math.round(-20 - ((settings.micSensitivity ?? 0.5) * 40))} dB
+                                {/* Display current estimated threshold in dB */}
+                                {Math.round(
+                                    MIC_SENSITIVITY_DB_RANGE.min +
+                                    ((settings.micSensitivity ?? MIC_DEFAULT_SENSITIVITY) *
+                                        (MIC_SENSITIVITY_DB_RANGE.max - MIC_SENSITIVITY_DB_RANGE.min))
+                                )} dB
                             </span>
-                            <span>High (-60dB)</span>
+                            <span>High ({MIC_SENSITIVITY_DB_RANGE.max}dB)</span>
                         </div>
                         <input
                             type="range"
                             min="0"
                             max="1"
                             step="0.05"
-                            value={settings.micSensitivity ?? 0.5}
+                            value={settings.micSensitivity ?? MIC_DEFAULT_SENSITIVITY}
                             onChange={(e) => onUpdateSettings({ ...settings, micSensitivity: parseFloat(e.target.value) })}
                             style={{ width: '100%' }}
                         />
