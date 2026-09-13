@@ -9,7 +9,7 @@
  * show a warning and an explicit octave-shift control rather than blocking
  * the run; notes outside the playable range simply cannot be matched by mic.
  */
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useSettings } from '../context/useSettings';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { usePhraseTrainer, type PhraseTrainerApi } from '../hooks/usePhraseTrainer';
@@ -279,6 +279,26 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         }, [trainer]);
 
         const staffWidth = Math.min(windowWidth - 40, 860);
+
+        // Debug hook for real-browser QA (enable with localStorage.phraseDebug = '1')
+        useEffect(() => {
+            if (typeof window === 'undefined') return;
+            const w = window as unknown as { __phraseDebug?: unknown };
+            if (localStorage.getItem('phraseDebug') === '1') {
+                w.__phraseDebug = () => ({
+                    phase: trainer.phase,
+                    currentIdx: trainer.currentIdx,
+                    statuses: [...trainer.statuses],
+                    summary: trainer.summary,
+                    pool: [...pool],
+                    firstNote: events[0]?.pitch?.midi ?? null,
+                    scoreOk,
+                    material: phrase.material,
+                });
+            } else {
+                delete w.__phraseDebug;
+            }
+        });
 
         // ---- Render ---------------------------------------------------------------
         return (
