@@ -48,6 +48,8 @@ const CLICK_VOLUME = 0.4;
 const PREVIEW_GROUP = 'phrase-preview';
 const CLICK_GROUP = 'phrase-clicks';
 const REPEAT_DELAY_MS = 1400;
+/** Longest a sustained episode may block a repeated note in at-your-pace mode. */
+const REARM_AFTER_SUSTAINED_MS = 2500;
 
 export interface PhraseTrainerApi {
     readonly phase: PhrasePhase;
@@ -59,6 +61,9 @@ export interface PhraseTrainerApi {
     readonly countInLeft: number;
     readonly error: string | null;
     readonly summary: PhraseSummary;
+    /** True when the current note is a repeated pitch still blocked by the
+     *  user's sustained episode (status-line hint: release and strike again). */
+    readonly repeatedNoteBlocked: boolean;
     start: () => void;
     pauseToggle: () => void;
     retry: () => void;
@@ -82,12 +87,14 @@ export function usePhraseTrainer(
     const [currentIdx, setCurrentIdx] = useState(-1);
     const [countInLeft, setCountInLeft] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [repeatedNoteBlocked, setRepeatedNoteBlocked] = useState(false);
     const [accumulated, setAccumulated] = useState<PhraseSummary>({ total: 0, matched: 0, missed: 0, skipped: 0 });
 
     // ---- Active slice (resume tails replace it) ---------------------------
     const [activeScore, setActiveScore] = useState<Score>(() => sliceScore(fullScore, selection.startBar, selection.barCount));
 
     const matcherRef = useRef<PhraseMatcher | null>(null);
+    const repeatBlockedRef = useRef(false);
     const phaseRef = useRef<PhrasePhase>('ready');
     const paceRef = useRef(config.pace);
     const configRef = useRef(config);
@@ -116,7 +123,12 @@ export function usePhraseTrainer(
 
     // ---- Matcher lifecycle ------------------------------------------------
     const resetMatcher = useCallback((score: Score) => {
-        matcherRef.current = new PhraseMatcher(scoreEvents(score).map(e => (e.pitch ? e.pitch.midi : null)));
+        matcherRef.current = new PhraseMatcher(
+            scoreEvents(score).map(e => (e.pitch ? e.pitch.midi : null)),
+            // At-your-pace: assume a re-attack after a long sustained episode
+            // so repeated notes can never deadlock the run (tempo stays strict).
+            { unblockAfterMs: paceRef.current === 'step' ? REARM_AFTER_SUSTAINED_MS : null },
+        );
         setStatuses(matcherRef.current.allStatuses());
     }, []);
 
@@ -235,6 +247,11 @@ export function usePhraseTrainer(
         } else {
             setCurrentIdx(next);
         }
+        const blockedNow = m.isBlocked();
+        if (blockedNow !== repeatBlockedRef.current) {
+            repeatBlockedRef.current = blockedNow;
+            setRepeatedNoteBlocked(blockedNow);
+        }
     }, [finishRun]);
 
     // ---- Frame handling ----------------------------------------------------
@@ -260,10 +277,18 @@ export function usePhraseTrainer(
             if (paceRef.current === 'step') {
                 idx = m.firstPending;
                 if (idx === -1) return;
+            } else if (phaseRef.current === 'countIn') {
+                // Count-in: episode tracking only, NO scoring (contract D.9).
+                idx = -1;
             } else {
                 idx = Math.min(windowIdxRef.current, Math.max(0, events.length - 1));
             }
             const out = m.feed(frame.midi, frame.at, idx);
+            const blockedNow = m.isBlocked();
+            if (blockedNow !== repeatBlockedRef.current) {
+                repeatBlockedRef.current = blockedNow;
+                setRepeatedNoteBlocked(blockedNow);
+            }
             if (out) {
                 setStatuses(m.allStatuses());
                 if (paceRef.current === 'step') advanceStep(m);
@@ -542,5 +567,6 @@ export function usePhraseTrainer(
         virtualTap,
         pause,
         stop,
+        repeatedNoteBlocked,
     };
 }

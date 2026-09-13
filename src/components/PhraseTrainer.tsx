@@ -14,6 +14,8 @@ import { useSettings } from '../context/useSettings';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { usePhraseTrainer, type PhraseTrainerApi } from '../hooks/usePhraseTrainer';
 import { getPhraseSettings, type PhraseSettings } from '../types/SettingsTypes';
+import { rawFrameCount } from '../hooks/rawFrameBus';
+import { audioEngine } from '../audio/AudioEngine';
 import { computePlayableNotes, isFrettedInstrument, positionsWithinWindow, fretWindowNotes } from '../music/playableRange';
 import { generateMelody } from '../music/melodyGenerator';
 import { generateScaleDrill } from '../music/scaleDrills';
@@ -26,7 +28,7 @@ import { PhraseSheetMusic } from './PhraseSheetMusic';
 import { Fretboard } from './Fretboard';
 import { PianoKeys } from './PianoKeys';
 import { TUNINGS, getFretboardPositions } from '../music/Tunings';
-import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
+import { INSTRUMENT_DEFINITIONS, resolveClefTranspose } from '../music/InstrumentConfigs';
 import { Play, Pause, RotateCcw, SkipForward, Volume2, Square, ChevronDown, Music2, Upload, HelpCircle, Guitar } from 'lucide-react';
 
 export interface PhraseHandle {
@@ -240,12 +242,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const [hoveredMidi, setHoveredMidi] = useState<number | null>(null); // accepted by Fretboard/PianoKeys; phrase renderer has no hover preview
         void hoveredMidi;
 
-        // Current range def → clef/transpose (same resolution as single-note mode).
-        const currentRangeDef = useMemo(() =>
-            currentInstrumentDef.ranges.find(r => r.id === settings.difficulty),
+        // Shared clef/transpose resolution (single-note mode uses the same).
+        const { clef: activeClef, transpose: activeTranspose } = useMemo(() =>
+            resolveClefTranspose(currentInstrumentDef, settings.difficulty),
         [currentInstrumentDef, settings.difficulty]);
-        const activeClef = currentRangeDef?.clef ?? currentInstrumentDef.clefMode;
-        const activeTranspose = currentRangeDef?.transpose ?? currentInstrumentDef.transpose;
 
         // ---- Status line ----------------------------------------------------------
         const statusText = useMemo(() => {
@@ -260,6 +260,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             }
             if (p === 'playing') {
                 if (phrase.pace === 'tempo') return `${trainer.summary.matched} matched · ${trainer.summary.missed + trainer.summary.skipped} missed`;
+                if (trainer.repeatedNoteBlocked) return 'Same note again — release, then strike it once more';
                 return 'Play the highlighted note';
             }
             return phrase.pace === 'tempo' ? 'Press start — one bar of count-in, then play in time.' : 'Press start, then play the highlighted notes.';
@@ -286,6 +287,9 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             const w = window as unknown as { __phraseDebug?: unknown };
             if (localStorage.getItem('phraseDebug') === '1') {
                 w.__phraseDebug = () => ({
+                    frames: rawFrameCount(),
+                    micGate: audioEngine.isAudible(),
+                    micBlanked: audioEngine.isMicBlanked(),
                     phase: trainer.phase,
                     currentIdx: trainer.currentIdx,
                     statuses: [...trainer.statuses],

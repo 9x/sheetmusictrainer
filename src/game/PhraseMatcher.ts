@@ -34,10 +34,22 @@ export interface FeedOutcome {
     readonly matched: number;
 }
 
+export interface PhraseMatcherOptions {
+    /**
+     * At-your-pace fallback: if the user keeps a repeated pitch sounding for
+     * longer than this, assume a re-attack happened and re-arm (a real
+     * guitarist/vocalist rarely holds one pitch that long while waiting).
+     * null = never (tempo mode stays strict).
+     */
+    readonly unblockAfterMs?: number | null;
+}
+
 export class PhraseMatcher {
     private readonly targetMidis: (number | null)[];
     private readonly statuses: NoteStatus[];
     private readonly tracker = new MatchTracker(NOTE_MATCH_THRESHOLD_MS, NOTE_MATCH_GRACE_MS);
+    private readonly unblockAfterMs: number | null;
+    private blockedSince: number | null = null;
 
     private lastFrameAt = 0;
     private nullAccumMs = 0;
@@ -49,8 +61,9 @@ export class PhraseMatcher {
     private blocked = false;
     private currentIndex = -1;
 
-    constructor(targetMidis: (number | null)[]) {
+    constructor(targetMidis: (number | null)[], options: PhraseMatcherOptions = {}) {
         this.targetMidis = [...targetMidis];
+        this.unblockAfterMs = options.unblockAfterMs ?? null;
         this.statuses = targetMidis.map(midi => (midi === null ? 'rest' : 'pending'));
     }
 
@@ -66,6 +79,7 @@ export class PhraseMatcher {
         this.candidatePitch = null;
         this.candidateFrames = 0;
         this.blocked = false;
+        this.blockedSince = null;
         this.currentIndex = -1;
     }
 
@@ -125,6 +139,12 @@ export class PhraseMatcher {
             this.currentIndex >= 0 &&
             target !== null &&
             this.episodePitch === target;
+        this.blockedSince = this.blocked ? (this.lastFrameAt || null) : null;
+    }
+
+    /** Whether the current note is blocked by a sustained same-pitch episode. */
+    isBlocked(): boolean {
+        return this.blocked;
     }
 
     /**
@@ -146,6 +166,19 @@ export class PhraseMatcher {
             // timer and accumulated release evidence.
             this.tracker.reset();
             this.nullAccumMs = 0;
+        }
+
+        // At-your-pace fallback: a very long sustained same-pitch episode is
+        // most likely a re-attack the detector could not separate (contract
+        // D2.4). Re-arm so the user is never permanently stuck.
+        if (
+            this.blocked &&
+            this.unblockAfterMs !== null &&
+            this.blockedSince !== null &&
+            atMs - this.blockedSince > this.unblockAfterMs
+        ) {
+            this.blocked = false;
+            this.blockedSince = null;
         }
 
         if (midi === null) {

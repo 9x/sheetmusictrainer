@@ -137,3 +137,18 @@ export const INSTRUMENT_DEFINITIONS: Record<string, InstrumentDefinition> = {
         ]
     }
 };
+
+/**
+ * Clef + display transpose for rendering, shared by the single-note and
+ * phrase renderers (identical semantics: sounding midi + transpose = written).
+ */
+export function resolveClefTranspose(
+    instrumentDef: InstrumentDefinition,
+    difficulty: string,
+): { clef: ClefMode; transpose: number } {
+    const rangeDef = instrumentDef.ranges.find(r => r.id === difficulty);
+    return {
+        clef: rangeDef?.clef ?? instrumentDef.clefMode,
+        transpose: rangeDef?.transpose ?? instrumentDef.transpose,
+    };
+}

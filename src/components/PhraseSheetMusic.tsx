@@ -17,7 +17,7 @@ import { Renderer, Stave, StaveNote, GhostNote, Accidental, Voice, Formatter, St
 import { scoreEvents, type Score } from '../score/model';
 import { STEP_LETTERS, type StepLetter } from '../score/model';
 import type { NoteStatus } from '../game/PhraseMatcher';
-import { keyFor, isMode } from '../music/scales';
+import { keyFor, isMode, spelledPitch } from '../music/scales';
 
 interface PhraseSheetMusicProps {
     score: Score;
@@ -174,12 +174,24 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                         note = new StaveNote({ keys: ['b/4'], duration: `${code}r`, clef: staveKey });
                     } else {
                         const p = ev.pitch!;
-                        const stateKey = `${p.step}${p.octave}`;
-                        const expected = measureState[stateKey] ?? sigAlter[p.step];
-                        const glyph = p.alter !== expected ? accidentalGlyph(p.alter) : undefined;
-                        measureState[stateKey] = p.alter;
+                        // WRITTEN pitch for the staff: sounding midi + display
+                        // transpose, octave recomputed via the shared helper —
+                        // the same sounding+transpose semantics as single-note
+                        // SheetMusic (guitar reads an octave above sounding).
+                        let written: { step: StepLetter; alter: number; octave: number };
+                        try {
+                            written = spelledPitch(p.midi + transpose, p.step, p.alter);
+                        } catch {
+                            // Non-octave transposes would need respelling; all
+                            // configured transposes are octave multiples.
+                            written = { step: p.step, alter: p.alter, octave: p.octave + Math.round(transpose / 12) };
+                        }
+                        const stateKey = `${written.step}${written.octave}`;
+                        const expected = measureState[stateKey] ?? sigAlter[written.step];
+                        const glyph = written.alter !== expected ? accidentalGlyph(written.alter) : undefined;
+                        measureState[stateKey] = written.alter;
                         note = new StaveNote({
-                            keys: [keyString(p.step, p.alter, p.octave)],
+                            keys: [keyString(written.step, written.alter, written.octave)],
                             duration: code,
                             clef: staveKey,
                         });

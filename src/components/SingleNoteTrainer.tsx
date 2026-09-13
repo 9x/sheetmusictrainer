@@ -11,7 +11,7 @@ import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { useGameLogic } from '../hooks/useGameLogic';
 import { getNoteDetails } from '../music/NoteUtils';
 import { TUNINGS, getFretboardPositions } from '../music/Tunings';
-import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
+import { INSTRUMENT_DEFINITIONS, resolveClefTranspose } from '../music/InstrumentConfigs';
 import { Fretboard } from './Fretboard';
 import { PianoKeys } from './PianoKeys';
 import { audioEngine } from '../audio/AudioEngine';
@@ -59,11 +59,9 @@ export const SingleNoteTrainer = forwardRef<SingleNoteHandle, SingleNoteTrainerP
         // Mic feedback is gated while the app's speaker output is audible.
         const displayedPitch = audioEngine.isAudible() ? null : pitchData;
 
-        const currentRangeDef = useMemo(() =>
-            currentInstrumentDef.ranges.find(r => r.id === settings.difficulty),
+        const { clef: activeClef, transpose: activeTranspose } = useMemo(() =>
+            resolveClefTranspose(currentInstrumentDef, settings.difficulty),
         [currentInstrumentDef, settings.difficulty]);
-        const activeClef = currentRangeDef?.clef ?? currentInstrumentDef.clefMode;
-        const activeTranspose = currentRangeDef?.transpose ?? currentInstrumentDef.transpose;
 
         const hintPositions = useMemo(() => {
             if (!settings.showHint || !currentInstrumentDef.showTuning || !currentTuning) return [];

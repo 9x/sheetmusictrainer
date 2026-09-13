@@ -20,9 +20,16 @@ export interface RawPitchFrame {
 type Listener = (frame: RawPitchFrame) => void;
 
 const listeners = new Set<Listener>();
+let emitCount = 0;
 
 export function emitRawFrame(frame: RawPitchFrame): void {
+    emitCount++;
     for (const l of listeners) l(frame);
+}
+
+/** Total frames emitted since load (diagnostics). */
+export function rawFrameCount(): number {
+    return emitCount;
 }
 
 export function subscribeRawFrames(listener: Listener): () => void {
