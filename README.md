@@ -7,11 +7,13 @@ A web-based application designed to help musicians practice sight-reading and ea
 ## Features
 
 -   **Sight Reading Mode**: Read notes from the interactive staff and play them on your instrument. The app listens and confirms when you hit the correct note.
--   **Ear Training Mode**: Listen to a reference note and try to reproduce it.
--   **Real-time Pitch Detection**: Uses your device's microphone to detect notes instantly.
--   **Instrument Support**: Optimized for Guitar and Piano, with configurable tunings for guitar.
+-   **Ear Training Mode**: Listen to a reference note and try to reproduce it. The reference note duration is configurable, and it can optionally wait for your instrument to go quiet before the next one plays.
+-   **Real-time Pitch Detection**: Uses your device's microphone to detect notes instantly, with an analysis window and detector adapted to your instrument.
+-   **Chromatic Tuner**: Tunable needle with cents display, always-on when enabled.
+-   **Instrument Support**: Optimized for Guitar, Bass, Piano, Voice and Whistle, with configurable tunings for guitar and bass.
 -   **Virtual Instruments**: On-screen interactive guitar fretboard and piano keys for visual reference or touch input.
--   **Customizable**: Adjust difficulty (range, accidentals), key signatures, rhythm/metronome settings, and more.
+-   **Customizable**: Difficulty (range, accidentals), key signatures, rhythm/metronome settings, reference note duration, microphone sensitivity, and more.
+-   **Dark & Light Themes**: Full theme support including native form controls.
 -   **Zen Mode**: Distraction-free practice interface.
 
 ## Getting Started
