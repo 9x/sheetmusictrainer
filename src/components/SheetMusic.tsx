@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Renderer, Stave, StaveNote, Accidental, Voice, Formatter, StaveConnector, GhostNote, Annotation } from 'vexflow';
 import { getNoteInKey } from '../music/NoteUtils';
 
@@ -13,6 +13,7 @@ interface SheetMusicProps {
     keySignature?: string;
     hideTargetNote?: boolean;
     hoverMidi?: number | null;
+    theme?: 'light' | 'dark' | 'auto';
 }
 
 export const SheetMusic: React.FC<SheetMusicProps> = ({
@@ -24,9 +25,22 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
     transpose = 12, // Default to +1 octave (Guitar Notation)
     keySignature = 'C',
     hideTargetNote = false,
-    hoverMidi = null
+    hoverMidi = null,
+    theme = 'auto'
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // SVG presentation attributes cannot resolve CSS var() (VexFlow writes
+    // colors as `fill="..."` attributes), so the actual color is read from
+    // getComputedStyle at draw time. Re-render when the theme changes —
+    // including system scheme flips while theme === 'auto'.
+    const [schemeVersion, setSchemeVersion] = useState(0);
+    useEffect(() => {
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        const onChange = () => setSchemeVersion(v => v + 1);
+        mq.addEventListener('change', onChange);
+        return () => mq.removeEventListener('change', onChange);
+    }, []);
 
     useEffect(() => {
         if (!containerRef.current) return;
@@ -38,9 +52,24 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         renderer.resize(width, height);
         const context = renderer.getContext();
 
-        // IMPORTANT: Set global styles for the context to ensure everything draws with correct color
-        context.setFillStyle("var(--color-text-main)");
-        context.setStrokeStyle("var(--color-text-main)");
+        // IMPORTANT: resolve the theme color to a concrete value — SVG
+        // attributes don't support var(). Without this the notation falls
+        // back to black, which is unreadable in dark mode.
+        const resolvedColor =
+            getComputedStyle(document.documentElement)
+                .getPropertyValue('--color-text-main')
+                .trim() || '#333333';
+
+        // Set global styles for the context to ensure everything draws with correct color
+        context.setFillStyle(resolvedColor);
+        context.setStrokeStyle(resolvedColor);
+
+        // VexFlow hardcodes ledger lines ("the extra lines" above/below the
+        // staff) to a dark gray default that is unreadable in dark mode.
+        // getDefaultLedgerLineStyle() merges this default OVER the stave style,
+        // so it must be overridden explicitly on every stave we create.
+        const ledgerStyle = { strokeStyle: resolvedColor, lineWidth: 2 };
+        const applyLedgerStyle = (stave: Stave) => stave.setDefaultLedgerLineStyle(ledgerStyle);
 
         // --- Helper: Decide which clef a note belongs to in Grand Staff ---
         const getGrandStaffClef = (midi: number): 'treble' | 'bass' => {
@@ -72,11 +101,13 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         if (clef === 'grand') {
             // Measure 1: Treble
             const m1Treble = new Stave(startX, trebleY, measureWidth);
+            applyLedgerStyle(m1Treble);
             m1Treble.addClef('treble').addKeySignature(keySignature);
             m1Treble.setContext(context).draw();
 
             // Measure 1: Bass
             const m1Bass = new Stave(startX, bassY, measureWidth);
+            applyLedgerStyle(m1Bass);
             m1Bass.addClef('bass').addKeySignature(keySignature);
             m1Bass.setContext(context).draw();
 
@@ -99,6 +130,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
             if (numMeasures === 2) {
                 // Measure 2: Treble
                 const m2Treble = new Stave(startX + measureWidth, trebleY, measureWidth);
+                applyLedgerStyle(m2Treble);
                 // No clef/key sig repeated typically for just next measure in same system, 
                 // UNLESS it's a new system. Here it's same system.
                 // But VexFlow might require setting context context.
@@ -106,6 +138,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
 
                 // Measure 2: Bass
                 const m2Bass = new Stave(startX + measureWidth, bassY, measureWidth);
+                applyLedgerStyle(m2Bass);
                 m2Bass.setContext(context).draw();
 
                 stavesMeasure2 = { treble: m2Treble, bass: m2Bass };
@@ -126,6 +159,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
             // Single Stave
             const staveY = isCompact ? 10 : 30;
             const m1Stave = new Stave(startX, staveY, measureWidth);
+            applyLedgerStyle(m1Stave);
             m1Stave.addClef(clef).addKeySignature(keySignature);
             m1Stave.setContext(context).draw();
 
@@ -133,6 +167,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
 
             if (numMeasures === 2) {
                 const m2Stave = new Stave(startX + measureWidth, staveY, measureWidth);
+                applyLedgerStyle(m2Stave);
                 m2Stave.setContext(context).draw();
                 stavesMeasure2 = { [clef]: m2Stave };
             }
@@ -157,7 +192,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
             });
 
             // Set styles
-            staveNote.setStyle({ fillStyle: "var(--color-text-main)", strokeStyle: "var(--color-text-main)" });
+            staveNote.setStyle({ fillStyle: resolvedColor, strokeStyle: resolvedColor });
 
             if (data.accidental) {
                 const accidental = new Accidental(data.accidental);
@@ -166,7 +201,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
 
             if (type === 'played') {
                 // Always use default style (text color), no green/red distinction
-                staveNote.setStyle({ fillStyle: "var(--color-text-main)", strokeStyle: "var(--color-text-main)" });
+                staveNote.setStyle({ fillStyle: resolvedColor, strokeStyle: resolvedColor });
             }
 
             return { note: staveNote, clef: noteClef };
@@ -235,7 +270,7 @@ export const SheetMusic: React.FC<SheetMusicProps> = ({
         });
 
 
-    }, [targetMidi, playedMidi, hoverMidi, clef, width, height, transpose, keySignature, hideTargetNote]);
+    }, [targetMidi, playedMidi, hoverMidi, clef, width, height, transpose, keySignature, hideTargetNote, theme, schemeVersion]);
 
     return <div ref={containerRef} className="sheet-music-container" />;
 };

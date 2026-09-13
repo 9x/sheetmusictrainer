@@ -111,8 +111,8 @@ export function getNoteInKey(midi: number, keySignature: string): VexFlowNoteSpe
     // In start keys (C, Am), no accidentals in key.
 
     // Parse the rawName: "F#" -> step "F", mod "#"
-    let step = rawName.charAt(0);
-    let mod = rawName.length > 1 ? rawName.charAt(1) : "";
+    const step = rawName.charAt(0);
+    const mod = rawName.length > 1 ? rawName.charAt(1) : "";
 
     // VexFlow Key Format: "c/4", "f/4", "fb/4"
     // We need to return the accidental to *display*.

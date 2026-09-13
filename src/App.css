@@ -203,7 +203,18 @@ button {
 .pitch-readout {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   min-width: 100px;
+  /* Fixed height: the note display (3rem note + Hz line ≈ 70px) and the
+     "Listening..." placeholder differ in height — without a reserved height
+     everything below this element jumps up and down whenever a note
+     starts or stops sounding. */
+  height: 70px;
+}
+
+.pitch-readout .placeholder {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
 }
 
 .detected-note {
@@ -285,10 +296,18 @@ button {
 .control-select {
   padding: var(--spacing-sm);
   border-radius: var(--radius-sm);
-  border: 1px solid #ddd;
+  border: 1px solid color-mix(in srgb, var(--color-text-main) 20%, transparent);
   font-family: inherit;
   font-size: 0.9rem;
-  background-color: var(--color-bg);
+  background-color: var(--color-surface);
+  color: var(--color-text-main);
+}
+
+.control-input {
+  color: var(--color-text-main);
+  background-color: var(--color-surface);
+  border: 1px solid color-mix(in srgb, var(--color-text-main) 20%, transparent);
+  border-radius: var(--radius-sm);
 }
 
 .control-button {
@@ -330,7 +349,9 @@ button {
   width: 44px;
   height: 24px;
   border-radius: 99px;
-  background-color: #ddd;
+  /* Themed track: dark in dark mode, gray in light mode
+     (was hardcoded #ddd — glowed in dark mode) */
+  background-color: color-mix(in srgb, var(--color-text-main) 25%, transparent);
   position: relative;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -347,7 +368,8 @@ button {
 .switch-thumb {
   width: 18px;
   height: 18px;
-  background-color: white;
+  /* Themed: contrasts with both the off-track and the active track */
+  background-color: var(--color-surface);
   border-radius: 50%;
   position: absolute;
   left: 3px;

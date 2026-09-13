@@ -4,7 +4,7 @@ import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 import { getTempoMarking } from '../music/TempoMarkings';
 import { TuningMeter } from './TuningMeter';
 
-import { useSettings } from '../context/SettingsContext';
+import { useSettings } from '../context/useSettings';
 import { type Difficulty, type RhythmSettings } from '../types/SettingsTypes';
 
 
@@ -167,7 +167,7 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                                     value={settings.customMinFret ?? 0}
                                     onChange={(e) => onUpdateSettings({ ...settings, customMinFret: parseInt(e.target.value) || 0 })}
                                     className="control-input"
-                                    style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
+                                    style={{ width: '100%', padding: '4px' }}
                                 />
                             </div>
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -179,7 +179,7 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                                     value={settings.customMaxFret ?? 12}
                                     onChange={(e) => onUpdateSettings({ ...settings, customMaxFret: parseInt(e.target.value) || 0 })}
                                     className="control-input"
-                                    style={{ width: '100%', padding: '4px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.2)', color: 'white' }}
+                                    style={{ width: '100%', padding: '4px' }}
                                 />
                             </div>
                         </div>
@@ -204,14 +204,12 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                             <div className="switch-thumb" />
                         </button>
                     </div>
-                    {settings.showTuningMeter && currentPitch && (
-                        <div style={{ paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                            <TuningMeter cents={currentPitch.cents} noteName={currentPitch.note} />
-                        </div>
-                    )}
-                    {settings.showTuningMeter && !currentPitch && (
-                        <div style={{ paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', fontSize: '11px', opacity: 0.5, textAlign: 'center' }}>
-                            Listening...
+                    {settings.showTuningMeter && (
+                        <div style={{ paddingTop: '8px', borderTop: '1px solid color-mix(in srgb, var(--color-text-main) 10%, transparent)' }}>
+                            <TuningMeter
+                                cents={currentPitch ? currentPitch.cents : null}
+                                noteName={currentPitch ? currentPitch.note : null}
+                            />
                         </div>
                     )}
                 </div>
@@ -266,11 +264,7 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                                             style={{
                                                 width: '48px',
                                                 textAlign: 'center',
-                                                padding: '2px',
-                                                borderRadius: '4px',
-                                                border: '1px solid rgba(255,255,255,0.2)',
-                                                background: 'rgba(0,0,0,0.2)',
-                                                color: 'white'
+                                                padding: '2px'
                                             }}
                                         />
                                         <button

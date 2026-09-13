@@ -145,7 +145,7 @@ export function PianoKeys({
         // Sort specifically so black keys are last (on top in SVG z-order)
         return rects.sort((a, b) => (a.isBlack === b.isBlack) ? 0 : a.isBlack ? 1 : -1);
 
-    }, [keys, whiteKeyWidth, viewMode]);
+    }, [keys, whiteKeyWidth]);
 
 
     return (

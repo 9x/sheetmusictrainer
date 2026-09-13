@@ -1,21 +1,31 @@
+/* Theme-aware colors: the tuner renders on a translucent surface in both
+   themes, so all tints derive from --color-text-main instead of hardcoding
+   white (unreadable in light mode) or black (unreadable in dark mode). */
+
 .tuning-meter-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 260px;
-    background: rgba(0, 0, 0, 0.4);
+    background: color-mix(in srgb, var(--color-text-main) 6%, transparent);
     padding: 12px;
     border-radius: 12px;
     backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid color-mix(in srgb, var(--color-text-main) 10%, transparent);
     margin-top: 10px;
+    transition: opacity 0.2s ease;
+}
+
+/* No-signal state: widget stays visible but clearly idle */
+.tuning-meter-container.inactive {
+    opacity: 0.45;
 }
 
 .meter-scale {
     position: relative;
     width: 100%;
     height: 24px;
-    background: rgba(255, 255, 255, 0.1);
+    background: color-mix(in srgb, var(--color-text-main) 10%, transparent);
     border-radius: 12px;
     margin-bottom: 8px;
     overflow: hidden;
@@ -25,7 +35,7 @@
     position: absolute;
     top: 4px;
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.5);
+    color: var(--color-text-muted);
     transform: translateX(-50%);
 }
 
@@ -47,7 +57,8 @@
     top: 0;
     bottom: 0;
     width: 2px;
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--color-text-muted);
+    opacity: 0.35;
     transform: translateX(-50%);
     z-index: 1;
 }
@@ -57,35 +68,55 @@
     top: 0;
     bottom: 0;
     width: 4px;
-    background: white;
+    background: var(--color-text-main);
     transform: translateX(-50%);
-    transition: left 0.1s ease-out;
+    /* No CSS transition: `left` is updated directly on every detection
+       frame (~60 fps). Interrupting/restarting a transition 60x per second
+       is handled poorly by some engines (Safari leaves the needle stuck). */
     z-index: 2;
     border-radius: 2px;
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--color-text-main) 50%, transparent);
 }
 
+/* Status colors — the theme's mid-luminance success/warning/error vars are
+   readable on light AND dark backgrounds */
 .meter-needle.perfect {
-    background-color: #4ade80;
-    box-shadow: 0 0 10px #4ade80;
+    background-color: var(--color-success);
+    box-shadow: 0 0 10px var(--color-success);
 }
 
-/* Tailwind Green-400 */
 .meter-needle.good {
-    background-color: #86efac;
+    background-color: color-mix(in srgb, var(--color-success) 60%, var(--color-text-main));
 }
 
-/* Tailwind Green-300 */
 .meter-needle.okay {
-    background-color: #facc15;
+    background-color: var(--color-warning);
 }
 
-/* Tailwind Yellow-400 */
 .meter-needle.poor {
-    background-color: #f87171;
+    background-color: var(--color-error);
 }
 
-/* Tailwind Red-400 */
+.tuning-readout .cents-value.perfect {
+    color: var(--color-success);
+}
+
+.tuning-readout .cents-value.good {
+    color: color-mix(in srgb, var(--color-success) 60%, var(--color-text-main));
+}
+
+.tuning-readout .cents-value.okay {
+    color: var(--color-warning);
+}
+
+.tuning-readout .cents-value.poor {
+    color: var(--color-error);
+}
+
+.tuning-meter-container.inactive .meter-needle {
+    background: var(--color-text-muted);
+    box-shadow: none;
+}
 
 .tuning-readout {
     display: flex;
@@ -97,22 +128,10 @@
 .tuning-readout .note-name {
     font-size: 1.25rem;
     font-weight: bold;
-    color: white;
+    color: var(--color-text-main);
 }
 
 .tuning-readout .cents-value {
     font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.7);
-}
-
-.tuning-readout .cents-value.perfect {
-    color: #4ade80;
-}
-
-.tuning-readout .cents-value.okay {
-    color: #facc15;
-}
-
-.tuning-readout .cents-value.poor {
-    color: #f87171;
+    color: var(--color-text-muted);
 }
