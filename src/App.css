@@ -981,3 +981,120 @@ button {
 .fretboard-container {
   width: 100%;
 }
+/* ------------------------- Phrase Mode ------------------------- */
+
+.phrase-card {
+    max-width: 920px;
+    width: 100%;
+}
+
+.phrase-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: var(--color-text-muted);
+}
+
+.phrase-title {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--color-text-main);
+}
+
+.phrase-range {
+    font-weight: 400;
+    color: var(--color-text-muted);
+}
+
+.phrase-status {
+    min-height: 1.4em;
+}
+
+.phrase-transport {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.phrase-error {
+    padding: 24px 8px;
+    color: var(--color-text-muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+.phrase-warning {
+    font-size: 12px;
+    color: var(--color-warning);
+    text-align: center;
+    margin: 4px 0;
+}
+
+.phrase-note {
+    font-size: 11px;
+    opacity: 0.7;
+    margin: 6px 0 0 0;
+}
+
+.phrase-setup {
+    margin-top: 16px;
+    border-top: 1px solid color-mix(in srgb, var(--color-text-main) 12%, transparent);
+    padding-top: 12px;
+}
+
+.phrase-setup summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    user-select: none;
+}
+
+.phrase-setup summary:hover {
+    color: var(--color-text-main);
+}
+
+.phrase-setup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px 14px;
+    margin-top: 12px;
+}
+
+.phrase-setup-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+}
+
+.phrase-setup-grid select,
+.phrase-setup-grid input[type='number'] {
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--color-text-main) 20%, transparent);
+    background: var(--color-surface);
+    color: var(--color-text-main);
+    font-size: 13px;
+}
+
+.phrase-check {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 6px !important;
+    font-size: 13px !important;
+    color: var(--color-text-main) !important;
+    align-self: end;
+    padding-bottom: 6px;
+}
+
+.phrase-sheet {
+    display: flex;
+    justify-content: center;
+}

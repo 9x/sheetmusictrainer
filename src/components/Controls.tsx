@@ -58,6 +58,10 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
 
 
 
+    // Phrase Mode brings its own key/tempo machinery; the single-note
+    // key-signature select and metronome tool would be competing controls.
+    const inPhraseMode = settings.gameMode === 'phrase';
+
     return (
         <div className="controls-container">
             {/* Top Section: Settings Grid (2 Columns) */}
@@ -124,6 +128,7 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                 </div>
 
                 {/* Row 2, Col 2 */}
+                {!inPhraseMode && (
                 <div className="control-group">
                     <label className="control-label">
                         <span>Key signature</span>
@@ -150,6 +155,7 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                         </optgroup>
                     </select>
                 </div>
+                )}
 
                 {/* Row 3: Fret Range (Full Width) */}
                 {currentInstrumentDef.ranges.find(r => r.id === settings.difficulty)?.type === 'custom_fret' && (
@@ -188,7 +194,7 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
             </div>
 
             {/* Bottom Section: Tools Grid (2 Columns now) */}
-            <div className="tools-grid">
+            <div className="tools-grid" style={inPhraseMode ? { gridTemplateColumns: '1fr' } : undefined}>
                 {/* Tool 1: Tuner */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -214,7 +220,8 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                     )}
                 </div>
 
-                {/* Tool 2: Metronome */}
+                {/* Tool 2: Metronome (single-note modes only) */}
+                {!inPhraseMode && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <label className="control-label" style={{ marginBottom: 0 }}>
@@ -326,7 +333,7 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                     )}
                 </div>
 
-                {/* Tool 3: Auto-play */}
+                )}
 
             </div>
         </div>
