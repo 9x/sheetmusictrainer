@@ -8,6 +8,7 @@ A web-based application designed to help musicians practice sight-reading and ea
 
 -   **Sight Reading Mode**: Read notes from the interactive staff and play them on your instrument. The app listens and confirms when you hit the correct note.
 -   **Ear Training Mode**: Listen to a reference note and try to reproduce it. The reference note duration is configurable, and it can optionally wait for your instrument to go quiet before the next one plays.
+-   **Phrase Mode**: Practice short phrases — several bars of a single-voice line. Material: generated melodies (any key/mode, seeded), scale drills (one/two octaves or within a fretboard position, up/down/up-down), bundled exercises (verified public-domain melodies + original studies), or your own `.abc` files. Two paces: *at your pace* (beginner, waits for each note) and *with tempo* (metronome count-in, forgiving hit/miss tracking). Note that matching checks pitch, not fingering, and repeated identical notes need a brief release between them.
 -   **Real-time Pitch Detection**: Uses your device's microphone to detect notes instantly, with an analysis window and detector adapted to your instrument.
 -   **Chromatic Tuner**: Tunable needle with cents display, always-on when enabled.
 -   **Instrument Support**: Optimized for Guitar, Bass, Piano, Voice and Whistle, with configurable tunings for guitar and bass.
