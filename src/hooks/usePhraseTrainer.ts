@@ -30,7 +30,6 @@ export interface PhraseTrainerConfig {
     readonly pace: 'step' | 'tempo';
     readonly bpm: number;
     readonly clickSound: boolean;
-    readonly repeat: boolean;
     readonly inputMode: 'mic' | 'virtual';
     readonly previewVolume?: number;
 }
@@ -47,7 +46,6 @@ const LOOKAHEAD_S = 0.1;
 const CLICK_VOLUME = 0.4;
 const PREVIEW_GROUP = 'phrase-preview';
 const CLICK_GROUP = 'phrase-clicks';
-const REPEAT_DELAY_MS = 1400;
 /** Longest a sustained episode may block a repeated note in at-your-pace mode. */
 const REARM_AFTER_SUSTAINED_MS = 2500;
 
@@ -106,6 +104,7 @@ export function usePhraseTrainer(
     const windowIdxRef = useRef(0);
     const scoreStartRef = useRef(0);
     const spbRef = useRef(1);
+    const countInBeatsRef = useRef(0);
     const runTokenRef = useRef(0);
     const repeatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -173,12 +172,7 @@ export function usePhraseTrainer(
         if (m) setStatuses(m.allStatuses());
         setCurrentIdx(-1);
         setPhaseBoth('done');
-        if (configRef.current.repeat) {
-            const token = runTokenRef.current;
-            repeatTimerRef.current = setTimeout(() => {
-                if (runTokenRef.current === token) startRef.current?.();
-            }, REPEAT_DELAY_MS);
-        }
+
     }, [setPhaseBoth]);
 
     const processBoundaries = useCallback((now: number) => {
@@ -191,7 +185,14 @@ export function usePhraseTrainer(
             schedule[clickIdxRef.current].at < now + LOOKAHEAD_S
         ) {
             const e = schedule[clickIdxRef.current];
-            if ((e.kind === 'count-in-beat' || e.kind === 'beat') && configRef.current.clickSound) {
+            // With a count-in, the downbeat of bar 1 is already the LAST
+            // count-in click — an extra click at scoreStart would make the
+            // player count "1 2 3 4 | 1" and start one beat early.
+            const isRedundantDownbeat =
+                e.kind === 'beat' &&
+                countInBeatsRef.current > 0 &&
+                e.at <= scoreStartRef.current + 0.02;
+            if ((e.kind === 'count-in-beat' || e.kind === 'beat') && !isRedundantDownbeat && configRef.current.clickSound) {
                 audioEngine.playClickAt(e.at, CLICK_VOLUME, e.kind === 'count-in-beat' ? e.beat === 0 : e.beat !== undefined);
             }
             clickIdxRef.current++;
@@ -329,6 +330,7 @@ export function usePhraseTrainer(
                 }
                 const now = audioEngine.now();
                 const countIn = score.meter.numerator;
+                countInBeatsRef.current = countIn;
                 scoreStartRef.current = now + 0.15 + countIn * spbRef.current;
                 scheduleRef.current = buildSchedule(score, bpm, now + 0.15, countIn);
                 boundaryIdxRef.current = 0;
@@ -408,6 +410,7 @@ export function usePhraseTrainer(
             if (runTokenRef.current !== token) return;
             const now = audioEngine.now();
             const countIn = tail.meter.numerator;
+            countInBeatsRef.current = countIn;
             scoreStartRef.current = now + 0.15 + countIn * spbRef.current;
             scheduleRef.current = buildSchedule(tail, bpm, now + 0.15, countIn);
             boundaryIdxRef.current = 0;

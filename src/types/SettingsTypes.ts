@@ -34,7 +34,9 @@ export interface PhraseSettings {
     pace: PhrasePace;
     bpm: number;
     clickSound: boolean;
-    repeat: boolean;
+    /** When a run finishes, automatically continue (next exercise section /
+     *  new melody) after a short pause — keeps practice flowing. */
+    autoContinue: boolean;
     inputMode: 'mic' | 'virtual';
 }
 
@@ -56,7 +58,7 @@ export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
     pace: 'step',
     bpm: 60,
     clickSound: false,
-    repeat: false,
+    autoContinue: true,
     inputMode: 'mic',
 };
 

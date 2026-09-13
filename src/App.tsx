@@ -5,6 +5,8 @@ import { Controls } from './components/Controls';
 import { SettingsModal } from './components/SettingsModal';
 import { OpenSourceModal } from './components/OpenSourceModal';
 import { SingleNoteTrainer, type SingleNoteHandle } from './components/SingleNoteTrainer';
+import { LiveNoteStaff } from './components/LiveNoteStaff';
+import { resolveClefTranspose } from './music/InstrumentConfigs';
 import { PhraseTrainer, type PhraseHandle } from './components/PhraseTrainer';
 import { usePitchDetector } from './hooks/usePitchDetector';
 import { useSettings } from './context/useSettings';
@@ -326,6 +328,16 @@ function App() {
                 {listening ? <Mic size={28} /> : <MicOff size={28} />}
               </button>
 
+              <LiveNoteStaff
+                midi={displayedPitch ? displayedPitch.midi : null}
+                clef={(() => {
+                  const { clef } = resolveClefTranspose(currentInstrumentDef, settings.difficulty);
+                  return clef === 'grand' ? 'treble' : clef;
+                })()}
+                transpose={resolveClefTranspose(currentInstrumentDef, settings.difficulty).transpose}
+                keySignature={settings.keySignature}
+                theme={settings.theme}
+              />
               <div className={`pitch-readout ${displayedPitch ? 'active' : ''}`}>
                 {displayedPitch ? (
                   <>

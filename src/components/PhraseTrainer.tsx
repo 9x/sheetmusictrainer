@@ -12,7 +12,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { useSettings } from '../context/useSettings';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
-import { usePhraseTrainer, type PhraseTrainerApi } from '../hooks/usePhraseTrainer';
+import { usePhraseTrainer, type PhraseTrainerApi, type PhrasePhase } from '../hooks/usePhraseTrainer';
 import { getPhraseSettings, type PhraseSettings } from '../types/SettingsTypes';
 import { rawFrameCount } from '../hooks/rawFrameBus';
 import { audioEngine } from '../audio/AudioEngine';
@@ -29,6 +29,8 @@ import { Fretboard } from './Fretboard';
 import { PianoKeys } from './PianoKeys';
 import { TUNINGS, getFretboardPositions } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS, resolveClefTranspose } from '../music/InstrumentConfigs';
+const AUTO_CONTINUE_DELAY_MS = 1500;
+
 import { Play, Pause, RotateCcw, SkipForward, Volume2, Square, ChevronDown, Music2, Upload, HelpCircle, Guitar } from 'lucide-react';
 
 export interface PhraseHandle {
@@ -95,6 +97,21 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const [octaveShift, setOctaveShift] = useState(0);
         const [melodySeed, setMelodySeed] = useState(() => Math.floor(Math.random() * 100000));
         const fileInputRef = useRef<HTMLInputElement>(null);
+        const pendingAutoStart = useRef(false);
+        // BPM text field: editing stays free-form while typing; commits on
+        // blur/Enter (single-note widget behavior).
+        const [bpmText, setBpmText] = useState(String(phrase.bpm));
+        const [lastBpm, setLastBpm] = useState(phrase.bpm);
+        if (phrase.bpm !== lastBpm) {
+            // React's "adjust state when a prop changes" pattern (no effect).
+            setLastBpm(phrase.bpm);
+            setBpmText(String(phrase.bpm));
+        }
+        const commitBpm = useCallback(() => {
+            const v = parseInt(bpmText, 10);
+            if (Number.isNaN(v)) { setBpmText(String(phrase.bpm)); return; }
+            setPhrase({ bpm: Math.max(30, Math.min(180, v)) });
+        }, [bpmText, phrase.bpm, setPhrase]);
 
         const handleImportFile = useCallback((file: File) => {
             setImportError(null);
@@ -160,6 +177,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         }, [baseScore, octaveShift, phrase.material]);
 
         const fixedMaterial = phrase.material === 'library' || phrase.material === 'import';
+        const scoreOk = !!fullScore && fullScore.ok;
         const selection = useMemo(() => ({
             startBar: fixedMaterial ? phrase.startBar : 1,
             barCount: fixedMaterial ? phrase.barCount : (fullScore && fullScore.ok ? fullScore.value.measures.length : 8),
@@ -172,7 +190,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 pace: phrase.pace,
                 bpm: phrase.bpm,
                 clickSound: phrase.clickSound,
-                repeat: phrase.repeat,
                 inputMode: phrase.inputMode,
                 previewVolume: settings.autoPlayVolume ?? 0.4,
             },
@@ -180,8 +197,47 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             micError,
         );
 
+
+        // Auto-continue: when a run finishes, keep practice flowing —
+        // fixed material advances to the next section (wrapping), generated
+        // melodies roll a new seed, scale drills restart. Tempo mode only.
+        const prevPhaseRef = useRef<PhrasePhase>('ready');
+        useEffect(() => {
+            const was = prevPhaseRef.current;
+            prevPhaseRef.current = trainer.phase;
+            if (trainer.phase === 'done' && was !== 'done' && phrase.autoContinue && scoreOk && phrase.pace === 'tempo') {
+                const material = phrase.material;
+                const full = fullScore && fullScore.ok ? fullScore.value : null;
+                if (material === 'scale') {
+                    const timer = setTimeout(() => trainer.start(), AUTO_CONTINUE_DELAY_MS);
+                    return () => clearTimeout(timer);
+                }
+                const timer = setTimeout(() => {
+                    if (material === 'library' || material === 'import') {
+                        if (!full) return;
+                        const total = full.measures.length;
+                        const nextStart = phrase.startBar + phrase.barCount;
+                        pendingAutoStart.current = true;
+                        setPhrase(nextStart > total ? { startBar: 1 } : { startBar: nextStart });
+                    } else {
+                        pendingAutoStart.current = true;
+                        setMelodySeed(s => (s + 1) % 999983);
+                    }
+                }, AUTO_CONTINUE_DELAY_MS);
+                return () => clearTimeout(timer);
+            }
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [trainer.phase, phrase.pace, phrase.autoContinue, phrase.material, phrase.startBar, phrase.barCount, scoreOk, fullScore, setPhrase]);
+
+        // Auto-start after a structural change triggered by auto-continue.
+        useEffect(() => {
+            if (pendingAutoStart.current && trainer.phase === 'ready' && scoreOk) {
+                pendingAutoStart.current = false;
+                trainer.start();
+            }
+        });
+
         const materialError = fullScore && !fullScore.ok ? fullScore.error : null;
-        const scoreOk = !!fullScore && fullScore.ok;
 
         // Range-conflict warning for fixed material.
         const rangeWarning = useMemo(() => {
@@ -264,7 +320,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 return 'Play the highlighted note';
             }
             return phrase.pace === 'tempo' ? 'Press start — one bar of count-in, then play in time.' : 'Press start, then play the highlighted notes.';
-        }, [scoreOk, materialError, trainer.phase, trainer.countInLeft, trainer.summary, phrase.pace]);
+        }, [scoreOk, materialError, trainer.phase, trainer.countInLeft, trainer.summary, phrase.pace, trainer.repeatedNoteBlocked]);
 
         const startLabel = useMemo(() => {
             const p = trainer.phase;
@@ -576,12 +632,27 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             </label>
                             {phrase.pace === 'tempo' && (
                                 <label>BPM
+                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                        <button className="control-button small" onClick={() => setPhrase({ bpm: Math.max(30, phrase.bpm - 1) })}>−</button>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={bpmText}
+                                            onChange={e => { if (/^\d{0,3}$/.test(e.target.value)) setBpmText(e.target.value); }}
+                                            onBlur={commitBpm}
+                                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                            style={{ width: '46px', textAlign: 'center' }}
+                                        />
+                                        <button className="control-button small" onClick={() => setPhrase({ bpm: Math.min(180, phrase.bpm + 1) })}>+</button>
+                                    </div>
                                     <input
-                                        type="number"
+                                        type="range"
                                         min={30}
                                         max={180}
+                                        step={1}
                                         value={phrase.bpm}
-                                        onChange={e => setPhrase({ bpm: Math.max(30, Math.min(180, parseInt(e.target.value) || 60)) })}
+                                        onChange={e => setPhrase({ bpm: Number(e.target.value) })}
+                                        aria-label="Phrase tempo"
                                     />
                                 </label>
                             )}
@@ -603,16 +674,14 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                     Click sound
                                 </label>
                             )}
-                            {phrase.pace === 'tempo' && (
-                                <label className="phrase-check">
-                                    <input
-                                        type="checkbox"
-                                        checked={phrase.repeat}
-                                        onChange={e => setPhrase({ repeat: e.target.checked })}
-                                    />
-                                    Repeat automatically
-                                </label>
-                            )}
+                            <label className="phrase-check">
+                                <input
+                                    type="checkbox"
+                                    checked={phrase.autoContinue}
+                                    onChange={e => setPhrase({ autoContinue: e.target.checked })}
+                                />
+                                Auto-continue
+                            </label>
                         </div>
                         {phrase.pace === 'tempo' && phrase.clickSound && (
                             <p className="phrase-note">Clicks are short noise bursts, not pitched tones — but speaker bleed can still disturb the microphone. Headphones recommended.</p>

@@ -1098,3 +1098,8 @@ button {
     display: flex;
     justify-content: center;
 }
+
+.live-note-staff {
+    flex: none;
+    opacity: 0.9;
+}
