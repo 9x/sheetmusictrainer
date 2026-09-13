@@ -10,7 +10,62 @@ export interface RhythmSettings {
     volume: number;
 }
 
+export type PhraseMaterial = 'melody' | 'scale' | 'library' | 'import';
+export type PhrasePace = 'step' | 'tempo';
+
+export interface PhraseSettings {
+    material: PhraseMaterial;
+    libraryId: string;
+    /** Imported score id (the parsed score lives in component state, session-only). */
+    keyTonic: string;
+    keyMode: string; // ModeId
+    bars: number; // 1–8 (melodies)
+    meterNumerator: 3 | 4;
+    rhythmLevel: 1 | 2;
+    scaleCoverage: 'one-octave' | 'two-octave' | 'position';
+    scaleDirection: 'up' | 'down' | 'updown';
+    /** Phrase-local fret window (guitar/bass) — overrides the note set. */
+    fretWindowEnabled: boolean;
+    fretMin: number;
+    fretMax: number;
+    /** Practice range for library/import material (1-based, inclusive). */
+    startBar: number;
+    barCount: number;
+    pace: PhrasePace;
+    bpm: number;
+    clickSound: boolean;
+    repeat: boolean;
+    inputMode: 'mic' | 'virtual';
+}
+
+export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
+    material: 'melody',
+    libraryId: '',
+    keyTonic: 'C',
+    keyMode: 'major',
+    bars: 2,
+    meterNumerator: 4,
+    rhythmLevel: 1,
+    scaleCoverage: 'one-octave',
+    scaleDirection: 'updown',
+    fretWindowEnabled: false,
+    fretMin: 0,
+    fretMax: 4,
+    startBar: 1,
+    barCount: 2,
+    pace: 'step',
+    bpm: 60,
+    clickSound: false,
+    repeat: false,
+    inputMode: 'mic',
+};
+
+export function getPhraseSettings(s: AppSettings): PhraseSettings {
+    return { ...DEFAULT_PHRASE_SETTINGS, ...(s.phrase ?? {}) };
+}
+
 export interface AppSettings {
+    phrase?: PhraseSettings;
     difficulty: Difficulty;
     showHint: boolean;
     showFretboard: boolean;
@@ -20,7 +75,7 @@ export interface AppSettings {
     instrument: string;
     rhythm: RhythmSettings;
     zenMode: boolean;
-    gameMode: 'sight_reading' | 'ear_training';
+    gameMode: 'sight_reading' | 'ear_training' | 'phrase';
     customMinFret?: number;
     customMaxFret?: number;
     autoPlaySightReading?: boolean;
@@ -56,6 +111,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     },
     zenMode: false,
     gameMode: 'sight_reading',
+    phrase: DEFAULT_PHRASE_SETTINGS,
     customMinFret: 0,
     customMaxFret: 12,
     autoPlaySightReading: false,
