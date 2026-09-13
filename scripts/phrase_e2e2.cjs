@@ -111,6 +111,14 @@ const midiToFreq = (m) => 440 * Math.pow(2, (m - 69) / 12);
     const held = ok4; // matched without any release
     console.log('A4 timeout re-arm matched held E (expect true, ~2.5s):', held, 'idx', d.currentIdx);
 
+    // Turn auto-continue OFF so the tempo run ends (default is ON).
+    await page.evaluate(() => {
+        const labels = [...document.querySelectorAll('.phrase-setup-grid .phrase-check')];
+        const ac = labels.find(l => l.textContent.includes('Auto-continue'));
+        const box = ac?.querySelector('input');
+        if (box && box.checked) { box.click(); }
+    });
+    await new Promise(r => setTimeout(r, 300));
     // B: tempo mode — pause first (pace change while running pauses by design).
     await page.evaluate(() => {
         const row = document.querySelector('.phrase-transport');

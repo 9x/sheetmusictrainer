@@ -344,6 +344,9 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             if (localStorage.getItem('phraseDebug') === '1') {
                 w.__phraseDebug = () => ({
                     frames: rawFrameCount(),
+                    audioNow: audioEngine.now(),
+                    scoreStart: trainer.scoreStart,
+                    spb: trainer.spb,
                     micGate: audioEngine.isAudible(),
                     micBlanked: audioEngine.isMicBlanked(),
                     phase: trainer.phase,
@@ -354,6 +357,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     firstNote: events[0]?.pitch?.midi ?? null,
                     scoreOk,
                     material: phrase.material,
+                    midis: events.map(e => (e.pitch ? e.pitch.midi : null)),
                 });
             } else {
                 delete w.__phraseDebug;

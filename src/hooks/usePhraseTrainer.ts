@@ -57,6 +57,10 @@ export interface PhraseTrainerApi {
     /** Event index currently up (cursor for renderer/hints). */
     readonly currentIdx: number;
     readonly countInLeft: number;
+    /** Audio-clock start of the current run's score (diagnostics/QA). */
+    readonly scoreStart: number;
+    /** Seconds per quarter beat (diagnostics/QA). */
+    readonly spb: number;
     readonly error: string | null;
     readonly summary: PhraseSummary;
     /** True when the current note is a repeated pitch still blocked by the
@@ -560,6 +564,8 @@ export function usePhraseTrainer(
         statuses,
         currentIdx,
         countInLeft,
+        scoreStart: scoreStartRef.current,
+        spb: spbRef.current,
         error,
         summary,
         start,

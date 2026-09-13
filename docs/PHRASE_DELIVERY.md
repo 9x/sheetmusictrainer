@@ -15,9 +15,9 @@ Implementation of [PHRASE_MODE_PLAN.md](../PHRASE_MODE_PLAN.md) and
 | R5 Musical generation | ✅ | `generateMelody`: seeded, scale∩playable pool, soft step/contour/tonic-end preferences, exact bar totals, 1–8 bars, 4/4 + 3/4, Simple/Mixed rhythm tiers |
 | R6 Any key + scale drills | ✅ | 12 tonics × 9 modes (incl. pentatonics), one/two-octave (complete path only — refuses with actionable error) + within-position, up/down/up-down |
 | R7 Position-aware guidance | ✅ | Phrase-local fret window (guitar/bass) overrides note set; hints restricted to allowed positions; "pitch not fingering" note shown |
-| R8 Fixed material | ⚠️ partial | 6 bundled items: 2 verified public-domain melodies (Ode to Joy theme, Ah! vous dirai-je) + 4 original exercises. **No Giuliani**: no verifiable source available offline; per contract the quota was not faked — limitation recorded |
+| R8 Fixed material | ✅ (adjusted) | 19 bundled items: 5 verified public-domain melodies (Ode to Joy, Ah! vous dirai-je, Jingle Bells opening, Mary Had a Little Lamb, London Bridge phrase) + 14 clearly-labeled original exercises. **No Giuliani**: no verifiable source available offline; per contract the quota was not faked — limitation recorded |
 | R9 Add material without rebuilding | ✅ | Local `.abc` import in the setup panel with validation errors shown; failures keep the previous score |
-| R10 Focused practice | ✅ | Start bar + bars-at-a-time selection (fixed material), Retry identical (same seed), Next advances/wraps, tempo Repeat option |
+| R10 Focused practice | ✅ | Start bar + bars-at-a-time selection (fixed material), Retry identical (same seed), Next advances/wraps, **auto-continue** (default on, tempo mode) rolls to the next section/new melody without interruption |
 | R11 Listen before playing | ✅ | Cancellable preview at practice BPM via `AudioEngine` groups; returns to ready, cancels future sounds and gate reservations |
 | R12 Zen/mobile/accessibility | ✅ mostly | Zen: staff + Start/Pause + mic; Retry/Next appear at completion. Keyboard shortcuts per mode (help popup reflects active mode); focused buttons never double-fire global shortcuts; current note = color + caret glyph; aria-label on the staff |
 | R13 Safe lifecycle | ✅ | Pause on tab-hide, mic error, mic-off, dialogs; audio-group cancellation; run tokens; StrictMode-safe; unmount cleanup |
@@ -28,6 +28,9 @@ Implementation of [PHRASE_MODE_PLAN.md](../PHRASE_MODE_PLAN.md) and
 - `npm run lint`, `npm run build`, `npm test -- --run`: all green (149 tests,
   9 files) at commit `909c301`.
 - Real-browser (headless Chrome via `scripts/phrase_e2e*.cjs`, synthetic mic):
+  - **Tempo timing: every note of the Ode opening played exactly in its audio
+    window matches (8/8)** — proves count-in/window/display alignment after
+    the redundant-downbeat click fix.
   - Detection pipeline sanity (single-note readout shows synthetic 440 Hz).
   - Phrase mode: first note matches with a sustained synthetic pitch; cursor
     advances; no console errors.
@@ -48,6 +51,7 @@ Implementation of [PHRASE_MODE_PLAN.md](../PHRASE_MODE_PLAN.md) and
   mode — it is pitch-following with a metronome, as specified.
 - **Giuliani content**: not included (no verifiable source at hand). Library
   holds 2 verified PD melodies + 4 clearly-labeled original exercises.
+- **Live played-note staff** next to the mic readout shows the detected pitch as written notation (same display pipeline as the single-note "played note" measure).
 - **ABC subset only**: documented subset (no tuplets, polyphony, alternate
   endings, mid-tune meter/key changes); rejects with line/column errors.
 - **Count-in/preview drift**: click scheduling uses the shared AudioContext
