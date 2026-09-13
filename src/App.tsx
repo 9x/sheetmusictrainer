@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { Logo } from './components/Logo';
 import { LandscapeSuggestion } from './components/LandscapeSuggestion';
 
@@ -9,9 +9,10 @@ import { SettingsModal } from './components/SettingsModal';
 import { OpenSourceModal } from './components/OpenSourceModal';
 import { usePitchDetector } from './hooks/usePitchDetector';
 import { useAudioPlayer } from './hooks/useAudioPlayer';
-import { useSettings } from './context/SettingsContext';
+import { useSettings } from './context/useSettings';
 import { useGameLogic } from './hooks/useGameLogic';
-import { getNoteDetails } from './music/NoteUtils';
+import { audioEngine } from './audio/AudioEngine';
+import { getNoteDetails, midiToFrequency } from './music/NoteUtils';
 import {
   TUNINGS,
   getFretboardPositions,
@@ -35,9 +36,30 @@ function App() {
   // Alias to keep existing code working with minimal changes
   const setSettings = updateSettings;
 
-  const { pitchData, error, audioLevel, debugInfo, isListening } = usePitchDetector(listening, settings.micSensitivity);
+  const currentTuning = TUNINGS[settings.tuningId];
+  const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
 
-  // Game Logic Hook
+  // Lowest note the instrument can produce: the pitch analysis window adapts
+  // to it (shorter window = lower latency for instruments without deep bass)
+  const instrumentMinMidi = useMemo(() => {
+    let min = Infinity;
+    for (const r of currentInstrumentDef.ranges) {
+      if (r.min !== undefined) min = Math.min(min, r.min);
+    }
+    if (currentTuning) {
+      for (const stringMidi of currentTuning.strings) min = Math.min(min, stringMidi);
+    }
+    return min === Infinity ? 40 : min; // Fallback: guitar low E
+  }, [currentInstrumentDef, currentTuning]);
+
+  // One semitone of margin below the lowest note (detuned strings, flat playing)
+  const { pitchData, error, audioLevel, debugInfo, isListening } = usePitchDetector(
+    listening,
+    settings.micSensitivity,
+    midiToFrequency(instrumentMinMidi - 1)
+  );
+
+  // Game Logic Hook (matching uses the raw detection; display is gated below)
   const {
     targetMidi,
     feedbackMessage,
@@ -46,6 +68,13 @@ function App() {
     generateNewNote,
     handleVirtualInstrumentPlay
   } = useGameLogic(pitchData);
+
+  // Live feedback shows only what the USER plays. While the app itself makes
+  // sound (ear-training reference note, Play Note, virtual instruments), the
+  // mic picks up the speaker — displaying that would leak the target note in
+  // ear training. The moment playback ends (plus decay tail), the note the
+  // user is playing appears again. Re-evaluated on every detection frame.
+  const displayedPitch = audioEngine.isAudible() ? null : pitchData;
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isOpenSourceModalOpen, setIsOpenSourceModalOpen] = useState(false);
@@ -63,8 +92,12 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Theme support
-  useEffect(() => {
+  // Theme support — MUST be a layout effect: children (e.g. SheetMusic) read the
+  // resolved theme colors from getComputedStyle inside their own passive
+  // effects. Layout effects run before any passive effects, so the
+  // data-theme attribute is applied by the time they read it — otherwise the
+  // rendered notation lags one theme switch behind.
+  useLayoutEffect(() => {
     const root = document.documentElement;
     const theme = settings.theme || 'auto';
     if (theme === 'auto') {
@@ -93,9 +126,6 @@ function App() {
       console.error("Error toggling fullscreen:", err);
     }
   }, []);
-
-  const currentTuning = TUNINGS[settings.tuningId];
-  const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
 
   // Resolve overrides
   const currentRangeDef = useMemo(() => {
@@ -128,7 +158,7 @@ function App() {
           break;
         case 'r': // Replay
         case 'p': // Play
-          playNote(targetMidi, 1.0);
+          playNote(targetMidi, settings.referenceNoteDuration ?? 1.5, settings.autoPlayVolume ?? 0.5);
           break;
         case 'm': // Toggle Game Mode
           setSettings(s => ({
@@ -157,7 +187,9 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [settings.zenMode, showHelp, generateNewNote, playNote, targetMidi]);
+    // `settings` (not individual fields): the handler reads several settings
+    // (gameMode, referenceNoteDuration, ...) and re-attaching a listener is cheap.
+  }, [settings, showHelp, generateNewNote, playNote, targetMidi, setSettings]);
 
   // Hint text construction
   const hintPositions = useMemo(() => {
@@ -181,10 +213,12 @@ function App() {
     return getFretboardPositions(targetMidi, currentTuning);
   }, [settings.showHint, settings.showFretboard, targetMidi, currentTuning, currentInstrumentDef]);
 
-  // Auto-enable mic when tuner is turned on
+  // Auto-enable mic when tuner is turned on (rAF defers the state update
+  // out of the effect phase to avoid cascading renders)
   useEffect(() => {
     if (settings.showTuningMeter && !listening) {
-      setListening(true);
+      const id = requestAnimationFrame(() => setListening(true));
+      return () => cancelAnimationFrame(id);
     }
   }, [settings.showTuningMeter, listening]);
 
@@ -250,7 +284,9 @@ function App() {
           <div className="sheet-music-container">
             <SheetMusic
               targetMidi={targetMidi}
-              playedMidi={virtualNote ?? pitchData?.midi}
+              // Virtual fretboard taps are explicit user input and always
+              // show; the mic preview is gated during speaker playback.
+              playedMidi={virtualNote ?? displayedPitch?.midi}
               keySignature={settings.keySignature}
               clef={activeClef}
               transpose={activeTranspose}
@@ -262,6 +298,7 @@ function App() {
               }
               hideTargetNote={settings.gameMode === 'ear_training' && !revealed}
               hoverMidi={settings.showHint ? hoveredMidi : null}
+              theme={settings.theme}
             />
           </div>
 
@@ -354,7 +391,7 @@ function App() {
 
               <button
                 className="hint-button"
-                onClick={() => playNote(targetMidi, 1.0)}
+                onClick={() => playNote(targetMidi, settings.referenceNoteDuration ?? 1.5, settings.autoPlayVolume ?? 0.5)}
                 title="Keyboard Shortcut: P or R"
               >
                 <Volume2 size={18} />
@@ -382,13 +419,13 @@ function App() {
                 {listening ? <Mic size={28} /> : <MicOff size={28} />}
               </button>
 
-              <div className={`pitch-readout ${pitchData ? 'active' : ''}`}>
-                {pitchData ? (
+              <div className={`pitch-readout ${displayedPitch ? 'active' : ''}`}>
+                {displayedPitch ? (
                   <>
-                    <span className={`detected-note ${pitchData.midi === targetMidi ? 'match' : ''}`}>
-                      {pitchData.note}
+                    <span className={`detected-note ${displayedPitch.midi === targetMidi ? 'match' : ''}`}>
+                      {displayedPitch.note}
                     </span>
-                    <span className="detected-hz">{Math.round(pitchData.frequency)} Hz</span>
+                    <span className="detected-hz">{Math.round(displayedPitch.frequency)} Hz</span>
                   </>
                 ) : (
                   <span className="placeholder">{listening ? "Listening..." : "Mic Off"}</span>
@@ -402,7 +439,7 @@ function App() {
       {!settings.zenMode && (
         <footer className="settings-footer">
           <Controls
-            currentPitch={pitchData ? { note: pitchData.note, cents: pitchData.cents } : null}
+            currentPitch={displayedPitch ? { note: displayedPitch.note, cents: displayedPitch.cents } : null}
           />
           <div className="app-subtitle">
             <button className="link-button" onClick={() => setIsOpenSourceModalOpen(true)}>Open Source Libraries</button>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Volume2, VolumeX, ChevronDown, ChevronUp, Mic, MicOff, Sun, Moon, Monitor } from 'lucide-react';
+import { X, Volume2, VolumeX, ChevronDown, ChevronUp, Mic, MicOff, Sun, Moon, Monitor, Clock } from 'lucide-react';
 import type { AppSettings } from '../types/SettingsTypes';
 import { MIC_SENSITIVITY_DB_RANGE, MIC_DEFAULT_SENSITIVITY } from '../AppConfig';
 import type { MicrophoneDebugInfo } from '../hooks/usePitchDetector';
@@ -19,6 +19,9 @@ interface SettingsModalProps {
 const LevelMeter: React.FC<{ level: number; isActive: boolean }> = ({ level, isActive }) => {
     // Convert RMS to dB for display, then normalize to 0-100%
     // RMS of 0.001 = -60dB, RMS of 1.0 = 0dB
+    // `level` is already EMA-smoothed in the detection loop — no CSS transition
+    // here (a transition on a value that changes every frame gets interrupted
+    // 60x/sec, which Safari/WebKit handles by leaving the bar stuck).
     const db = level > 0 ? 20 * Math.log10(level) : -120;
 
     // Map full range from -100dB to 0dB => 0% to 100%
@@ -47,8 +50,7 @@ const LevelMeter: React.FC<{ level: number; isActive: boolean }> = ({ level, isA
                     height: '100%',
                     width: `${percentage}%`,
                     background: percentage > 80 ? '#ef4444' : percentage > 50 ? '#f59e0b' : '#22c55e',
-                    borderRadius: '6px',
-                    transition: 'width 0.05s ease-out'
+                    borderRadius: '6px'
                 }} />
             </div>
             <span style={{ fontSize: '11px', opacity: 0.7, minWidth: '45px', textAlign: 'right' }}>
@@ -91,7 +93,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         ].map(mode => (
                             <button
                                 key={mode.id}
-                                onClick={() => onUpdateSettings({ ...settings, theme: mode.id as any })}
+                                onClick={() => onUpdateSettings({ ...settings, theme: mode.id as AppSettings['theme'] })}
                                 style={{
                                     flex: 1,
                                     display: 'flex',
@@ -212,6 +214,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         ? "Automatically plays the note audio (Required for Ear Training)."
                         : "Automatically plays the note audio when a new note appears."}
                 </p>
+
+                {/* Reference note duration */}
+                <div className="control-group" style={{ marginTop: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <label className="control-label" style={{ marginBottom: 0, fontSize: '16px' }}>
+                            <span>Reference Note Duration</span>
+                        </label>
+                        <span style={{ fontSize: '14px', fontWeight: 600, minWidth: '40px', textAlign: 'right' }}>
+                            {settings.referenceNoteDuration ?? 1.5}s
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <Clock size={20} style={{ opacity: 0.7 }} />
+                        <input
+                            type="range"
+                            min="0.5"
+                            max="4"
+                            step="0.25"
+                            value={settings.referenceNoteDuration ?? 1.5}
+                            onChange={(e) => onUpdateSettings({ ...settings, referenceNoteDuration: parseFloat(e.target.value) })}
+                            style={{ flex: 1 }}
+                            aria-label="Reference note duration"
+                        />
+                    </div>
+                </div>
+
+                {/* Wait for silence before the next reference note */}
+                <div className="control-group" style={{ marginTop: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <label className="control-label" style={{ marginBottom: 0, fontSize: '16px' }}>
+                            <span>Wait for Silence</span>
+                        </label>
+                        <button
+                            className={`switch-button ${settings.waitForQuiet ? 'active' : ''}`}
+                            onClick={() => onUpdateSettings({ ...settings, waitForQuiet: !settings.waitForQuiet })}
+                            title={settings.waitForQuiet ? "Play the next reference note immediately" : "Hold the next reference note until you stop playing"}
+                            aria-label="Wait for silence"
+                        >
+                            <div className="switch-thumb" />
+                        </button>
+                    </div>
+                    <p style={{ fontSize: '12px', opacity: 0.7, margin: 0 }}>
+                        Holds the next reference note until your instrument has gone quiet,
+                        so a still-ringing string can't mask it. (Requires the microphone.)
+                    </p>
+                </div>
 
                 <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '24px 0' }} />
 
