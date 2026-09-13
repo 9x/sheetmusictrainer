@@ -61,6 +61,7 @@ function shiftScoreOctaves(score: Score, octaves: number): Score {
 export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
     function PhraseTrainer({ listening, micError, windowWidth }, ref) {
         const { settings, updateSettings } = useSettings();
+        const setSettings = updateSettings;
         const { playNote } = useAudioPlayer();
         const phrase = getPhraseSettings(settings);
         const setPhrase = useCallback((updates: Partial<PhraseSettings>) => {
