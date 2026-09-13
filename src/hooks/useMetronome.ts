@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
+import { createAudioContext } from '../audio/AudioEngine';
 
 interface MetronomeOptions {
     bpm: number;
@@ -53,6 +54,10 @@ export function useMetronome({ bpm, volume, playing, onTick }: MetronomeOptions)
         onTickRef.current(currentBeat.current);
     }, [volume]);
 
+    // Indirection so the scheduler can reschedule itself without referencing
+    // its own variable during initialization
+    const schedulerRef = useRef<() => void>(() => { });
+
     const scheduler = useCallback(() => {
         if (!audioContext.current) return;
 
@@ -62,8 +67,12 @@ export function useMetronome({ bpm, volume, playing, onTick }: MetronomeOptions)
             playClick(nextNoteTime.current);
             nextNote();
         }
-        timerID.current = window.setTimeout(scheduler, lookahead);
+        timerID.current = window.setTimeout(() => schedulerRef.current(), lookahead);
     }, [nextNote, playClick]);
+
+    useEffect(() => {
+        schedulerRef.current = scheduler;
+    }, [scheduler]);
 
     const restart = useCallback(() => {
         if (audioContext.current) {
@@ -78,7 +87,7 @@ export function useMetronome({ bpm, volume, playing, onTick }: MetronomeOptions)
     useEffect(() => {
         if (playing) {
             if (!audioContext.current) {
-                audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+                audioContext.current = createAudioContext();
             }
 
             // Resume if suspended (browser autoplay policy)

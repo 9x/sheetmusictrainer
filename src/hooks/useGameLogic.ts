@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useSettings } from '../context/SettingsContext';
+import { useSettings } from '../context/useSettings';
 import { useAudioPlayer } from './useAudioPlayer';
 import { useMetronome } from './useMetronome';
+import { audioEngine } from '../audio/AudioEngine';
+import { MatchTracker } from '../game/MatchTracker';
 import {
     getRandomNote,
     getNoteDetails
@@ -12,7 +14,11 @@ import {
     getFirstPositionNotes,
 } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
-import { NOTE_MATCH_THRESHOLD_MS } from '../AppConfig';
+import {
+    NOTE_MATCH_THRESHOLD_MS,
+    NOTE_MATCH_GRACE_MS,
+    REFERENCE_QUIET_MAX_WAIT_MS,
+} from '../AppConfig';
 
 export const useGameLogic = (
     pitchData: { midi: number; note: string; cents: number; frequency: number } | null
@@ -21,11 +27,13 @@ export const useGameLogic = (
     const { playNote } = useAudioPlayer();
 
     const [targetMidi, setTargetMidi] = useState<number>(60);
-    const [matchStartTime, setMatchStartTime] = useState<number | null>(null);
     const [feedbackMessage, setFeedbackMessage] = useState<string>("");
     const [revealed, setRevealed] = useState(false);
     const [virtualNote, setVirtualNote] = useState<number | null>(null);
     const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Flicker-tolerant match timer: brief detection dropouts don't reset progress
+    const [tracker] = useState(() => new MatchTracker(NOTE_MATCH_THRESHOLD_MS, NOTE_MATCH_GRACE_MS));
 
     // --- Valid Notes Calculation ---
     const currentTuning = TUNINGS[settings.tuningId];
@@ -94,19 +102,18 @@ export const useGameLogic = (
         const min = validNotes[0];
         const max = validNotes[validNotes.length - 1];
 
-        const newNote = getRandomNote(min, max, validNotes);
-        if (newNote === targetMidi && validNotes.length > 1) {
-            const retry = getRandomNote(min, max, validNotes);
-            setTargetMidi(retry);
-        } else {
-            setTargetMidi(newNote);
-        }
-        setMatchStartTime(null);
+        // Avoid repeating the previous note (a single retry could still land on it)
+        const candidates = validNotes.length > 1
+            ? validNotes.filter(n => n !== targetMidi)
+            : validNotes;
+        setTargetMidi(getRandomNote(min, max, candidates));
+
+        tracker.reset();
         if (!keepFeedback) {
             setFeedbackMessage("");
         }
         setRevealed(false);
-    }, [validNotes, targetMidi]);
+    }, [validNotes, targetMidi, tracker]);
 
     // --- Metronome Logic ---
     const effectiveBpm = useMemo(() => {
@@ -129,16 +136,54 @@ export const useGameLogic = (
     });
 
     // --- Audio Auto-Play ---
-    useEffect(() => {
-        const shouldAutoPlay = settings.gameMode === 'ear_training' || (settings.gameMode === 'sight_reading' && settings.autoPlaySightReading);
+    // Boolean summary of "is the mic currently detecting a sounding note".
+    // The effect below depends on this BOOLEAN rather than on `pitchData`
+    // itself (which is a new object every frame — it would reset the 100ms
+    // play timer 60 times per second and the note would never play).
+    const isMicQuiet = pitchData === null;
 
-        if (shouldAutoPlay && !revealed) {
-            const timer = setTimeout(() => {
-                playNote(targetMidi, 1.0, settings.autoPlayVolume ?? 0.5);
-            }, 100);
-            return () => clearTimeout(timer);
+    // Remembers which target the reference note was already played for,
+    // so re-running the effect (e.g. the quiet-state flipping) can't play it twice.
+    const autoPlayedForRef = useRef<number | null>(null);
+
+    useEffect(() => {
+        const shouldAutoPlay =
+            settings.gameMode === 'ear_training' ||
+            (settings.gameMode === 'sight_reading' && settings.autoPlaySightReading);
+
+        if (!shouldAutoPlay || revealed) return;
+        if (autoPlayedForRef.current === targetMidi) return; // already played
+
+        const duration = settings.referenceNoteDuration ?? 1.5;
+        const volume = settings.autoPlayVolume ?? 0.5;
+
+        // "Wait for silence": hold the next reference note while the user's
+        // instrument is still ringing, so it can't mask the new note.
+        if (settings.waitForQuiet && !isMicQuiet) {
+            const cap = setTimeout(() => {
+                if (autoPlayedForRef.current === targetMidi) return;
+                autoPlayedForRef.current = targetMidi;
+                playNote(targetMidi, duration, volume);
+            }, REFERENCE_QUIET_MAX_WAIT_MS);
+            return () => clearTimeout(cap);
         }
-    }, [targetMidi, settings.gameMode, settings.autoPlaySightReading, revealed, playNote, settings.autoPlayVolume]);
+
+        const timer = setTimeout(() => {
+            autoPlayedForRef.current = targetMidi;
+            playNote(targetMidi, duration, volume);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [
+        targetMidi,
+        revealed,
+        isMicQuiet,
+        settings.gameMode,
+        settings.autoPlaySightReading,
+        settings.referenceNoteDuration,
+        settings.autoPlayVolume,
+        settings.waitForQuiet,
+        playNote,
+    ]);
 
     // --- Init / Reset ---
     useEffect(() => {
@@ -156,7 +201,6 @@ export const useGameLogic = (
         const noteDetails = getNoteDetails(targetMidi);
         setFeedbackMessage(`Good! ${noteDetails.name}`);
         setRevealed(true);
-        setMatchStartTime(null);
 
         const isRhythmActive = settings.rhythm.active && settings.rhythm.autoAdvance;
         const isTimerMode = settings.rhythm.mode === 'seconds';
@@ -178,7 +222,6 @@ export const useGameLogic = (
                 feedbackTimeoutRef.current = setTimeout(() => {
                     setFeedbackMessage("");
                 }, 1500);
-                setMatchStartTime(null);
             }
         }
     }, [targetMidi, settings.rhythm, settings.disableAnimation, restartMetronome, generateNewNote]);
@@ -201,25 +244,22 @@ export const useGameLogic = (
 
 
     // --- Match Checking Loop ---
+    // Tolerant of flicker: MatchTracker keeps accumulating hold time across
+    // brief dropouts instead of resetting on every single bad frame.
     useEffect(() => {
-        if (!pitchData) {
-            setMatchStartTime(null);
+        // Ignore the microphone while the app itself is making sound — the
+        // speaker output would otherwise be picked up and scored as correct
+        // (ear-training auto-play, Play Note button, virtual instruments).
+        if (audioEngine.isAudible()) {
+            tracker.reset();
             return;
         }
 
-        if (pitchData.midi === targetMidi) {
-            if (matchStartTime === null) {
-                setMatchStartTime(Date.now());
-            } else {
-                const duration = Date.now() - matchStartTime;
-                if (duration > NOTE_MATCH_THRESHOLD_MS) {
-                    handleMatchSuccess();
-                }
-            }
-        } else {
-            setMatchStartTime(null);
+        const matching = pitchData !== null && pitchData.midi === targetMidi;
+        if (tracker.update(matching, Date.now())) {
+            handleMatchSuccess();
         }
-    }, [pitchData, targetMidi, matchStartTime, handleMatchSuccess]);
+    }, [pitchData, targetMidi, handleMatchSuccess, tracker]);
 
     return {
         targetMidi,

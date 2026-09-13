@@ -25,6 +25,11 @@ export interface AppSettings {
     customMaxFret?: number;
     autoPlaySightReading?: boolean;
     autoPlayVolume?: number;
+    /** Length of the played reference note in seconds */
+    referenceNoteDuration?: number;
+    /** Hold the next reference note until the microphone detects silence,
+     *  so a still-ringing instrument doesn't mask it */
+    waitForQuiet?: boolean;
     virtualGuitarVolume?: number;
     virtualGuitarMute?: boolean;
     micSensitivity?: number;
@@ -55,6 +60,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     customMaxFret: 12,
     autoPlaySightReading: false,
     autoPlayVolume: 0.5,
+    referenceNoteDuration: 1.5,
+    waitForQuiet: false,
     virtualGuitarVolume: 0.5,
     virtualGuitarMute: false,
     micSensitivity: 0.5,
