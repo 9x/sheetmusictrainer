@@ -27,7 +27,7 @@ import { Fretboard } from './Fretboard';
 import { PianoKeys } from './PianoKeys';
 import { TUNINGS, getFretboardPositions } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
-import { Play, Pause, RotateCcw, SkipForward, Volume2, Square, ChevronDown, Music2, Upload } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, Volume2, Square, ChevronDown, Music2, Upload, HelpCircle, Guitar } from 'lucide-react';
 
 export interface PhraseHandle {
     pauseToggle: () => void;
@@ -318,34 +318,73 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     <div className="instruction-text phrase-status">{statusText}</div>
                 </div>
 
-                {/* Transport */}
+                {/* Transport — reuses the single-note button styles/behavior */}
                 <div className="action-row phrase-transport">
                     <button className="skip-button" onClick={startAction} title="Start / Pause (Space)">
                         {trainer.phase === 'playing' || trainer.phase === 'countIn' ? <Pause size={18} /> : <Play size={18} />}
                         {startLabel}
                     </button>
-                    <button
-                        className="hint-button"
-                        onClick={trainer.previewToggle}
-                        title="Preview the phrase (P)"
-                    >
-                        {trainer.phase === 'preview' ? <Square size={18} /> : <Volume2 size={18} />}
-                        {trainer.phase === 'preview' ? 'Stop' : 'Preview'}
-                    </button>
-                    <button className="hint-button" onClick={trainer.retry} title="Retry from the start (R)">
-                        <RotateCcw size={18} />
-                        Retry
-                    </button>
-                    {(phrase.material === 'melody' || fixedMaterial) && (
-                        <button className="hint-button" onClick={nextAction} title="New melody / next bars (N)">
-                            <SkipForward size={18} />
-                            {phrase.material === 'melody' ? 'New' : 'Next'}
+                    {!settings.zenMode && (
+                        <>
+                            <button
+                                className="hint-button"
+                                onClick={trainer.previewToggle}
+                                title="Preview the phrase (P)"
+                            >
+                                {trainer.phase === 'preview' ? <Square size={18} /> : <Volume2 size={18} />}
+                                {trainer.phase === 'preview' ? 'Stop' : 'Preview'}
+                            </button>
+                            <button className="hint-button" onClick={trainer.retry} title="Retry from the start (R)">
+                                <RotateCcw size={18} />
+                                Retry
+                            </button>
+                            {(phrase.material === 'melody' || fixedMaterial) && (
+                                <button className="hint-button" onClick={nextAction} title="New melody / next bars (N)">
+                                    <SkipForward size={18} />
+                                    {phrase.material === 'melody' ? 'New' : 'Next'}
+                                </button>
+                            )}
+                            {phrase.pace === 'step' && (
+                                <button className="hint-button" onClick={trainer.skip} title="Skip this note (S)">
+                                    <SkipForward size={18} />
+                                    Skip
+                                </button>
+                            )}
+                        </>
+                    )}
+                    {/* Same virtual-instrument / hint toggles as single-note mode */}
+                    {trainer.phase === 'done' && settings.zenMode && (
+                        <>
+                            <button className="hint-button" onClick={trainer.retry} title="Retry (R)">
+                                <RotateCcw size={18} />
+                                Retry
+                            </button>
+                            {(phrase.material === 'melody' || fixedMaterial) && (
+                                <button className="hint-button" onClick={nextAction} title="New / Next (N)">
+                                    <SkipForward size={18} />
+                                    {phrase.material === 'melody' ? 'New' : 'Next'}
+                                </button>
+                            )}
+                        </>
+                    )}
+                    {!settings.zenMode && currentInstrumentDef.showTuning && (
+                        <button
+                            className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
+                            onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
+                            title={`Toggle Virtual ${currentInstrumentDef.displayName} (Keyboard Shortcut: V)`}
+                        >
+                            <Guitar size={18} />
+                            {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
                         </button>
                     )}
-                    {phrase.pace === 'step' && (
-                        <button className="hint-button" onClick={trainer.skip} title="Skip this note (S)">
-                            <SkipForward size={18} />
-                            Skip
+                    {!settings.zenMode && (
+                        <button
+                            className={`hint-button ${settings.showHint ? 'active' : ''}`}
+                            onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
+                            title="Keyboard Shortcut: H"
+                        >
+                            <HelpCircle size={18} />
+                            {settings.showHint ? "Hide Hint" : "Show Hint"}
                         </button>
                     )}
                 </div>

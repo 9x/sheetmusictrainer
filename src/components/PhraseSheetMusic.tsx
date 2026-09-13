@@ -105,8 +105,8 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
     const barsPerRow = Math.max(1, Math.min(4, Math.floor((width - 40) / 210)));
     const rowCount = Math.max(1, Math.ceil(totalBars / barsPerRow));
     const isGrand = clef === 'grand';
-    const rowHeight = isGrand ? 200 : 105;
-    const height = rowCount * rowHeight + 14;
+    const rowHeight = isGrand ? 250 : 140;
+    const height = rowCount * rowHeight + 30;
 
     useEffect(() => {
         const container = containerRef.current;
@@ -120,7 +120,9 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
         const css = getComputedStyle(document.documentElement);
         const resolve = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback;
         const textColor = resolve('--color-text-main', '#333333');
-        const currentColor = resolve('--color-primary', '#e63946');
+        // --color-primary is near-black in light mode — invisible as a highlight.
+        // Use the warm accent that reads clearly in both themes.
+        const currentColor = resolve('--color-warning', '#f59e0b');
         const successColor = resolve('--color-success', '#22c55e');
         const errorColor = resolve('--color-error', '#ef4444');
         const mutedColor = resolve('--color-text-muted', '#888888');
@@ -222,7 +224,7 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
 
         // ---- Staves, voices, formatting, drawing -----------------------------
         for (let r = 0; r < rowFragmentList.length; r++) {
-            const y = r * rowHeight + 10;
+            const y = r * rowHeight + 26;
             const rowMeasureNumbers: number[] = [];
             for (let b = 0; b < barsPerRow; b++) {
                 const m = r * barsPerRow + b;
@@ -248,7 +250,7 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                 }
                 let bass: Stave | null = null;
                 if (isGrand) {
-                    bass = new Stave(x, y + 110, barWidth);
+                    bass = new Stave(x, y + 130, barWidth);
                     bass.setDefaultLedgerLineStyle(ledgerStyle);
                     if (isFirstOfRow) {
                         bass.addClef('bass').addKeySignature(vexKeySpec);
