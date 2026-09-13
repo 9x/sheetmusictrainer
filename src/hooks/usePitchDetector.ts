@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PitchAnalyzer, type MicrophoneDebugInfo } from '../audio/PitchAnalyzer';
 import { frequencyToMidi, getNoteDetails, getCentDifference } from '../music/NoteUtils';
+import { emitRawFrame } from './rawFrameBus';
 import {
     MIC_DEFAULT_SENSITIVITY,
     PITCH_READING_HOLD_MS,
@@ -90,6 +91,11 @@ export function usePitchDetector(
 
             const freq = analyzer.getPitch();
             const now = performance.now();
+
+            // RAW frame for sequence matching (phrase mode): one per tick,
+            // silence included. Not batched through React state — matching
+            // must see nulls immediately and must not depend on render rate.
+            emitRawFrame({ midi: freq ? frequencyToMidi(freq) : null, at: now });
 
             if (freq) {
                 lastPitchAt = now;

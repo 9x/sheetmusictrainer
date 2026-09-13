@@ -73,6 +73,11 @@ export class PhraseMatcher {
         return this.statuses[idx] ?? 'pending';
     }
 
+    /** Snapshot of all statuses (for React state mirroring). */
+    allStatuses(): NoteStatus[] {
+        return [...this.statuses];
+    }
+
     setStatus(idx: number, status: NoteStatus): void {
         // One-way latch: a resolved note never changes.
         if (this.statuses[idx] === 'pending' || this.statuses[idx] === 'rest') {

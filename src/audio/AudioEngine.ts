@@ -20,10 +20,40 @@ export function createAudioContext(): AudioContext {
  * app is audible — otherwise the app hears its own reference notes through
  * the speaker and scores them as correct (ear-training feedback loop).
  */
+interface ActiveNote {
+    osc: OscillatorNode;
+    gain: GainNode;
+    /** Audio-clock time after which this note is no longer sounding. */
+    endsAt: number;
+    groupId: string;
+}
+
 class AudioEngine {
     private ctx: AudioContext | null = null;
     /** ctx.currentTime (seconds) until which output may still be audible, incl. gate tail */
     private audibleUntil = 0;
+    /** Currently scheduled/playing notes, for cancellation (preview groups). */
+    private active: ActiveNote[] = [];
+    /** Mic blanking after non-tonal metronome clicks (seconds, audio clock). */
+    private clickBlankUntil = 0;
+    private noiseBuffer: AudioBuffer | null = null;
+
+    /** Audio-clock time; 0 when no context exists yet. */
+    now(): number {
+        return this.ctx ? this.ctx.currentTime : 0;
+    }
+
+    /** Create/resume the context (must be called from a user gesture). */
+    async ensureRunning(): Promise<void> {
+        this.ensureContext();
+        if (this.ctx && this.ctx.state === 'suspended') {
+            await this.ctx.resume();
+        }
+    }
+
+    isRunning(): boolean {
+        return !!this.ctx && this.ctx.state === 'running';
+    }
 
     private ensureContext(): AudioContext {
         if (!this.ctx) {
@@ -35,36 +65,106 @@ class AudioEngine {
         return this.ctx;
     }
 
-    playNote(midi: number, duration = 0.5, volume = 0.3): void {
+    playNote(midi: number, duration = 0.5, volume = 0.3, groupId = 'oneshot'): void {
+        const ctx = this.ensureContext();
+        const now = ctx.currentTime;
+        this.scheduleNote(midi, now, duration, volume, groupId);
+    }
+
+    /**
+     * Schedule a pitched note at an absolute audio-clock time (phrase preview).
+     * Registers the node so the group can be cancelled; the mic gate covers
+     * the whole scheduled span (see isAudible).
+     */
+    scheduleNote(midi: number, startAt: number, duration: number, volume = 0.3, groupId = 'preview'): void {
         const ctx = this.ensureContext();
 
         const osc = ctx.createOscillator();
         const gainNode = ctx.createGain();
 
         osc.frequency.value = midiToFrequency(midi);
-        // Triangle wave is often nicer than sine for music training
         osc.type = 'triangle';
 
         osc.connect(gainNode);
         gainNode.connect(ctx.destination);
 
-        const now = ctx.currentTime;
-
         // Attack
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(volume, now + 0.02);
+        gainNode.gain.setValueAtTime(0, startAt);
+        gainNode.gain.linearRampToValueAtTime(volume, startAt + 0.02);
         // Sustain -> Release
-        gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
 
-        osc.start(now);
-        osc.stop(now + duration + 0.1); // Stop slightly after fade out
+        osc.start(startAt);
+        osc.stop(startAt + duration + 0.1);
 
-        // The note decays to -60dB at `now + duration`; keep the mic gated for
-        // an additional tail so room reverb / speaker bleed can't self-trigger.
+        this.active.push({ osc, gain: gainNode, endsAt: startAt + duration, groupId });
+        // The note decays to -60dB at `startAt + duration`; keep the mic gated
+        // for an additional tail so room reverb / speaker bleed can't self-trigger.
         this.audibleUntil = Math.max(
             this.audibleUntil,
-            now + duration + PLAYBACK_GATE_TAIL_MS / 1000
+            startAt + duration + PLAYBACK_GATE_TAIL_MS / 1000
         );
+    }
+
+    /**
+     * Cancel a playback group (preview, metronome clicks). Stops scheduled
+     * nodes, removes them, and recomputes the mic gate from what remains —
+     * a cancelled long preview must not keep the mic gated until its former
+     * end time.
+     */
+    cancelGroup(groupId: string): void {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        this.active = this.active.filter(n => {
+            if (n.groupId !== groupId) return true;
+            try {
+                n.gain.gain.cancelScheduledValues(now);
+                n.gain.gain.setValueAtTime(0, now);
+                n.osc.stop(now + 0.01);
+            } catch {
+                // Already stopped — nothing to do.
+            }
+            return false;
+        });
+        this.recomputeGate();
+    }
+
+    private recomputeGate(): void {
+        this.audibleUntil = this.active.reduce(
+            (max, n) => Math.max(max, n.endsAt + PLAYBACK_GATE_TAIL_MS / 1000),
+            0
+        );
+    }
+
+    /**
+     * Short NON-TONAL metronome click (~10 ms noise burst). Not registered in
+     * the pitched-audio gate; instead the mic is blanked for 30 ms so the
+     * click itself can't be scored as a pitch (contract E2).
+     */
+    playClickAt(time: number, volume = 0.5, accent = false): void {
+        const ctx = this.ensureContext();
+        if (!this.noiseBuffer) {
+            const len = Math.floor(ctx.sampleRate * 0.01);
+            this.noiseBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
+            const data = this.noiseBuffer.getChannelData(0);
+            for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+        }
+        const src = ctx.createBufferSource();
+        src.buffer = this.noiseBuffer;
+        const gainNode = ctx.createGain();
+        const v = accent ? Math.min(1, volume * 1.6) : volume;
+        gainNode.gain.setValueAtTime(v, time);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.01);
+        src.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        src.start(time);
+        src.stop(time + 0.02);
+        this.clickBlankUntil = Math.max(this.clickBlankUntil, time + 0.03);
+    }
+
+    /** True for ~30 ms after a scheduled click (mic frames should be skipped). */
+    isMicBlanked(): boolean {
+        return !!this.ctx && this.ctx.state === 'running' && this.ctx.currentTime < this.clickBlankUntil;
     }
 
     /**
