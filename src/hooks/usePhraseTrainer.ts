@@ -120,9 +120,12 @@ export function usePhraseTrainer(
     const setPhaseBoth = useCallback((p: PhrasePhase) => {
         phaseRef.current = p;
         setPhase(p);
-        // Expose run state so the shared metronome can gate its click/pendulum:
-        // only running during count-in and playing, never idle/preview/paused.
-        phraseRunBus.set(p === 'countIn' || p === 'playing');
+        // Gate the shared metronome only in 'sync to metronome' (tempo) pace:
+        // there the run owns the clock (clicks during count-in/playing only).
+        // In 'at your pace' (step) the metronome ticks continuously when the
+        // user has it switched on — like the single-note modes.
+        const ownsClock = paceRef.current === 'tempo';
+        phraseRunBus.set(ownsClock && (p === 'countIn' || p === 'playing' || p === 'preview'));
     }, []);
 
     useEffect(() => { paceRef.current = config.pace; }, [config.pace]);
@@ -492,6 +495,15 @@ export function usePhraseTrainer(
             for (const e of events) {
                 if (!e.pitch) continue;
                 audioEngine.scheduleNote(e.pitch.midi, t0 + (e.startTick / PPQ) * spb, (e.durationTicks / PPQ) * spb, vol, PREVIEW_GROUP);
+            }
+            // Tempo pace: click along with the preview so the rhythm is
+            // audible while listening (quarter beats over the full span).
+            if (paceRef.current === 'tempo' && configRef.current.clickSound) {
+                const totalTicks = events.reduce((a, e) => Math.max(a, e.startTick + e.durationTicks), 0);
+                const beats = Math.floor(totalTicks / PPQ);
+                for (let i = 0; i < beats; i++) {
+                    audioEngine.playClickAt(t0 + i * spb, CLICK_VOLUME, i % 4 === 0);
+                }
             }
             setPhaseBoth('preview');
             const totalSec = (events.reduce((a, e) => Math.max(a, e.startTick + e.durationTicks), 0) / PPQ) * spb;
