@@ -39,7 +39,7 @@ export interface RhythmSettings {
     volume: number;
 }
 
-export type PhraseMaterial = 'melody' | 'scale' | 'library' | 'import';
+export type PhraseMaterial = 'melody' | 'scale' | 'arpeggio' | 'library' | 'import';
 export type PhrasePace = 'step' | 'tempo';
 
 export interface PhraseSettings {
@@ -53,6 +53,10 @@ export interface PhraseSettings {
     rhythmLevel: 1 | 2 | 3;
     scaleCoverage: 'one-octave' | 'two-octave' | 'position';
     scaleDirection: 'up' | 'down' | 'updown';
+    /** Arpeggio settings (material = 'arpeggio'). */
+    arpeggioDegree: string; // ArpeggioDegree
+    arpeggioPattern: 'up' | 'down' | 'updown' | '1235';
+    arpeggioCoverage: 'one-octave' | 'two-octave';
     /** Phrase-local fret window (guitar/bass) — overrides the note set. */
     fretWindowEnabled: boolean;
     fretMin: number;
@@ -79,6 +83,9 @@ export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
     rhythmLevel: 1,
     scaleCoverage: 'one-octave',
     scaleDirection: 'updown',
+    arpeggioDegree: 'I',
+    arpeggioPattern: 'up',
+    arpeggioCoverage: 'one-octave',
     fretWindowEnabled: false,
     fretMin: 0,
     fretMax: 4,

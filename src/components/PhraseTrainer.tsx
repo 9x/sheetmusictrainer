@@ -19,7 +19,9 @@ import { audioEngine } from '../audio/AudioEngine';
 import { computePlayableNotes, isFrettedInstrument, positionsWithinWindow, fretWindowNotes } from '../music/playableRange';
 import { generateMelody } from '../music/melodyGenerator';
 import { generateScaleDrill } from '../music/scaleDrills';
+import { generateArpeggio, type ArpeggioDegree } from '../music/arpeggioGenerator';
 import { isMode, type ModeId } from '../music/scales';
+import { ARPEGGIO_DEGREE_LABELS } from '../music/arpeggioGenerator';
 import { scoreEvents, type Result, type Score, type ScoreEvent } from '../score/model';
 import { getNoteDetails } from '../music/NoteUtils';
 import { EXERCISES, loadExercise } from '../exercises/library';
@@ -200,6 +202,16 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     meter: { numerator: phrase.meterNumerator, denominator: 4 },
                 }, pool);
             }
+            if (phrase.material === 'arpeggio') {
+                return generateArpeggio({
+                    keyTonic: phrase.keyTonic,
+                    keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
+                    degree: (phrase.arpeggioDegree as ArpeggioDegree) || 'I',
+                    pattern: phrase.arpeggioPattern,
+                    coverage: phrase.arpeggioCoverage,
+                    meter: { numerator: phrase.meterNumerator, denominator: 4 },
+                }, pool);
+            }
             if (phrase.material === 'library') {
                 const id = phrase.libraryId || EXERCISES[0]?.id;
                 if (!id) return { ok: false, error: 'No exercises available.' };
@@ -212,6 +224,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             return null;
         }, [phrase.material, phrase.keyTonic, phrase.keyMode, phrase.bars, phrase.meterNumerator,
             phrase.rhythmLevel, phrase.scaleDirection, phrase.scaleCoverage, phrase.libraryId,
+            phrase.arpeggioDegree, phrase.arpeggioPattern, phrase.arpeggioCoverage,
             melodySeed, pool, importedScore]);
 
         const fullScore: Result<Score> | null = useMemo(() => {
@@ -546,12 +559,13 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 <select value={phrase.material} onChange={e => setPhrase({ material: e.target.value as PhraseSettings['material'] })}>
                                     <option value="melody">Melodies (generated)</option>
                                     <option value="scale">Scale drills</option>
+                                    <option value="arpeggio">Arpeggios (generated)</option>
                                     <option value="library">Exercises</option>
                                     <option value="import">Imported file</option>
                                 </select>
                             </label>
 
-                            {(phrase.material === 'melody' || phrase.material === 'scale') && (
+                            {(phrase.material === 'melody' || phrase.material === 'scale' || phrase.material === 'arpeggio') && (
                                 <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
                                     Key/mode: use the "Target key" controls below the sheet — shared across modes.
                                 </span>
@@ -594,6 +608,38 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                             <option value="up">Up</option>
                                             <option value="down">Down</option>
                                             <option value="updown">Up &amp; down</option>
+                                        </select>
+                                    </label>
+                                    <label>Meter
+                                        <select value={phrase.meterNumerator} onChange={e => setPhrase({ meterNumerator: Number(e.target.value) === 3 ? 3 : 4 })}>
+                                            <option value={4}>4/4</option>
+                                            <option value={3}>3/4</option>
+                                        </select>
+                                    </label>
+                                </>
+                            )}
+
+                            {phrase.material === 'arpeggio' && (
+                                <>
+                                    <label>Chord
+                                        <select value={phrase.arpeggioDegree} onChange={e => setPhrase({ arpeggioDegree: e.target.value })}>
+                                            {(Object.keys(ARPEGGIO_DEGREE_LABELS) as ArpeggioDegree[]).map(d => (
+                                                <option key={d} value={d}>{ARPEGGIO_DEGREE_LABELS[d]}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label>Pattern
+                                        <select value={phrase.arpeggioPattern} onChange={e => setPhrase({ arpeggioPattern: e.target.value as PhraseSettings['arpeggioPattern'] })}>
+                                            <option value="up">Up</option>
+                                            <option value="down">Down</option>
+                                            <option value="updown">Up &amp; down</option>
+                                            <option value="1235">1-2-3-5</option>
+                                        </select>
+                                    </label>
+                                    <label>Coverage
+                                        <select value={phrase.arpeggioCoverage} onChange={e => setPhrase({ arpeggioCoverage: e.target.value as PhraseSettings['arpeggioCoverage'] })}>
+                                            <option value="one-octave">One octave</option>
+                                            <option value="two-octave">Two octaves</option>
                                         </select>
                                     </label>
                                     <label>Meter
