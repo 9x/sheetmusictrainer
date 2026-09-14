@@ -215,11 +215,6 @@ export function usePhraseTrainer(
             if (e.kind === 'count-in-beat' || e.kind === 'beat') {
                 phraseBeatBus.emit(e.beat ?? 0, e.at);
             }
-            // Publish every beat to the shared bus so the metronome widget's
-            // pendulum stays in sync with the run (click or no click).
-            if (e.kind === 'count-in-beat' || e.kind === 'beat') {
-                phraseBeatBus.emit(e.kind === 'count-in-beat' ? (e.beat ?? 0) : ((e.beat ?? 0) + countInBeatsRef.current), e.at);
-            }
             clickIdxRef.current++;
         }
         // Fire state boundaries only when the clock reaches them.

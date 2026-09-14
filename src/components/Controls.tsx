@@ -181,6 +181,7 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                         rhythm={settings.rhythm}
                         onUpdate={updateRhythm}
                         showAutoAdvance={!inPhraseMode}
+                        syncMode={inPhraseMode ? 'option' : null}
                         gate={inPhraseMode ? phraseRunActive : null}
                     />
                 </div>

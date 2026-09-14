@@ -1,15 +1,16 @@
 /**
  * Metronome widget — always-visible tempo controls + pendulum.
  *
- * One toggle ("On") arms sound + animation. One `sound` checkbox decides
- * whether an armed metronome clicks (the pendulum always swings when armed,
- * giving silent visual tempo). There is exactly ONE sound checkbox here.
+ * Modes:
+ * - Plain (single-note modes): one on/off toggle arms sound + animation.
+ * - Sync option (Phrase Mode): the toggle switches between
+ *     * FREE — the metronome runs independently (own clock, starts as soon
+ *       as toggled, with or without clicks per the sound checkbox)
+ *     * SYNC — the metronome starts with the exercise (count-in included),
+ *       is silent while idle, and its pendulum mirrors the run's beats.
  *
- * Click sources (no doubling possible):
- * - Ungated (single-note modes, phrase "at your pace"): this widget's own
- *   scheduler clicks when armed && sound.
- * - Gated (phrase "sync to metronome"): the phrase run's scheduler owns the
- *   clock; this widget is silent and its pendulum mirrors phrase beats.
+ * Exactly ONE sound checkbox exists (here). In sync mode it governs the
+ * run's click scheduler too — clicks can never double.
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useMetronome } from '../hooks/useMetronome';
@@ -20,14 +21,15 @@ import type { RhythmSettings } from '../types/SettingsTypes';
 
 interface MetronomeWidgetProps {
     rhythm: RhythmSettings;
-    /** Persist changes (bpm, active, sound). Auto-advance is single-note only. */
+    /** Persist changes. */
     onUpdate: (updates: Partial<RhythmSettings>) => void;
     /** Single-note mode extra: auto-advance targets on each tick. */
     showAutoAdvance?: boolean;
     /** Compact layout (phrase transport row). */
     compact?: boolean;
-    /** External gate (Phrase Mode "sync to metronome"): the widget is muted
-     *  and the pendulum mirrors the run's beats. null = free-running. */
+    /** 'option': show the sync/free toggle (Phrase Mode). null: plain on/off. */
+    syncMode?: 'option' | null;
+    /** External gate (sync mode): true while the exercise runs. */
     gate?: boolean | null;
 }
 
@@ -36,6 +38,7 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
     onUpdate,
     showAutoAdvance = false,
     compact = false,
+    syncMode = null,
     gate = null,
 }) => {
     const [beatParity, setBeatParity] = useState(0);
@@ -47,47 +50,66 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
         setBeatParity(beat % 2);
     }, []);
 
-    const gated = gate !== null;
-    const running = rhythm.active && (gate === null || gate);
+    const isSync = syncMode === 'option' && !!rhythm.syncToExercise;
+    const runActive = gate === true;
+    // Sync: pendulum/click only while the run is active (the run's scheduler
+    // is the click source; the widget's own scheduler stays off).
+    // Free/plain: the widget's own scheduler runs whenever armed.
+    const running = isSync ? runActive : rhythm.active;
 
-    // Own click scheduler — only when NOT gated.
     const { restart } = useMetronome({
         bpm: rhythm.bpm,
         volume: rhythm.sound ? rhythm.volume : 0,
-        playing: running && !gated,
+        playing: running && !isSync,
         onTick: handleTick,
     });
     void restart;
 
-    // Gated: pendulum mirrors the phrase run's beats (audio-time scheduled).
+    // Sync: pendulum mirrors the phrase run's beats (audio-time scheduled).
     useEffect(() => {
-        if (!gated || !running) return;
+        if (!isSync || !runActive) return;
         return phraseBeatBus.subscribe((_beat, at) => {
             const delay = Math.max(0, (at - audioEngine.now()) * 1000);
             window.setTimeout(() => setBeatParity(p => (p + 1) % 2), delay);
         });
-    }, [gated, running]);
+    }, [isSync, runActive]);
 
     const beatMs = 60000 / Math.max(1, rhythm.bpm);
+    const armed = rhythm.active;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {/* Header: label + single arm toggle */}
+            {/* Header: label + mode toggle */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <label className="control-label" style={{ marginBottom: 0 }}>
                     <span>Metronome</span>
                 </label>
-                <button
-                    className={`switch-button ${rhythm.active ? 'active' : ''}`}
-                    onClick={() => onUpdate({ active: !rhythm.active })}
-                    title={rhythm.active ? 'Turn Off' : 'Turn On (sound + pendulum)'}
-                >
-                    <div className="switch-thumb" />
-                </button>
+                {syncMode === 'option' ? (
+                    <button
+                        className={`switch-button ${rhythm.syncToExercise ? 'active' : ''}`}
+                        onClick={() => onUpdate({
+                            syncToExercise: !rhythm.syncToExercise,
+                            active: true, // armed in either mode; the mode decides behavior
+                        })}
+                        title={rhythm.syncToExercise
+                            ? 'Sync: starts with the exercise (count-in). Click while idle: off.'
+                            : 'Free: runs independently — start/stop it yourself.'}
+                    >
+                        <div className="switch-thumb" />
+                    </button>
+                ) : (
+                    <button
+                        className={`switch-button ${rhythm.active ? 'active' : ''}`}
+                        onClick={() => onUpdate({ active: !rhythm.active })}
+                        title={rhythm.active ? 'Turn Off' : 'Turn On (sound + pendulum)'}
+                    >
+                        <div className="switch-thumb" />
+                    </button>
+                )}
             </div>
 
             {/* Always visible body; dimmed when disarmed */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', opacity: rhythm.active ? 1 : 0.5 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', opacity: armed ? 1 : 0.5 }}>
                 {/* Pendulum */}
                 <div
                     style={{
@@ -110,7 +132,7 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
                             background: 'var(--color-text-main)',
                             transform: 'translateY(-50%)',
                             transition: `left ${beatMs}ms linear`,
-                            display: rhythm.active ? 'block' : 'none',
+                            display: armed && running ? 'block' : 'none',
                         }}
                     />
                 </div>

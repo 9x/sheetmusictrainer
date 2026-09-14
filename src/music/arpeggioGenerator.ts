@@ -22,7 +22,11 @@ export type ArpeggioPattern =
     | 'giuliani-pima'  // root-third-fifth-octave (p-i-m-a)
     | 'giuliani-pami'  // root-octave-fifth-third (p-a-m-i)
     | 'giuliani-mami'  // third-fifth-octave-third (inner-voice feel)
-    | 'giuliani-ami';  // octave-fifth-third (descending from the top)
+    | 'giuliani-ami'   // octave-fifth-third (descending from the top)
+    | 'giuliani-pimamim'  // p-i-m-a-m-i (six-note rolling figure)
+    | 'giuliani-papima'   // p-a-p-i-m-a (bass-skip pattern)
+    | 'giuliani-amipim'   // a-m-i-p-i-m (tremolo-adjacent)
+    | 'giuliani-miamim';  // m-i-a-m-i-m (triple-string figure)
 export type ArpeggioCoverage = 'one-octave' | 'two-octave';
 /** How the chord per bar is chosen in sequence mode. */
 export type ArpeggioProgression = 'random' | 'functional' | 'diatonic-cycle';
@@ -63,6 +67,10 @@ export const PATTERN_LABELS: Record<ArpeggioPattern, string> = {
     'giuliani-pami': 'Giuliani p-a-m-i',
     'giuliani-mami': 'Giuliani m-a-m-i',
     'giuliani-ami': 'Giuliani a-m-i',
+    'giuliani-pimamim': 'Giuliani p-i-m-a-m-i',
+    'giuliani-papima': 'Giuliani p-a-p-i-m-a',
+    'giuliani-amipim': 'Giuliani a-m-i-p-i-m',
+    'giuliani-miamim': 'Giuliani m-i-a-m-i-m',
 };
 
 /**
@@ -76,6 +84,10 @@ const GIULIANI_FIGURES: Record<string, number[]> = {
     'giuliani-pami': [0, 3, 2, 1],
     'giuliani-mami': [1, 2, 3, 1],
     'giuliani-ami': [3, 2, 1],
+    'giuliani-pimamim': [0, 1, 2, 3, 2, 1],
+    'giuliani-papima': [0, 3, 0, 1, 2, 3],
+    'giuliani-amipim': [3, 2, 1, 0, 1, 2],
+    'giuliani-miamim': [2, 1, 3, 2, 1, 2],
 };
 
 /** pc of a spelled degree (step letter + alter). */

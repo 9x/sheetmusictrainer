@@ -82,14 +82,16 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         // (single source of truth across modes; the phrase-local BPM control
         // was replaced by the common metronome widget in Controls).
         phrase.bpm = settings.rhythm.bpm;
-        // "Sync to metronome" (tempo): the phrase run owns the clock and the
-        // click decision comes from the METRONOME widget's sound checkbox —
-        // one place, no separate phrase click option. "At your pace" (step):
-        // the widget clicks freely when armed (metronomeActive); a legacy
-        // phrase.clickSound=true also allows clicks without the metronome.
+        // Click decision — ONE source: the metronome widget's sound checkbox.
+        // - Tempo + syncToExercise: the run clicks when armed && sound
+        //   (silent while idle; starts with the exercise incl. count-in).
+        // - Tempo + free metronome: the widget clicks freely; the run stays
+        //   silent (its beats are visual only) to avoid doubling.
+        // - Step: widget clicks freely; phrase clickSound follows the switch.
+        const sync = settings.rhythm.syncToExercise;
         phrase.clickSound = phrase.pace === 'tempo'
-            ? settings.rhythm.sound
-            : settings.rhythm.active || phrase.clickSound;
+            ? (sync ? settings.rhythm.active && settings.rhythm.sound : false)
+            : settings.rhythm.active && settings.rhythm.sound;
         const setPhrase = useCallback((updates: Partial<PhraseSettings>) => {
             updateSettings(s => {
                 const next = { ...s, phrase: { ...getPhraseSettings(s), ...updates } };
@@ -197,6 +199,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     meter: { numerator: phrase.meterNumerator, denominator: 4 },
                     bars: phrase.arpeggioBars,
                     progression: phrase.arpeggioProgression,
+                    chordSelection: phrase.arpeggioChordSelection as ArpeggioDegree[],
                     rhythm: phrase.arpeggioRhythm,
                     seed: melodySeed,
                 }, pool);
@@ -214,7 +217,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         }, [phrase.material, phrase.keyTonic, phrase.keyMode, phrase.bars, phrase.meterNumerator,
             phrase.rhythmLevel, phrase.scaleDirection, phrase.scaleCoverage, phrase.scaleRhythm, phrase.libraryId,
             phrase.arpeggioDegree, phrase.arpeggioPattern, phrase.arpeggioCoverage,
-            phrase.arpeggioBars, phrase.arpeggioProgression, phrase.arpeggioRhythm, melodySeed,
+            phrase.arpeggioBars, phrase.arpeggioProgression, phrase.arpeggioRhythm,
+            phrase.arpeggioChordSelection, melodySeed,
             melodySeed, pool, importedScore]);
 
         const fullScore: Result<Score> | null = useMemo(() => {
@@ -631,6 +635,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                                 <option value="giuliani-pami">p-a-m-i</option>
                                                 <option value="giuliani-mami">m-a-m-i</option>
                                                 <option value="giuliani-ami">a-m-i</option>
+                                                <option value="giuliani-pimamim">p-i-m-a-m-i</option>
+                                                <option value="giuliani-papima">p-a-p-i-m-a</option>
+                                                <option value="giuliani-amipim">a-m-i-p-i-m</option>
+                                                <option value="giuliani-miamim">m-i-a-m-i-m</option>
                                             </optgroup>
                                         </select>
                                     </label>
@@ -653,6 +661,35 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                                 <option value="random">Random</option>
                                             </select>
                                         </label>
+                                    )}
+                                    {phrase.arpeggioBars > 1 && (
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <span style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '4px' }}>
+                                                Chord pool ({phrase.arpeggioChordSelection.length === 0 ? 'all 7' : `${phrase.arpeggioChordSelection.length} selected`}):
+                                            </span>
+                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                                {(Object.keys(ARPEGGIO_DEGREE_LABELS) as ArpeggioDegree[]).map(d => {
+                                                    const active = phrase.arpeggioChordSelection.length === 0 || phrase.arpeggioChordSelection.includes(d);
+                                                    return (
+                                                        <button
+                                                            key={d}
+                                                            className={`control-button small ${active ? 'active' : ''}`}
+                                                            style={{ minWidth: '42px', padding: '5px 8px', fontSize: '12px' }}
+                                                            onClick={() => {
+                                                                // Toggle; empty selection = all back on.
+                                                                const cur = phrase.arpeggioChordSelection.length === 0
+                                                                    ? (Object.keys(ARPEGGIO_DEGREE_LABELS) as ArpeggioDegree[])
+                                                                    : [...phrase.arpeggioChordSelection as ArpeggioDegree[]];
+                                                                const next = cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d];
+                                                                setPhrase({ arpeggioChordSelection: next });
+                                                            }}
+                                                        >
+                                                            {ARPEGGIO_DEGREE_LABELS[d]}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
                                     )}
                                     <label>Rhythm
                                         <select value={phrase.arpeggioRhythm} onChange={e => setPhrase({ arpeggioRhythm: e.target.value as PhraseSettings['arpeggioRhythm'] })}>

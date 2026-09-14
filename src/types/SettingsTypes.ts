@@ -34,6 +34,9 @@ export interface RhythmSettings {
     bpm: number;
     seconds: number;
     active: boolean;
+    /** Phrase Mode: sync the metronome to the exercise (starts with it,
+     *  silent while idle) instead of running freely. */
+    syncToExercise: boolean;
     autoAdvance: boolean;
     sound: boolean;
     volume: number;
@@ -164,6 +167,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
         bpm: 60,
         seconds: 5,
         active: false,
+        syncToExercise: true,
         autoAdvance: false,
         sound: true,
         volume: 0.5
