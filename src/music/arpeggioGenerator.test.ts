@@ -89,3 +89,50 @@ describe('generateArpeggio', () => {
         expect(a).toEqual(b);
     });
 });
+
+describe('generateArpeggio — sequence mode', () => {
+    it('generates one chord per bar with functional progression', () => {
+        const r = generateArpeggio({ ...base, degree: 'I', pattern: 'up', coverage: 'one-octave', bars: 4, progression: 'functional', seed: 7 }, pool);
+        expect(r.ok).toBe(true);
+        if (!r.ok) return;
+        expect(r.value.measures.length).toBe(4);
+        expect(r.value.chordSymbols?.length).toBe(4);
+        expect(r.value.chordSymbols?.[0]).toBe('C'); // starts on I
+        // bar boundaries: each bar starts on a chord root? (not enforced) — but ticks align
+        const ev = scoreEvents(r.value);
+        expect(validateScore(r.value)).toEqual([]);
+        // 4 beats per bar × 4 bars = 16 notes in quarters mode
+        expect(ev.length).toBe(16);
+        // deterministic
+        const r2 = generateArpeggio({ ...base, degree: 'I', pattern: 'up', coverage: 'one-octave', bars: 4, progression: 'functional', seed: 7 }, pool);
+        expect(r2.ok && JSON.stringify(scoreEvents(r2.value)) === JSON.stringify(ev)).toBe(true);
+    });
+
+    it('diatonic cycle walks I ii iii IV V vi vii', () => {
+        const r = generateArpeggio({ ...base, degree: 'I', pattern: 'up', coverage: 'one-octave', bars: 7, progression: 'diatonic-cycle', seed: 1 }, pool);
+        expect(r.ok).toBe(true);
+        if (!r.ok) return;
+        const syms = r.value.chordSymbols!;
+        expect(syms).toEqual(['C', 'Dm', 'Em', 'F', 'G', 'Am', 'Bdim']);
+    });
+
+    it('eighths rhythm doubles notes per bar', () => {
+        const r = generateArpeggio({ ...base, degree: 'I', pattern: 'up', coverage: 'one-octave', bars: 2, progression: 'functional', rhythm: 'eighths', seed: 3 }, pool);
+        expect(r.ok).toBe(true);
+        if (!r.ok) return;
+        const ev = scoreEvents(r.value);
+        expect(ev.length).toBe(16); // 2 bars × 4 beats × 2
+        expect(ev[0].durationTicks).toBe(240);
+        expect(validateScore(r.value)).toEqual([]);
+    });
+
+    it('random avoids repeating the same chord back-to-back', () => {
+        const r = generateArpeggio({ ...base, degree: 'I', pattern: 'up', coverage: 'one-octave', bars: 6, progression: 'random', seed: 11 }, pool);
+        expect(r.ok).toBe(true);
+        if (!r.ok) return;
+        const syms = r.value.chordSymbols!;
+        for (let i = 1; i < syms.length; i++) {
+            expect(syms[i]).not.toBe(syms[i - 1]);
+        }
+    });
+});

@@ -272,6 +272,14 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                     if (r === 0) treble.addTimeSignature(`${score.meter.numerator}/${score.meter.denominator}`);
                     treble.setMeasure(measure.number);
                 }
+                // Chord symbol above the staff (bar-indexed), drawn via the
+                // stave's annotation area so it shifts with the clef offset.
+                const chordSym = score.chordSymbols?.[m];
+                if (chordSym) {
+                    try {
+                        treble.setSection(chordSym, 0);
+                    } catch { /* courtesy label — never fatal */ }
+                }
                 let bass: Stave | null = null;
                 if (isGrand) {
                     bass = new Stave(x, y + 130, barWidth);

@@ -91,6 +91,9 @@ export interface Score {
     readonly measures: ScoreMeasure[];
     /** Exactly one voice in v1. */
     readonly voices: ReadonlyArray<{ readonly id: 'melody'; readonly events: ScoreEvent[] }>;
+    /** Optional chord symbol per bar index (0-based), e.g. "C", "Am", "G7".
+     *  Rendered above the staff; absent = no symbol for that bar. */
+    readonly chordSymbols?: ReadonlyArray<string | null>;
     readonly source?: ScoreSource;
 }
 

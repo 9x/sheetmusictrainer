@@ -34,6 +34,9 @@ export interface PhraseTrainerConfig {
     readonly clickSound: boolean;
     readonly inputMode: 'mic' | 'virtual';
     readonly previewVolume?: number;
+    /** Auto-start: begin without count-in as soon as the mic detects the
+     *  first note (step pace only — tempo needs the scheduled clock). */
+    readonly autoStartOnNote?: boolean;
 }
 
 export interface PhraseSummary {
@@ -282,7 +285,18 @@ export function usePhraseTrainer(
         const unsubscribe = subscribeRawFrames(frame => {
             if (configRef.current.inputMode !== 'mic') return;
             const p = phaseRef.current;
-            if (p !== 'countIn' && p !== 'playing') return;
+            // Auto-start: first detected note begins the run immediately
+            // (no count-in) — only in step pace, only from 'ready', mic only.
+            if (
+                p === 'ready' &&
+                configRef.current.autoStartOnNote &&
+                paceRef.current === 'step'
+            ) {
+                startRef.current?.();
+                // Fall through: this frame feeds the fresh run below.
+            }
+            const p2 = phaseRef.current;
+            if (p2 !== 'countIn' && p2 !== 'playing') return;
             // Pitched speaker output (preview, virtual instruments) must not
             // be scored; while audible the matcher sees no frames at all.
             if (audioEngine.isAudible()) return;

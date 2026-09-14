@@ -11,10 +11,15 @@
 import { PPQ, validateScore, type Result, type Score, type ScoreEvent } from '../score/model';
 import { keyFor, type KeyContext, type ModeId } from './scales';
 import { STEP_LETTERS, LETTER_PC, type StepLetter } from '../score/model';
+import { makeRng } from './melodyGenerator';
 
 export type ArpeggioDegree = 'I' | 'ii' | 'iii' | 'IV' | 'V' | 'vi' | 'vii0';
 export type ArpeggioPattern = 'up' | 'down' | 'updown' | '1235';
 export type ArpeggioCoverage = 'one-octave' | 'two-octave';
+/** How the chord per bar is chosen in sequence mode. */
+export type ArpeggioProgression = 'random' | 'functional' | 'diatonic-cycle';
+/** Rhythm density for arpeggio sequences. */
+export type ArpeggioRhythm = 'quarters' | 'eighths';
 
 export interface ArpeggioConfig {
     readonly keyTonic: string;
@@ -23,6 +28,12 @@ export interface ArpeggioConfig {
     readonly pattern: ArpeggioPattern;
     readonly coverage: ArpeggioCoverage;
     readonly meter: { readonly numerator: 3 | 4; readonly denominator: 4 };
+    /** Sequence mode: bars > 1 with chord progression selection. */
+    readonly bars?: number;
+    readonly progression?: ArpeggioProgression;
+    readonly rhythm?: ArpeggioRhythm;
+    /** Seed for progression selection (deterministic). */
+    readonly seed?: number;
 }
 
 /** Degree index (0-based) into the scale for each arpeggio degree label. */
@@ -37,6 +48,20 @@ export const ARPEGGIO_DEGREE_LABELS: Record<ArpeggioDegree, string> = {
 /** pc of a spelled degree (step letter + alter). */
 const degreePc = (d: { step: StepLetter; alter: number }): number =>
     (LETTER_PC[STEP_LETTERS.indexOf(d.step)] + d.alter + 144) % 12;
+
+/** Chord symbol name for a diatonic degree, e.g. "C", "Am", "Bdim". */
+function chordNameFor(key: KeyContext, degreeIndex: number): string {
+    const d = key.degrees[degreeIndex];
+    const third = key.degrees[(degreeIndex + 2) % 7];
+    const fifth = key.degrees[(degreeIndex + 4) % 7];
+    const root = d.step + (d.alter < 0 ? 'b'.repeat(-d.alter) : '#'.repeat(d.alter));
+    const thirdInterval = (degreePc(third) - degreePc(d) + 12) % 12;
+    const fifthInterval = (degreePc(fifth) - degreePc(d) + 12) % 12;
+    let suffix = '';
+    if (thirdInterval === 3 && fifthInterval === 7) suffix = 'm';
+    else if (thirdInterval === 3 && fifthInterval === 6) suffix = 'dim';
+    return root + suffix;
+}
 
 /**
  * Chord-tone midi notes of the diatonic triad on `degreeIndex` (0-based),
@@ -132,47 +157,143 @@ export function generateArpeggio(
     const pool = Array.from(new Set(eligiblePitches.filter(m => Number.isInteger(m)))).sort((a, b) => a - b);
     if (pool.length === 0) return { ok: false, error: 'No playable notes in the selected range — widen the note set.' };
 
-    const degreeIndex = DEGREE_INDEX[config.degree];
-    const path = buildPath(key, degreeIndex, pool, config.coverage, config.pattern);
-    if (!path || path.length === 0) {
-        return {
-            ok: false,
-            error: 'The complete arpeggio does not fit the playable range — widen the range (strings/fret window) or pick another degree.',
-        };
+    const bars = config.bars ?? 1;
+    const pattern = config.pattern;
+    const coverage = config.coverage;
+
+    // ---- Chord sequence ----------------------------------------------------
+    // Single-bar mode: the chosen degree for all bars (bars is 1).
+    // Sequence mode: one chord per bar, chosen by progression rule.
+    const degreeIndices: number[] = [];
+    if (bars === 1) {
+        degreeIndices.push(DEGREE_INDEX[config.degree]);
+    } else {
+        const rng = makeRng(config.seed ?? 1);
+        const pick = <T,>(arr: T[]): T => arr[Math.floor(rng() * arr.length)];
+        for (let b = 0; b < bars; b++) {
+            if (b === 0) {
+                // Start on the user-chosen degree (or tonic default)
+                degreeIndices.push(DEGREE_INDEX[config.degree]);
+                continue;
+            }
+            const prev = degreeIndices[b - 1];
+            if (config.progression === 'diatonic-cycle') {
+                degreeIndices.push((prev + 1) % 7);
+            } else if (config.progression === 'functional') {
+                // Simple tonal function rules (major-oriented; mirrored for
+                // minor by degree relationships below):
+                //   I   -> {IV, V, vi}
+                //   ii  -> {V}
+                //   iii -> {IV, vi}
+                //   IV  -> {I, V}
+                //   V   -> {I, vi}
+                //   vi  -> {ii, IV}
+                //   vii -> {I}
+                const NEXT: Record<number, number[]> = {
+                    0: [3, 4, 5],
+                    1: [4],
+                    2: [3, 5],
+                    3: [0, 4],
+                    4: [0, 5],
+                    5: [1, 3],
+                    6: [0],
+                };
+                degreeIndices.push(pick(NEXT[prev] ?? [0]));
+            } else {
+                // random: any diatonic degree, avoid immediate repetition
+                const candidates = [0, 1, 2, 3, 4, 5, 6].filter(d => d !== prev);
+                degreeIndices.push(pick(candidates));
+            }
+        }
     }
 
-    // ---- Quarter-note rhythm, final note extended to fill its bar ---------
+    // ---- Path per bar: one arpeggio cycle per chord -------------------------
     const full = config.meter.numerator * PPQ;
-    if (path.length * PPQ > 8 * full) {
-        return { ok: false, error: 'This arpeggio is longer than 8 bars — reduce the coverage.' };
+    const perBarSegments: { path: number[]; degreeIndex: number }[] = [];
+    for (const di of degreeIndices) {
+        const path = buildPath(key, di, pool, coverage, pattern);
+        if (!path || path.length === 0) {
+            return {
+                ok: false,
+                error: 'The arpeggio does not fit the playable range — widen the range (strings/fret window) or pick another degree.',
+            };
+        }
+        perBarSegments.push({ path, degreeIndex: di });
     }
-    const barCount = Math.max(1, Math.ceil((path.length * PPQ) / full));
-    const totalTicks = barCount * full;
-    const lastDuration = PPQ + (totalTicks - path.length * PPQ);
 
+    // ---- Events: fit each segment into one bar ------------------------------
+    const rhythm = config.rhythm ?? 'quarters';
     const events: ScoreEvent[] = [];
+    const chordSymbols: (string | null)[] = [];
     let cursor = 0;
-    for (let i = 0; i < path.length; i++) {
-        const dur = i === path.length - 1 ? lastDuration : PPQ;
-        const spelled = spellInKey(key, path[i]);
-        if (!spelled) return { ok: false, error: 'Internal error spelling arpeggio pitch.' };
-        events.push({ id: `a${i}`, startTick: cursor, durationTicks: dur, pitch: { midi: path[i], ...spelled } });
-        cursor += dur;
+    for (let b = 0; b < bars; b++) {
+        const { path, degreeIndex } = perBarSegments[b];
+        chordSymbols.push(chordNameFor(key, degreeIndex));
+        if (bars === 1) {
+            // Single-bar mode (v1 behavior): whole path, final note extended
+            // to fill the bar — or, when the path overflows one bar, spread
+            // over the needed bars with the overflow in the last note.
+            const barCount = Math.max(1, Math.ceil((path.length * PPQ) / full));
+            const totalTicks = barCount * full;
+            const lastDuration = PPQ + (totalTicks - path.length * PPQ);
+            path.forEach((midi, n) => {
+                const spelled = spellInKey(key, midi);
+                if (!spelled) return;
+                const dur = n === path.length - 1 ? lastDuration : PPQ;
+                events.push({ id: `a${b}-${n}`, startTick: cursor, durationTicks: dur, pitch: { midi, ...spelled } });
+                cursor += dur;
+            });
+            continue;
+        }
+        // Sequence mode: fit the bar exactly. 'quarters': one note per beat,
+        // cycling up/down through the path. 'eighths': two notes per beat.
+        const slots = rhythm === 'quarters' ? 1 : 2;
+        const notesPerBar = config.meter.numerator * slots;
+        const line: number[] = [];
+        let dir = 1;
+        let lastIdx = 0;
+        while (line.length < notesPerBar) {
+            line.push(path[lastIdx]);
+            if (lastIdx + dir < 0 || lastIdx + dir >= path.length) dir = -dir;
+            else lastIdx += dir;
+        }
+        const noteDur = full / notesPerBar;
+        line.forEach((midi, n) => {
+            const spelled = spellInKey(key, midi);
+            if (!spelled) return;
+            events.push({
+                id: `a${b}-${n}`,
+                startTick: cursor,
+                durationTicks: noteDur,
+                pitch: { midi, ...spelled },
+            });
+            cursor += noteDur;
+        });
     }
 
     const chordName = `${key.tonic} ${ARPEGGIO_DEGREE_LABELS[config.degree]}`;
     const patternLabel = { up: 'up', down: 'down', updown: 'up & down', '1235': '1-2-3-5' }[config.pattern];
+    // Single-bar paths can overflow into extra bars (updown/two-octave);
+    // sequence mode always has exactly `bars` measures.
+    const totalMeasures = bars === 1 ? Math.max(1, Math.ceil((cursor) / full)) : bars;
+    const title = bars === 1
+        ? `Arpeggio — ${chordName} (${patternLabel}, ${coverage})`
+        : `Arpeggio — ${key.tonic}: ${bars} bars (${config.progression ?? 'functional'})`;
     const score: Score = {
         version: 1,
-        id: `arpeggio-${config.keyTonic}-${config.keyMode}-${config.degree}-${config.pattern}-${config.coverage}-${config.meter.numerator}4`,
-        title: `Arpeggio — ${chordName} (${patternLabel}, ${config.coverage})`,
+        id: `arpeggio-${config.keyTonic}-${config.keyMode}-${config.degree}-${config.pattern}-${config.coverage}-${bars}b-${config.progression ?? 'single'}-${config.seed ?? 0}`,
+        title,
         meter: config.meter,
         key: { tonic: config.keyTonic, mode: config.keyMode, signature: key.signature },
-        measures: Array.from({ length: barCount }, (_, i) => ({
+        measures: Array.from({ length: totalMeasures }, (_, i) => ({
             number: i + 1,
             startTick: i * full,
             durationTicks: full,
         })),
+        chordSymbols: bars === 1
+            // repeat the single chord symbol across the overflow bars
+            ? Array.from({ length: totalMeasures }, () => chordSymbols[0])
+            : chordSymbols,
         voices: [{ id: 'melody', events }],
     };
     const problems = validateScore(score);

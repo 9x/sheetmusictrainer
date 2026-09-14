@@ -57,6 +57,10 @@ export interface PhraseSettings {
     arpeggioDegree: string; // ArpeggioDegree
     arpeggioPattern: 'up' | 'down' | 'updown' | '1235';
     arpeggioCoverage: 'one-octave' | 'two-octave';
+    /** Sequence mode: bars per exercise (1 = single chord). */
+    arpeggioBars: number;
+    arpeggioProgression: 'random' | 'functional' | 'diatonic-cycle';
+    arpeggioRhythm: 'quarters' | 'eighths';
     /** Phrase-local fret window (guitar/bass) — overrides the note set. */
     fretWindowEnabled: boolean;
     fretMin: number;
@@ -71,6 +75,9 @@ export interface PhraseSettings {
      *  new melody) after a short pause — keeps practice flowing. */
     autoContinue: boolean;
     inputMode: 'mic' | 'virtual';
+    /** Begin the run as soon as the first note is played (no count-in,
+     *  step pace only). */
+    autoStartOnNote: boolean;
 }
 
 export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
@@ -86,6 +93,9 @@ export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
     arpeggioDegree: 'I',
     arpeggioPattern: 'up',
     arpeggioCoverage: 'one-octave',
+    arpeggioBars: 1,
+    arpeggioProgression: 'functional',
+    arpeggioRhythm: 'quarters',
     fretWindowEnabled: false,
     fretMin: 0,
     fretMax: 4,
@@ -96,6 +106,7 @@ export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
     clickSound: false,
     autoContinue: true,
     inputMode: 'mic',
+    autoStartOnNote: false,
 };
 
 export function getPhraseSettings(s: AppSettings): PhraseSettings {

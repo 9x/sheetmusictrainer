@@ -210,6 +210,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     pattern: phrase.arpeggioPattern,
                     coverage: phrase.arpeggioCoverage,
                     meter: { numerator: phrase.meterNumerator, denominator: 4 },
+                    bars: phrase.arpeggioBars,
+                    progression: phrase.arpeggioProgression,
+                    rhythm: phrase.arpeggioRhythm,
+                    seed: melodySeed,
                 }, pool);
             }
             if (phrase.material === 'library') {
@@ -225,6 +229,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         }, [phrase.material, phrase.keyTonic, phrase.keyMode, phrase.bars, phrase.meterNumerator,
             phrase.rhythmLevel, phrase.scaleDirection, phrase.scaleCoverage, phrase.libraryId,
             phrase.arpeggioDegree, phrase.arpeggioPattern, phrase.arpeggioCoverage,
+            phrase.arpeggioBars, phrase.arpeggioProgression, phrase.arpeggioRhythm, melodySeed,
             melodySeed, pool, importedScore]);
 
         const fullScore: Result<Score> | null = useMemo(() => {
@@ -252,6 +257,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 clickSound: phrase.clickSound,
                 inputMode: phrase.inputMode,
                 previewVolume: settings.autoPlayVolume ?? 0.4,
+                autoStartOnNote: phrase.autoStartOnNote,
             },
             listening,
             micError,
@@ -310,7 +316,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         }, [scoreOk, fixedMaterial, pool, fullScore]);
 
         const nextAction = useCallback(() => {
-            if (phrase.material === 'melody') {
+            if (phrase.material === 'melody' || (phrase.material === 'arpeggio' && phrase.arpeggioBars > 1)) {
                 setMelodySeed(s => (s + 1) % 999983);
             } else if (fixedMaterial && scoreOk) {
                 const total = fullScore!.value.measures.length;
@@ -499,7 +505,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 <RotateCcw size={18} />
                                 Retry
                             </button>
-                            {(phrase.material === 'melody' || fixedMaterial) && (
+                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || fixedMaterial) && (
                                 <button className="hint-button" onClick={nextAction} title="New melody / next bars (N)">
                                     <SkipForward size={18} />
                                     {phrase.material === 'melody' ? 'New' : 'Next'}
@@ -520,7 +526,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 <RotateCcw size={18} />
                                 Retry
                             </button>
-                            {(phrase.material === 'melody' || fixedMaterial) && (
+                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || fixedMaterial) && (
                                 <button className="hint-button" onClick={nextAction} title="New / Next (N)">
                                     <SkipForward size={18} />
                                     {phrase.material === 'melody' ? 'New' : 'Next'}
@@ -622,7 +628,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             {phrase.material === 'arpeggio' && (
                                 <>
                                     <label>Chord
-                                        <select value={phrase.arpeggioDegree} onChange={e => setPhrase({ arpeggioDegree: e.target.value })}>
+                                        <select value={phrase.arpeggioDegree} onChange={e => setPhrase({ arpeggioDegree: e.target.value, arpeggioBars: 1 })}>
                                             {(Object.keys(ARPEGGIO_DEGREE_LABELS) as ArpeggioDegree[]).map(d => (
                                                 <option key={d} value={d}>{ARPEGGIO_DEGREE_LABELS[d]}</option>
                                             ))}
@@ -640,6 +646,26 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                         <select value={phrase.arpeggioCoverage} onChange={e => setPhrase({ arpeggioCoverage: e.target.value as PhraseSettings['arpeggioCoverage'] })}>
                                             <option value="one-octave">One octave</option>
                                             <option value="two-octave">Two octaves</option>
+                                        </select>
+                                    </label>
+                                    <label>Length
+                                        <select value={phrase.arpeggioBars} onChange={e => setPhrase({ arpeggioBars: Math.max(1, Math.min(8, Number(e.target.value))) })}>
+                                            {[1, 2, 4, 6, 8].map(b => <option key={b} value={b}>{b === 1 ? 'Single chord' : `${b} bars`}</option>)}
+                                        </select>
+                                    </label>
+                                    {phrase.arpeggioBars > 1 && (
+                                        <label>Chords
+                                            <select value={phrase.arpeggioProgression} onChange={e => setPhrase({ arpeggioProgression: e.target.value as PhraseSettings['arpeggioProgression'] })}>
+                                                <option value="functional">Functional (I-IV-V...)</option>
+                                                <option value="diatonic-cycle">Diatonic cycle</option>
+                                                <option value="random">Random</option>
+                                            </select>
+                                        </label>
+                                    )}
+                                    <label>Rhythm
+                                        <select value={phrase.arpeggioRhythm} onChange={e => setPhrase({ arpeggioRhythm: e.target.value as PhraseSettings['arpeggioRhythm'] })}>
+                                            <option value="quarters">Quarter notes</option>
+                                            <option value="eighths">Eighth notes</option>
                                         </select>
                                     </label>
                                     <label>Meter
@@ -760,6 +786,14 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                     onChange={e => setPhrase({ autoContinue: e.target.checked })}
                                 />
                                 Auto-continue
+                            </label>
+                            <label className="phrase-check">
+                                <input
+                                    type="checkbox"
+                                    checked={phrase.autoStartOnNote}
+                                    onChange={e => setPhrase({ autoStartOnNote: e.target.checked })}
+                                />
+                                Start on first note (no count-in)
                             </label>
                         </div>
                         {phrase.pace === 'tempo' && (
