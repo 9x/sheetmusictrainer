@@ -53,8 +53,11 @@ export interface PhraseSettings {
     rhythmLevel: 1 | 2 | 3;
     scaleCoverage: 'one-octave' | 'two-octave' | 'position';
     scaleDirection: 'up' | 'down' | 'updown';
+    scaleRhythm: 'quarters' | 'eighths';
     /** Arpeggio settings (material = 'arpeggio'). */
-    arpeggioDegree: string; // ArpeggioDegree
+    arpeggioDegree: string; // ArpeggioDegree (single-chord mode / sequence start)
+    /** Sequence mode: which degrees may appear (empty = all 7). */
+    arpeggioChordSelection: string[];
     arpeggioPattern: 'up' | 'down' | 'updown' | '1235';
     arpeggioCoverage: 'one-octave' | 'two-octave';
     /** Sequence mode: bars per exercise (1 = single chord). */
@@ -90,7 +93,9 @@ export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
     rhythmLevel: 1,
     scaleCoverage: 'one-octave',
     scaleDirection: 'updown',
+    scaleRhythm: 'quarters',
     arpeggioDegree: 'I',
+    arpeggioChordSelection: [],
     arpeggioPattern: 'up',
     arpeggioCoverage: 'one-octave',
     arpeggioBars: 1,

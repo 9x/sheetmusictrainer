@@ -40,6 +40,9 @@ export interface ArpeggioConfig {
     readonly bars?: number;
     readonly progression?: ArpeggioProgression;
     readonly rhythm?: ArpeggioRhythm;
+    /** Restrict progression chords to these degrees (empty = all 7).
+     *  The first bar always uses `degree` if it is in the selection. */
+    readonly chordSelection?: readonly ArpeggioDegree[];
     /** Seed for progression selection (deterministic). */
     readonly seed?: number;
 }
@@ -215,6 +218,9 @@ export function generateArpeggio(
     // Single-bar mode: the chosen degree for all bars (bars is 1).
     // Sequence mode: one chord per bar, chosen by progression rule.
     const degreeIndices: number[] = [];
+    // Sequence chord pool: user selection (restricted to it) or all 7.
+    const sel = (config.chordSelection ?? []).filter(d => d in DEGREE_INDEX).map(d => DEGREE_INDEX[d as ArpeggioDegree]);
+    const pool7 = sel.length > 0 ? Array.from(new Set(sel)).sort((a, b) => a - b) : [0, 1, 2, 3, 4, 5, 6];
     if (bars === 1) {
         degreeIndices.push(DEGREE_INDEX[config.degree]);
     } else {
@@ -222,13 +228,19 @@ export function generateArpeggio(
         const pick = <T,>(arr: T[]): T => arr[Math.floor(rng() * arr.length)];
         for (let b = 0; b < bars; b++) {
             if (b === 0) {
-                // Start on the user-chosen degree (or tonic default)
-                degreeIndices.push(DEGREE_INDEX[config.degree]);
+                // First bar: a random chord FROM THE SELECTION — fixed starts
+                // repeated the exercise identically every time.
+                degreeIndices.push(pool7.includes(DEGREE_INDEX[config.degree]) && rng() < 0.34
+                    ? DEGREE_INDEX[config.degree]
+                    : pick(pool7));
                 continue;
             }
             const prev = degreeIndices[b - 1];
             if (config.progression === 'diatonic-cycle') {
-                degreeIndices.push((prev + 1) % 7);
+                // Next diatonic degree that is also in the selection
+                let next = (prev + 1) % 7;
+                for (let tries = 0; tries < 7 && !pool7.includes(next); tries++) next = (next + 1) % 7;
+                degreeIndices.push(next);
             } else if (config.progression === 'functional') {
                 // Simple tonal function rules (major-oriented; mirrored for
                 // minor by degree relationships below):
@@ -248,11 +260,13 @@ export function generateArpeggio(
                     5: [1, 3],
                     6: [0],
                 };
-                degreeIndices.push(pick(NEXT[prev] ?? [0]));
+                // functional: honor the selection — filter rule targets by it
+                const targets = (NEXT[prev] ?? [0]).filter(d => pool7.includes(d));
+                degreeIndices.push(pick(targets.length > 0 ? targets : pool7.filter(d => d !== prev)));
             } else {
-                // random: any diatonic degree, avoid immediate repetition
-                const candidates = [0, 1, 2, 3, 4, 5, 6].filter(d => d !== prev);
-                degreeIndices.push(pick(candidates));
+                // random: any selected degree, avoid immediate repetition
+                const candidates = pool7.filter(d => d !== prev);
+                degreeIndices.push(pick(candidates.length > 0 ? candidates : pool7));
             }
         }
     }

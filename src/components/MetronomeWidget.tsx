@@ -1,10 +1,15 @@
 /**
- * Metronome widget with a linear pendulum indicator.
+ * Metronome widget — always-visible tempo controls + pendulum.
  *
- * The pendulum is a CSS-animated dot whose half-period equals one beat:
- * it travels left→right on even beats and right→left on odd beats, driven
- * by the metronome's onTick callback (no drift — synced to the audible
- * click, not to wall-clock CSS timing alone).
+ * One toggle ("On") arms sound + animation. One `sound` checkbox decides
+ * whether an armed metronome clicks (the pendulum always swings when armed,
+ * giving silent visual tempo). There is exactly ONE sound checkbox here.
+ *
+ * Click sources (no doubling possible):
+ * - Ungated (single-note modes, phrase "at your pace"): this widget's own
+ *   scheduler clicks when armed && sound.
+ * - Gated (phrase "sync to metronome"): the phrase run's scheduler owns the
+ *   clock; this widget is silent and its pendulum mirrors phrase beats.
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useMetronome } from '../hooks/useMetronome';
@@ -19,11 +24,10 @@ interface MetronomeWidgetProps {
     onUpdate: (updates: Partial<RhythmSettings>) => void;
     /** Single-note mode extra: auto-advance targets on each tick. */
     showAutoAdvance?: boolean;
-    onBeat?: () => void;
     /** Compact layout (phrase transport row). */
     compact?: boolean;
-    /** External gate (Phrase Mode): the metronome only ticks while the
-     *  phrase run is active — user toggle arms it, the gate fires it. */
+    /** External gate (Phrase Mode "sync to metronome"): the widget is muted
+     *  and the pendulum mirrors the run's beats. null = free-running. */
     gate?: boolean | null;
 }
 
@@ -31,49 +35,44 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
     rhythm,
     onUpdate,
     showAutoAdvance = false,
-    onBeat,
     compact = false,
     gate = null,
 }) => {
-    // Gated mode (Phrase Mode): the widget does NOT run its own scheduler —
-    // the phrase run drives both the audible click and this pendulum via
-    // phraseBeatBus, so visual and click are always the same clock.
-    // Non-gated: widget ticks itself (single metronome instance below).
     const [beatParity, setBeatParity] = useState(0);
     const lastTickRef = useRef(0);
-    const onBeatRef = useRef(onBeat);
-    useEffect(() => { onBeatRef.current = onBeat; }, [onBeat]);
-
     const handleTick = useCallback((beat: number) => {
         const now = performance.now();
-        // Ignore double-fires within 60ms (audio glitch guard)
-        if (now - lastTickRef.current < 60) return;
+        if (now - lastTickRef.current < 60) return; // glitch guard
         lastTickRef.current = now;
         setBeatParity(beat % 2);
-        onBeatRef.current?.();
     }, []);
 
-    // Gated: mirror phrase-run beats onto the pendulum at their audio times.
+    const gated = gate !== null;
+    const running = rhythm.active && (gate === null || gate);
+
+    // Own click scheduler — only when NOT gated.
+    const { restart } = useMetronome({
+        bpm: rhythm.bpm,
+        volume: rhythm.sound ? rhythm.volume : 0,
+        playing: running && !gated,
+        onTick: handleTick,
+    });
+    void restart;
+
+    // Gated: pendulum mirrors the phrase run's beats (audio-time scheduled).
     useEffect(() => {
-        if (gate === null || !gate) return;
+        if (!gated || !running) return;
         return phraseBeatBus.subscribe((_beat, at) => {
             const delay = Math.max(0, (at - audioEngine.now()) * 1000);
             window.setTimeout(() => setBeatParity(p => (p + 1) % 2), delay);
         });
-    }, [gate]);
-
-    const { restart } = useMetronome({
-        bpm: rhythm.bpm,
-        volume: rhythm.sound && gate === null ? rhythm.volume : 0,
-        playing: rhythm.active && (gate === null || gate),
-        onTick: handleTick,
-    });
-    void restart;
+    }, [gated, running]);
 
     const beatMs = 60000 / Math.max(1, rhythm.bpm);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Header: label + single arm toggle */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <label className="control-label" style={{ marginBottom: 0 }}>
                     <span>Metronome</span>
@@ -81,15 +80,15 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
                 <button
                     className={`switch-button ${rhythm.active ? 'active' : ''}`}
                     onClick={() => onUpdate({ active: !rhythm.active })}
-                    title={rhythm.active ? 'Turn Off' : 'Turn On'}
+                    title={rhythm.active ? 'Turn Off' : 'Turn On (sound + pendulum)'}
                 >
                     <div className="switch-thumb" />
                 </button>
             </div>
 
-            {/* Always visible: pendulum + BPM; the toggle gates sound + animation */}
-            <div className="rhythm-details" style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', opacity: rhythm.active ? 1 : 0.5 }}>
-                {/* Linear pendulum — same element, left transitions each beat */}
+            {/* Always visible body; dimmed when disarmed */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)', opacity: rhythm.active ? 1 : 0.5 }}>
+                {/* Pendulum */}
                 <div
                     style={{
                         position: 'relative',
@@ -116,6 +115,7 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
                     />
                 </div>
 
+                {/* BPM / Timer controls */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     {!compact && (
                         <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
@@ -137,9 +137,7 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
                                 className="control-button small"
                                 onClick={() => onUpdate({ bpm: Math.max(30, rhythm.bpm - 1) })}
                                 style={{ width: '24px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                                −
-                            </button>
+                            >−</button>
                             <input
                                 type="number"
                                 min="30"
@@ -153,9 +151,7 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
                                 className="control-button small"
                                 onClick={() => onUpdate({ bpm: Math.min(300, rhythm.bpm + 1) })}
                                 style={{ width: '24px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                                +
-                            </button>
+                            >+</button>
                             <input
                                 type="range"
                                 min="30"
@@ -187,7 +183,8 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
                     </div>
                 )}
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                {/* Options row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     {showAutoAdvance ? (
                         <label style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <input
@@ -204,31 +201,10 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
                             checked={rhythm.sound}
                             onChange={(e) => onUpdate({ sound: e.target.checked })}
                         />
-                        Sound
+                        Click sound
                     </label>
                 </div>
             </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        {showAutoAdvance ? (
-                            <label style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={rhythm.autoAdvance}
-                                    onChange={(e) => onUpdate({ autoAdvance: e.target.checked })}
-                                />
-                                Auto
-                            </label>
-                        ) : <span />}
-                        <label style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <input
-                                type="checkbox"
-                                checked={rhythm.sound}
-                                onChange={(e) => onUpdate({ sound: e.target.checked })}
-                            />
-                            Sound
-                        </label>
-                </div>
         </div>
     );
 };

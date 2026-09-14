@@ -12,6 +12,7 @@ import { keyFor, scalePitches, type KeyContext, type ModeId } from './scales';
 
 export type DrillDirection = 'up' | 'down' | 'updown';
 export type DrillCoverage = 'one-octave' | 'two-octave' | 'position';
+export type DrillRhythm = 'quarters' | 'eighths';
 
 export interface DrillConfig {
     readonly keyTonic: string;
@@ -19,6 +20,8 @@ export interface DrillConfig {
     readonly direction: DrillDirection;
     readonly coverage: DrillCoverage;
     readonly meter: { readonly numerator: 3 | 4; readonly denominator: 4 };
+    /** Note duration: quarters (default) or eighths. */
+    readonly rhythm?: DrillRhythm;
 }
 
 /** Complete ascending scale path from a starting tonic, if it fits the pool. */
@@ -87,14 +90,15 @@ export function generateScaleDrill(
         else path = [...up, ...[...up].reverse().slice(1)]; // no duplicate turning tonic
     }
 
-    // ---- Quarter-note rhythm, final note extended to fill its bar ---------
+    // ---- Rhythm: quarters (default) or eighths; final note extended ---------
+    const noteDur = config.rhythm === 'eighths' ? PPQ / 2 : PPQ;
     const full = config.meter.numerator * PPQ;
-    if (path.length * PPQ > 8 * full) {
-        return { ok: false, error: 'This drill is longer than 8 bars — reduce the coverage or direction.' };
+    if (path.length * noteDur > 8 * full) {
+        return { ok: false, error: 'This drill is longer than 8 bars — reduce the coverage, direction or note duration.' };
     }
-    const barCount = Math.max(1, Math.ceil((path.length * PPQ) / full));
+    const barCount = Math.max(1, Math.ceil((path.length * noteDur) / full));
     const totalTicks = barCount * full;
-    const lastDuration = PPQ + (totalTicks - path.length * PPQ);
+    const lastDuration = noteDur + (totalTicks - path.length * noteDur);
 
     const events: ScoreEvent[] = [];
     let cursor = 0;
@@ -104,7 +108,7 @@ export function generateScaleDrill(
         return found ? found.pitch : sp[0]?.pitch ?? null;
     };
     for (let i = 0; i < path.length; i++) {
-        const dur = i === path.length - 1 ? lastDuration : PPQ;
+        const dur = i === path.length - 1 ? lastDuration : noteDur;
         const pitch = spellFor(path[i]);
         if (!pitch) return { ok: false, error: 'Internal error spelling drill pitch.' };
         events.push({ id: `s${i}`, startTick: cursor, durationTicks: dur, pitch });
@@ -113,7 +117,7 @@ export function generateScaleDrill(
 
     const score: Score = {
         version: 1,
-        id: `scale-${config.keyTonic}-${config.keyMode}-${config.coverage}-${config.direction}-${config.meter.numerator}4`,
+        id: `scale-${config.keyTonic}-${config.keyMode}-${config.coverage}-${config.direction}-${config.rhythm ?? 'quarters'}-${config.meter.numerator}4`,
         title: `${key.tonic} scale — ${config.coverage === 'position' ? 'within position' : config.coverage} ${config.direction}`,
         meter: config.meter,
         key: { tonic: config.keyTonic, mode: config.keyMode, signature: key.signature },

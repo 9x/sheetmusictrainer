@@ -338,6 +338,9 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                 }
 
                 // --- Beams: consecutive eighth/16th pairs within one beat ---
+                // Note: the Beam must be registered on each note via setBeam,
+                // otherwise VexFlow still draws flags (beam === undefined in
+                // shouldDrawFlag) and you get BOTH flag and beam.
                 const beamed = frags.filter(f => (f.isEighth || f.isSixteenth) && f.note instanceof StaveNote);
                 for (let i = 0; i + 1 < beamed.length; i++) {
                     const a = beamed[i], b2 = beamed[i + 1];
@@ -350,6 +353,8 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                     const beatB = Math.floor((b2.start - measureStart) / 480);
                     if (beatA === beatB) {
                         const beam = new Beam([a.note, b2.note], false);
+                        a.note.setBeam(beam);
+                        b2.note.setBeam(beam);
                         beam.setContext(context).draw();
                     }
                 }
