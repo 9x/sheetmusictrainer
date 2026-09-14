@@ -236,7 +236,9 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
 
         // ---- Staves, voices, formatting, drawing -----------------------------
         for (let r = 0; r < rowFragmentList.length; r++) {
-            const y = r * rowHeight + 26;
+            // VexFlow draws stave lines ~40.5px below the constructor y —
+            // center the staff in the row and leave ledger headroom below.
+            const y = r * rowHeight + 9;
             const rowMeasureNumbers: number[] = [];
             for (let b = 0; b < barsPerRow; b++) {
                 const m = r * barsPerRow + b;

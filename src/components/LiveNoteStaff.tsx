@@ -2,26 +2,34 @@
  * Tiny always-visible staff showing the currently DETECTED note (the same
  * display pipeline as the single-note "played note" measure): written pitch
  * (sounding + display transpose), active key signature, theme-aware.
- * Renders only when the detected midi changes — not per frame.
+ *
+ * The box matches the mic button (64px) and is vertically centered with it.
+ * Notes outside the staff's comfortable range are drawn one octave in with a
+ * standard 8va/8vb marker instead of clipping or reserving whitespace —
+ * the same convention real notation uses for out-of-range passages. Extreme
+ * cases still overflow the box slightly (CSS overflow: visible).
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Renderer, Stave, StaveNote, Accidental, Voice, Formatter } from 'vexflow';
+import { Renderer, Stave, StaveNote, Accidental, Voice, Formatter, Annotation } from 'vexflow';
 import { getNoteInKey } from '../music/NoteUtils';
 
 interface LiveNoteStaffProps {
     /** Sounding midi of the live detected pitch, or null when silent. */
     midi: number | null;
-    clef: 'treble' | 'bass';
-    /** Display transpose applied once (guitar +12 …), as in SheetMusic. */
     transpose: number;
     keySignature: string;
     width?: number;
     theme?: 'light' | 'dark' | 'auto';
 }
 
+const BOX_H = 64;   // mic button height — vertical centering via the bar
+// VexFlow draws the first stave line ~40.5px BELOW the constructor y
+// (default space_above_staff_ln = 4 line-spaces). To center a 38px staff in
+// the 64px box the constructor y must be negative.
+const STAVE_Y = -28;
+
 export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
     midi,
-    clef = 'treble',
     transpose = 0,
     keySignature = 'C',
     width = 130,
@@ -42,12 +50,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         container.innerHTML = '';
 
         const renderer = new Renderer(container, Renderer.Backends.SVG);
-        // Match the mic button height (64px) so the staff is vertically
-        // aligned with it. The stave is centered in the box; extreme ledger
-        // lines (very high/low notes) intentionally OVERFLOW the box
-        // (CSS overflow: visible) and may overlap neighboring elements —
-        // preferred over reserving large empty headroom.
-        renderer.resize(width, 64);
+        renderer.resize(width, BOX_H);
         const context = renderer.getContext();
 
         const resolvedColor =
@@ -57,14 +60,30 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         context.setFillStyle(resolvedColor);
         context.setStrokeStyle(resolvedColor);
 
-        const stave = new Stave(0, 13, width - 2);
+        const stave = new Stave(0, STAVE_Y, width - 2);
         stave.setDefaultLedgerLineStyle({ strokeStyle: resolvedColor, lineWidth: 2 });
+        const written0 = midi !== null ? midi + transpose : null;
+        // Clef like the grand-staff split: below middle C reads bass clef.
+        const clef: 'treble' | 'bass' = written0 !== null && written0 < 60 ? 'bass' : 'treble';
         stave.addClef(clef);
         if (keySignature) stave.addKeySignature(keySignature);
         stave.setContext(context).draw();
 
         if (midi !== null) {
-            const written = midi + transpose;
+            // Normalize into the staff with a standard 8va/8vb marker so the
+            // note is always visible in the compact box:
+            //   treble: staff E4..F5 (+ up to two ledger lines each way)
+            //   bass:   staff G2..A3 (+ up to two ledger lines each way)
+            let written = written0!;
+            let octaveMark: '8va' | '8vb' | null = null;
+            if (clef === 'treble') {
+                while (written < 58) { written += 12; octaveMark = '8vb'; }
+                while (written > 81) { written -= 12; octaveMark = '8va'; }
+            } else {
+                while (written < 40) { written += 12; octaveMark = '8vb'; }
+                while (written > 61) { written -= 12; octaveMark = '8va'; }
+            }
+
             const spec = getNoteInKey(written, keySignature);
             const note = new StaveNote({
                 keys: spec.keys,
@@ -73,22 +92,32 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
             });
             note.setStyle({ fillStyle: resolvedColor, strokeStyle: resolvedColor });
             if (spec.accidental) note.addModifier(new Accidental(spec.accidental));
+            if (octaveMark) {
+                try {
+                    note.addModifier(
+                        new Annotation(octaveMark)
+                            .setVerticalJustification(Annotation.VerticalJustify.CENTER)
+                            .setStyle({ fillStyle: resolvedColor, strokeStyle: resolvedColor }),
+                    );
+                } catch {
+                    // Marker is a courtesy cue.
+                }
+            }
             const voice = new Voice({ numBeats: 4, beatValue: 4 });
             voice.setMode(Voice.Mode.SOFT);
             voice.addTickable(note);
             new Formatter().joinVoices([voice]).format([voice], width - 40);
             voice.draw(context, stave);
         }
-    }, [midi, clef, transpose, keySignature, width, theme, schemeVersion]);
+    }, [midi, transpose, keySignature, width, theme, schemeVersion]);
 
     return (
         <div
             ref={containerRef}
             className="live-note-staff"
-            style={{ width }}
-            // (height comes from the SVG)
+            style={{ width, height: BOX_H }}
             role="img"
-            aria-label={midi !== null ? `Currently played: note` : 'No note currently detected'}
+            aria-label={midi !== null ? 'Currently played note' : 'No note currently detected'}
         />
     );
 };

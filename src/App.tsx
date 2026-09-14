@@ -330,10 +330,6 @@ function App() {
 
               <LiveNoteStaff
                 midi={displayedPitch ? displayedPitch.midi : null}
-                clef={(() => {
-                  const { clef } = resolveClefTranspose(currentInstrumentDef, settings.difficulty);
-                  return clef === 'grand' ? 'treble' : clef;
-                })()}
                 transpose={resolveClefTranspose(currentInstrumentDef, settings.difficulty).transpose}
                 keySignature={settings.keySignature}
                 theme={settings.theme}

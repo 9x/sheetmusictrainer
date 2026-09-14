@@ -38,6 +38,8 @@ The **Sheet Music Trainer** is a client-side Single Page Application (SPA) built
 
 ### Phrase Mode (sequential practice)
 
+**VexFlow 5 stave placement quirk**: `new Stave(x, y, w)` does not put the first stave line at `y` — the lines draw ~40.5px lower (default `space_above_staff_ln` = 4 line-spaces). The single-note `SheetMusic` absorbed this inside generous heights; the compact live-note staff and phrase staff had to compensate explicitly (negative `Stave` y / shifted row offset) or low ledger notes clipped.
+
 The third game mode renders and scores multi-bar single-voice phrases from a versioned normalized score (`src/score/model.ts`, PPQ ticks, ties pre-merged into "logical notes"). Generators (`src/music/melodyGenerator.ts`, `scaleDrills.ts`) and the ABC subset adapter (`src/exercises/abcParser.ts`) both produce it; `PhraseSheetMusic` renders it with measure-aware accidental display and a current-note caret. Matching (`src/game/PhraseMatcher.ts`) latches per-note results and blocks a sustained pitch from re-crediting a later note on the same pitch (release evidence, stable-pitch frames, at-your-pace timeout re-arm). Tempo transport uses audio-clock boundaries (schedule in `src/game/PhraseTransport.ts`) — cursor state follows the clock, never the click scheduler. Raw detection frames flow through `src/hooks/rawFrameBus.ts` (one per analysis tick, silence included); display smoothing is untouched. Metronome clicks are short noise bursts that blank the mic for 30 ms instead of entering the 400 ms pitched-audio gate. See `docs/PHRASE_MODE_IMPLEMENTATION.md` (contracts) and `docs/PHRASE_DELIVERY.md` (verified behavior + limitations).
 
 ## Testing
