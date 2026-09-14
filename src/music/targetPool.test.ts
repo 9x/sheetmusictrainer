@@ -10,6 +10,7 @@ const base = {
     keyEnabled: false,
     keyTonic: 'C',
     keyMode: 'major',
+    strings: [],
     fretWindowEnabled: false,
     fretMin: 0,
     fretMax: 4,
@@ -74,5 +75,36 @@ describe('computeTargetPool', () => {
         const pool = computeTargetPool({ ...base, instrumentId: 'piano', fretWindowEnabled: true });
         // piano has no fret window: window is ignored, base pool returned
         expect(pool.length).toBeGreaterThan(0);
+    });
+});
+
+describe('computeTargetPool — string selection', () => {
+    it('restricts to a single string when selected', () => {
+        // String index 5 = high E (open midi 64)
+        const pool = computeTargetPool({ ...base, strings: [5] });
+        expect(pool).toContain(64); // open high E
+        expect(pool).toContain(65); // fret 1
+        expect(pool).not.toContain(45); // open A (string 1) — different string
+        // all notes come from one string
+        expect(pool.every(m => m >= 64)).toBe(true);
+    });
+
+    it('combines strings + fret window', () => {
+        // String index 1 (open A = 45), frets 0..2
+        const pool = computeTargetPool({ ...base, strings: [1], fretWindowEnabled: true, fretMin: 0, fretMax: 2 });
+        expect(pool).toEqual([45, 46, 47]);
+    });
+
+    it('combines strings + fret window + key filter', () => {
+        // Low E string (index 0), frets 0..4, C major → only natural notes in that range
+        const pool = computeTargetPool({ ...base, strings: [0], fretWindowEnabled: true, fretMin: 0, fretMax: 4, keyEnabled: true, keyTonic: 'C', keyMode: 'major' });
+        // Low E string frets 0-4: E(40) F(41) F#(42) G(43) G#(44); C major pcs: C D E F G A B
+        expect(pool).toEqual([40, 41, 43]); // E, F, G (F#, G# excluded)
+    });
+
+    it('treats empty strings array as all strings', () => {
+        const a = computeTargetPool({ ...base, strings: [] });
+        const b = computeTargetPool({ ...base, strings: [0, 1, 2, 3, 4, 5] });
+        expect(a).toEqual(b);
     });
 });

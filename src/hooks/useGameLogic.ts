@@ -44,13 +44,12 @@ export const useGameLogic = (
             keyEnabled: pf.keyEnabled,
             keyTonic: pf.keyTonic,
             keyMode: pf.keyMode,
+            strings: pf.strings,
             fretWindowEnabled: pf.fretWindowEnabled,
             fretMin: pf.fretMin,
             fretMax: pf.fretMax,
         });
-    }, [settings.instrument, settings.difficulty, settings.tuningId, settings.customMinFret, settings.customMaxFret,
-        settings.practice?.keyEnabled, settings.practice?.keyTonic, settings.practice?.keyMode,
-        settings.practice?.fretWindowEnabled, settings.practice?.fretMin, settings.practice?.fretMax]);
+    }, [settings]);
 
     // --- Note Generation ---
     const generateNewNote = useCallback((keepFeedback = false) => {

@@ -14,10 +14,12 @@ import { Renderer, Stave, StaveNote, Accidental, Voice, Formatter, Annotation } 
 import { getNoteInKey } from '../music/NoteUtils';
 
 interface LiveNoteStaffProps {
-    /** Sounding midi of the live detected pitch, or null when silent. */
     midi: number | null;
     transpose: number;
     keySignature: string;
+    /** Force a clef (e.g. the instrument's usual clef). When omitted the
+     *  clef auto-switches treble/bass around middle C (piano-style). */
+    clef?: 'treble' | 'bass';
     width?: number;
     theme?: 'light' | 'dark' | 'auto';
 }
@@ -32,6 +34,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
     midi,
     transpose = 0,
     keySignature = 'C',
+    clef: clefOverride,
     width = 130,
     theme = 'auto',
 }) => {
@@ -63,8 +66,9 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         const stave = new Stave(0, STAVE_Y, width - 2);
         stave.setDefaultLedgerLineStyle({ strokeStyle: resolvedColor, lineWidth: 2 });
         const written0 = midi !== null ? midi + transpose : null;
-        // Clef like the grand-staff split: below middle C reads bass clef.
-        const clef: 'treble' | 'bass' = written0 !== null && written0 < 60 ? 'bass' : 'treble';
+        // Instrument-fixed clef when provided (guitar always treble, bass
+        // always bass); otherwise piano-style split at middle C.
+        const clef: 'treble' | 'bass' = clefOverride ?? (written0 !== null && written0 < 60 ? 'bass' : 'treble');
         stave.addClef(clef);
         if (keySignature) stave.addKeySignature(keySignature);
         stave.setContext(context).draw();
@@ -109,7 +113,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
             new Formatter().joinVoices([voice]).format([voice], width - 40);
             voice.draw(context, stave);
         }
-    }, [midi, transpose, keySignature, width, theme, schemeVersion]);
+    }, [midi, transpose, keySignature, clefOverride, width, theme, schemeVersion]);
 
     return (
         <div

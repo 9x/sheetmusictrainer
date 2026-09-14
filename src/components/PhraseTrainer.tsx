@@ -76,6 +76,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         phrase.fretWindowEnabled = pf.fretWindowEnabled;
         phrase.fretMin = pf.fretMin;
         phrase.fretMax = pf.fretMax;
+        // Unified metronome: phrase tempo reads from the shared rhythm BPM
+        // (single source of truth across modes; the phrase-local BPM control
+        // was replaced by the common metronome widget in Controls).
+        phrase.bpm = settings.rhythm.bpm;
         const setPhrase = useCallback((updates: Partial<PhraseSettings>) => {
             updateSettings(s => {
                 const next = { ...s, phrase: { ...getPhraseSettings(s), ...updates } };
@@ -90,13 +94,43 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 return next;
             });
         }, [updateSettings]);
-
         const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
         const currentTuning = TUNINGS[settings.tuningId];
         const fretted = isFrettedInstrument(settings.instrument) && !!currentTuning;
 
         // ---- Playable pool ----------------------------------------------------
         const pool = useMemo(() => {
+            // Unified filter: strings ∩ fret window take precedence for fretted
+            // instruments (same semantics as the single-note modes).
+            if (fretted && currentTuning && (pf.strings.length > 0 || pf.fretWindowEnabled)) {
+                const all = currentTuning.strings;
+                const selected = pf.strings.length > 0
+                    ? all.filter((_, i) => pf.strings.includes(i))
+                    : all;
+                if (selected.length > 0) {
+                    if (pf.fretWindowEnabled) {
+                        const lo = Math.max(0, Math.min(24, pf.fretMin));
+                        const hi = Math.max(lo, Math.min(24, pf.fretMax));
+                        return selected.flatMap(open => {
+                            const notes: number[] = [];
+                            for (let fret = lo; fret <= hi; fret++) notes.push(open + fret);
+                            return notes;
+                        }).sort((a, b) => a - b);
+                    }
+                    // Strings only: use their full range
+                    const maxFret = Math.max(...all.map(open => {
+                        let f = 0;
+                        while (open + f <= 127) f++;
+                        return Math.min(f - 1, 24);
+                    }));
+                    return selected.flatMap(open => {
+                        const notes: number[] = [];
+                        for (let fret = 0; fret <= maxFret; fret++) notes.push(open + fret);
+                        return notes;
+                    }).sort((a, b) => a - b);
+                }
+                return [];
+            }
             if (phrase.fretWindowEnabled && fretted && currentTuning) {
                 return fretWindowNotes(currentTuning, phrase.fretMin, phrase.fretMax);
             }
@@ -107,7 +141,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 customMinFret: settings.customMinFret,
                 customMaxFret: settings.customMaxFret,
             });
-        }, [phrase.fretWindowEnabled, phrase.fretMin, phrase.fretMax, fretted, currentTuning,
+        }, [pf.strings, pf.fretWindowEnabled, pf.fretMin, pf.fretMax, fretted, currentTuning,
+            phrase.fretWindowEnabled, phrase.fretMin, phrase.fretMax,
             settings.instrument, settings.difficulty, settings.tuningId, settings.customMinFret, settings.customMaxFret]);
 
         // ---- Imported score (session-only) --------------------------------------
@@ -117,20 +152,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const [melodySeed, setMelodySeed] = useState(() => Math.floor(Math.random() * 100000));
         const fileInputRef = useRef<HTMLInputElement>(null);
         const pendingAutoStart = useRef(false);
-        // BPM text field: editing stays free-form while typing; commits on
-        // blur/Enter (single-note widget behavior).
-        const [bpmText, setBpmText] = useState(String(phrase.bpm));
-        const [lastBpm, setLastBpm] = useState(phrase.bpm);
-        if (phrase.bpm !== lastBpm) {
-            // React's "adjust state when a prop changes" pattern (no effect).
-            setLastBpm(phrase.bpm);
-            setBpmText(String(phrase.bpm));
-        }
-        const commitBpm = useCallback(() => {
-            const v = parseInt(bpmText, 10);
-            if (Number.isNaN(v)) { setBpmText(String(phrase.bpm)); return; }
-            setPhrase({ bpm: Math.max(30, Math.min(180, v)) });
-        }, [bpmText, phrase.bpm, setPhrase]);
 
         const handleImportFile = useCallback((file: File) => {
             setImportError(null);
@@ -622,30 +643,9 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 </select>
                             </label>
                             {phrase.pace === 'tempo' && (
-                                <label>BPM
-                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                                        <button className="control-button small" onClick={() => setPhrase({ bpm: Math.max(30, phrase.bpm - 1) })}>−</button>
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            value={bpmText}
-                                            onChange={e => { if (/^\d{0,3}$/.test(e.target.value)) setBpmText(e.target.value); }}
-                                            onBlur={commitBpm}
-                                            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                            style={{ width: '46px', textAlign: 'center' }}
-                                        />
-                                        <button className="control-button small" onClick={() => setPhrase({ bpm: Math.min(180, phrase.bpm + 1) })}>+</button>
-                                    </div>
-                                    <input
-                                        type="range"
-                                        min={30}
-                                        max={180}
-                                        step={1}
-                                        value={phrase.bpm}
-                                        onChange={e => setPhrase({ bpm: Number(e.target.value) })}
-                                        aria-label="Phrase tempo"
-                                    />
-                                </label>
+                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
+                                    Tempo (BPM): set it on the metronome in the tools below — shared across modes.
+                                </span>
                             )}
                             <label className="phrase-check">
                                 <input

@@ -6,7 +6,10 @@ export interface PracticeFilter {
     keyEnabled: boolean;
     keyTonic: string;
     keyMode: string; // ModeId
-    /** Restrict target notes to a fret window (fretted instruments only). */
+    /** Restrict target notes to selected strings (fretted instruments only).
+     *  Empty array = no restriction (all strings). Index 0 = lowest string. */
+    strings: number[];
+    /** Restrict target notes to a fret range (fretted instruments only). */
     fretWindowEnabled: boolean;
     fretMin: number;
     fretMax: number;
@@ -16,6 +19,7 @@ export const DEFAULT_PRACTICE_FILTER: PracticeFilter = {
     keyEnabled: false,
     keyTonic: 'C',
     keyMode: 'major',
+    strings: [],
     fretWindowEnabled: false,
     fretMin: 0,
     fretMax: 4,
@@ -101,6 +105,8 @@ export interface AppSettings {
     showTuningMeter: boolean;
     tuningId: string;
     keySignature: string;
+    /** Keep display key signature in sync with the target-key control. */
+    keyFollowsTarget?: boolean;
     instrument: string;
     rhythm: RhythmSettings;
     zenMode: boolean;
@@ -128,6 +134,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     showTuningMeter: false,
     tuningId: 'standard',
     keySignature: 'C',
+    keyFollowsTarget: false,
     instrument: 'guitar',
     rhythm: {
         mode: 'bpm',

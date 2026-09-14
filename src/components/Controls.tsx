@@ -1,9 +1,10 @@
 import { Settings, Guitar, Music, Gauge } from 'lucide-react';
 import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
-import { getTempoMarking } from '../music/TempoMarkings';
+
 import { TuningMeter } from './TuningMeter';
 import { TargetNoteControls } from './TargetNoteControls';
+import { MetronomeWidget } from './MetronomeWidget';
 
 import { useSettings } from '../context/useSettings';
 import { type Difficulty, type RhythmSettings } from '../types/SettingsTypes';
@@ -224,120 +225,14 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                     )}
                 </div>
 
-                {/* Tool 2: Metronome (single-note modes only) */}
-                {!inPhraseMode && (
+                {/* Tool 2: Metronome (all modes) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <label className="control-label" style={{ marginBottom: 0 }}>
-                            <span>Metronome</span>
-                        </label>
-                        <button
-                            className={`switch-button ${settings.rhythm.active ? 'active' : ''}`}
-                            onClick={() => updateRhythm({ active: !settings.rhythm.active })}
-                            title={settings.rhythm.active ? "Turn Off" : "Turn On"}
-                        >
-                            <div className="switch-thumb" />
-                        </button>
-                    </div>
-
-                    {settings.rhythm.active && (
-                        <div className="rhythm-details" style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                                <button
-                                    className={`control-button small ${settings.rhythm.mode === 'bpm' ? 'active' : ''}`}
-                                    onClick={() => updateRhythm({ mode: 'bpm' })}
-                                    style={{ flex: 1, fontSize: '10px' }}
-                                >BPM</button>
-                                <button
-                                    className={`control-button small ${settings.rhythm.mode === 'seconds' ? 'active' : ''}`}
-                                    onClick={() => updateRhythm({ mode: 'seconds' })}
-                                    style={{ flex: 1, fontSize: '10px' }}
-                                >Timer</button>
-                            </div>
-
-                            {settings.rhythm.mode === 'bpm' ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <button
-                                            className="control-button small"
-                                            onClick={() => updateRhythm({ bpm: Math.max(30, settings.rhythm.bpm - 1) })}
-                                            style={{ width: '24px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                            -
-                                        </button>
-                                        <input
-                                            type="number"
-                                            min="30"
-                                            max="300"
-                                            value={settings.rhythm.bpm}
-                                            onChange={(e) => updateRhythm({ bpm: Math.max(1, parseInt(e.target.value) || 60) })}
-                                            className="control-input"
-                                            style={{
-                                                width: '48px',
-                                                textAlign: 'center',
-                                                padding: '2px'
-                                            }}
-                                        />
-                                        <button
-                                            className="control-button small"
-                                            onClick={() => updateRhythm({ bpm: Math.min(300, settings.rhythm.bpm + 1) })}
-                                            style={{ width: '24px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                        >
-                                            +
-                                        </button>
-                                        <input
-                                            type="range"
-                                            min="30"
-                                            max="240"
-                                            step="1"
-                                            value={settings.rhythm.bpm}
-                                            onChange={(e) => updateRhythm({ bpm: Number(e.target.value) })}
-                                            style={{ flex: 1 }}
-                                        />
-                                    </div>
-                                    <div style={{ fontSize: '11px', opacity: 0.7, textAlign: 'center' }}>
-                                        {getTempoMarking(settings.rhythm.bpm)}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <span style={{ fontSize: '12px', minWidth: '32px' }}>{settings.rhythm.seconds}s</span>
-                                    <input
-                                        type="range"
-                                        min="1"
-                                        max="60"
-                                        step="1"
-                                        value={settings.rhythm.seconds}
-                                        onChange={(e) => updateRhythm({ seconds: Number(e.target.value) })}
-                                        style={{ flex: 1 }}
-                                    />
-                                </div>
-                            )}
-
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <label style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={settings.rhythm.autoAdvance}
-                                        onChange={(e) => updateRhythm({ autoAdvance: e.target.checked })}
-                                    />
-                                    Auto
-                                </label>
-
-                                <label style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={settings.rhythm.sound}
-                                        onChange={(e) => updateRhythm({ sound: e.target.checked })}
-                                    />
-                                    Sound
-                                </label>
-                            </div>
-                        </div>
-                    )}
+                    <MetronomeWidget
+                        rhythm={settings.rhythm}
+                        onUpdate={updateRhythm}
+                        showAutoAdvance={!inPhraseMode}
+                    />
                 </div>
-
-                )}
 
             </div>
         </div>

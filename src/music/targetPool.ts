@@ -5,7 +5,7 @@
  * controls behave identically everywhere.
  */
 import { keyFor, type ModeId } from './scales';
-import { computePlayableNotes, fretWindowNotes, isFrettedInstrument } from './playableRange';
+import { computePlayableNotes, isFrettedInstrument } from './playableRange';
 import { TUNINGS } from './Tunings';
 
 export interface TargetPoolInput {
@@ -18,6 +18,8 @@ export interface TargetPoolInput {
     readonly keyEnabled: boolean;
     readonly keyTonic: string;
     readonly keyMode: string;
+    /** Selected string indices (0 = lowest). Empty = all strings. */
+    readonly strings: number[];
     /** Fret window (fretted instruments only). */
     readonly fretWindowEnabled: boolean;
     readonly fretMin: number;
@@ -29,8 +31,8 @@ export interface TargetPoolInput {
  *
  * Order of application:
  *  1. base playable range (instrument difficulty / custom frets)
- *  2. fret window (replaces the range for fretted instruments — same
- *     semantics as Phrase Mode's fret window)
+ *  2. string selection ∩ fret window (fretted instruments only — replaces
+ *     the range, same semantics as Phrase Mode's fret window)
  *  3. key filter (pitch-class intersection, keeps spelling/degree data intact
  *     via the same scale machinery Phrase Mode uses)
  */
@@ -38,10 +40,21 @@ export function computeTargetPool(input: TargetPoolInput): number[] {
     const tuning = TUNINGS[input.tuningId];
     const fretted = isFrettedInstrument(input.instrumentId) && !!tuning;
 
-    // 1+2: base pool with optional fret window
+    // 1+2: base pool with string selection and optional fret window
     let base: number[];
-    if (input.fretWindowEnabled && fretted) {
-        base = fretWindowNotes(tuning!, input.fretMin, input.fretMax);
+    if (fretted) {
+        const all = tuning!.strings;
+        const selected = input.strings.length > 0
+            ? all.filter((_, i) => input.strings.includes(i))
+            : all;
+        if (selected.length === 0) return [];
+        const lo = input.fretWindowEnabled ? Math.max(0, Math.min(24, input.fretMin)) : 0;
+        const hi = input.fretWindowEnabled ? Math.max(lo, Math.min(24, input.fretMax)) : 24;
+        base = selected.flatMap(open => {
+            const notes: number[] = [];
+            for (let fret = lo; fret <= hi; fret++) notes.push(open + fret);
+            return notes;
+        }).sort((a, b) => a - b);
     } else {
         base = computePlayableNotes({
             instrumentId: input.instrumentId,

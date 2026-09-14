@@ -332,6 +332,7 @@ function App() {
                 midi={displayedPitch ? displayedPitch.midi : null}
                 transpose={resolveClefTranspose(currentInstrumentDef, settings.difficulty).transpose}
                 keySignature={settings.keySignature}
+                clef={currentInstrumentDef.clefMode === 'treble' ? 'treble' : currentInstrumentDef.clefMode === 'bass' ? 'bass' : undefined}
                 theme={settings.theme}
               />
               <div className={`pitch-readout ${displayedPitch ? 'active' : ''}`}>
