@@ -80,6 +80,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         // (single source of truth across modes; the phrase-local BPM control
         // was replaced by the common metronome widget in Controls).
         phrase.bpm = settings.rhythm.bpm;
+        // "Sync to metronome": phrase tempo pace reuses the common metronome
+        // click — never both (the phrase clickSound is disabled in that case).
+        const metronomeActive = settings.rhythm.active;
+        phrase.clickSound = phrase.pace === 'tempo' && phrase.clickSound && !metronomeActive;
         const setPhrase = useCallback((updates: Partial<PhraseSettings>) => {
             updateSettings(s => {
                 const next = { ...s, phrase: { ...getPhraseSettings(s), ...updates } };
@@ -440,6 +444,22 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 {rangeWarning && <div className="phrase-warning">{rangeWarning}</div>}
 
                 <div className="feedback-area">
+                    {trainer.phase === 'countIn' && (
+                        <span
+                            className="phrase-countin"
+                            style={{
+                                display: 'inline-block',
+                                minWidth: '20px',
+                                padding: '1px 7px',
+                                marginRight: '8px',
+                                borderRadius: '10px',
+                                fontSize: '11px',
+                                opacity: 0.75,
+                                background: 'color-mix(in srgb, var(--color-text-main) 10%, transparent)',
+                            }}
+                            aria-label={`Count-in: ${trainer.countInLeft} beats left`}
+                        >{trainer.countInLeft}</span>
+                    )}
                     <div className="instruction-text phrase-status">{statusText}</div>
                 </div>
 
@@ -548,9 +568,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                         </select>
                                     </label>
                                     <label>Rhythm
-                                        <select value={phrase.rhythmLevel} onChange={e => setPhrase({ rhythmLevel: Number(e.target.value) === 2 ? 2 : 1 })}>
+                                        <select value={phrase.rhythmLevel} onChange={e => setPhrase({ rhythmLevel: Math.max(1, Math.min(3, Number(e.target.value))) as 1 | 2 | 3 })}>
                                             <option value={1}>Simple</option>
                                             <option value={2}>Mixed</option>
+                                            <option value={3}>Elaborate (16ths)</option>
                                         </select>
                                     </label>
                                 </>
@@ -605,11 +626,13 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                             {[1, 2, 4, 6, 8].map(b => <option key={b} value={b}>{b}</option>)}
                                         </select>
                                     </label>
-                                    <label>Octave
+                                    <label>Transpose
                                         <select value={octaveShift} onChange={e => setOctaveShift(Number(e.target.value))}>
-                                            <option value={-1}>-1</option>
+                                            <option value={-2}>-2 oct</option>
+                                            <option value={-1}>-1 oct</option>
                                             <option value={0}>0</option>
-                                            <option value={1}>+1</option>
+                                            <option value={1}>+1 oct</option>
+                                            <option value={2}>+2 oct</option>
                                         </select>
                                     </label>
                                 </>
@@ -637,9 +660,20 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             )}
 
                             <label>Pace
-                                <select value={phrase.pace} onChange={e => setPhrase({ pace: e.target.value as PhraseSettings['pace'] })}>
+                                <select
+                                    value={phrase.pace}
+                                    onChange={e => {
+                                        const pace = e.target.value as PhraseSettings['pace'];
+                                        setPhrase({ pace });
+                                        // "Sync to metronome" only makes sense with the
+                                        // metronome running — switch it on automatically.
+                                        if (pace === 'tempo' && !settings.rhythm.active) {
+                                            setSettings(s => ({ ...s, rhythm: { ...s.rhythm, active: true } }));
+                                        }
+                                    }}
+                                >
                                     <option value="step">At your pace</option>
-                                    <option value="tempo">With tempo</option>
+                                    <option value="tempo">Sync to metronome</option>
                                 </select>
                             </label>
                             {phrase.pace === 'tempo' && (
@@ -662,7 +696,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                         checked={phrase.clickSound}
                                         onChange={e => setPhrase({ clickSound: e.target.checked })}
                                     />
-                                    Click sound
+                                    Separate phrase click (off = use the metronome click)
                                 </label>
                             )}
                             <label className="phrase-check">
@@ -675,7 +709,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             </label>
                         </div>
                         {phrase.pace === 'tempo' && phrase.clickSound && (
-                            <p className="phrase-note">Clicks are short noise bursts, not pitched tones — but speaker bleed can still disturb the microphone. Headphones recommended.</p>
+                            <p className="phrase-note">Phrase click active — switch the metronome off to avoid double clicks, or untick this to reuse the metronome click.</p>
                         )}
                         <p className="phrase-note">
                             Matching checks pitch, not fingering — several fretboard positions produce the same pitch.

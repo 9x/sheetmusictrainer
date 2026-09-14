@@ -40,6 +40,7 @@ interface Fragment {
     ticks: number;
     isAttack: boolean;
     isEighth: boolean;
+    isSixteenth: boolean;
     staveKey: 'treble' | 'bass';
     rest: boolean;
 }
@@ -47,7 +48,9 @@ interface Fragment {
 // Duration ticks → VexFlow duration code (subset the model guarantees).
 function durationCode(ticks: number): string | null {
     switch (ticks) {
+        case 120: return '16';
         case 240: return '8';
+        case 360: return '8d';
         case 480: return '4';
         case 720: return '4d';
         case 960: return '2';
@@ -226,6 +229,7 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                         ticks,
                         isAttack,
                         isEighth: code === '8' && !rest,
+                        isSixteenth: code === '16' && !rest,
                         staveKey,
                         rest,
                     });
@@ -319,12 +323,15 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                     line.setContext(context).draw();
                 }
 
-                // --- Beams: consecutive eighth pairs within one beat ---
-                const eighths = frags.filter(f => f.isEighth && f.note instanceof StaveNote);
-                for (let i = 0; i + 1 < eighths.length; i++) {
-                    const a = eighths[i], b2 = eighths[i + 1];
+                // --- Beams: consecutive eighth/16th pairs within one beat ---
+                const beamed = frags.filter(f => (f.isEighth || f.isSixteenth) && f.note instanceof StaveNote);
+                for (let i = 0; i + 1 < beamed.length; i++) {
+                    const a = beamed[i], b2 = beamed[i + 1];
                     if (a.staveKey !== b2.staveKey) continue;
-                    if (b2.start - a.start !== 240) continue;
+                    // consecutive within the same beat, same subdivision size
+                    const step = a.isSixteenth ? 120 : 240;
+                    if (b2.start - a.start !== step) continue;
+                    if ((a.ticks !== step) || (b2.ticks !== step)) continue;
                     const beatA = Math.floor((a.start - measureStart) / 480);
                     const beatB = Math.floor((b2.start - measureStart) / 480);
                     if (beatA === beatB) {

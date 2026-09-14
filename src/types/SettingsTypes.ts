@@ -50,7 +50,7 @@ export interface PhraseSettings {
     keyMode: string; // ModeId
     bars: number; // 1–8 (melodies)
     meterNumerator: 3 | 4;
-    rhythmLevel: 1 | 2;
+    rhythmLevel: 1 | 2 | 3;
     scaleCoverage: 'one-octave' | 'two-octave' | 'position';
     scaleDirection: 'up' | 'down' | 'updown';
     /** Phrase-local fret window (guitar/bass) — overrides the note set. */

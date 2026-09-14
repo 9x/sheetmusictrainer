@@ -31,8 +31,9 @@ export interface MelodyConfig {
     /** 1..8 */
     readonly bars: number;
     readonly meter: { readonly numerator: 3 | 4; readonly denominator: 4 };
-    /** 1 = Simple (quarters/halves/wholes), 2 = Mixed (+ paired eighths, dotted quarters). */
-    readonly rhythmLevel: 1 | 2;
+    /** 1 = Simple (quarters/halves/wholes), 2 = Mixed (+ paired eighths, dotted quarters),
+     *  3 = Elaborate (+ sixteenths, sixteenth groups, dotted eighths). */
+    readonly rhythmLevel: 1 | 2 | 3;
     readonly seed: number;
 }
 
@@ -53,6 +54,17 @@ const TEMPLATES_4_L2: number[][] = [
     [720, 720, 480],
     [720, 480, 240, 240, 240],
 ];
+// Level 3: sixteenth-note material (120 = 16th, 360 = dotted 8th).
+const TEMPLATES_4_L3: number[][] = [
+    [480, 480, 120, 120, 120, 120, 480],
+    [120, 120, 120, 120, 480, 480, 480],
+    [480, 120, 120, 120, 120, 480, 480],
+    [360, 120, 480, 480, 480],
+    [480, 360, 120, 480, 480],
+    [120, 120, 120, 120, 120, 120, 120, 120, 480, 480],
+    [480, 480, 360, 120, 480],
+    [720, 120, 120, 120, 120, 480],
+];
 const TEMPLATES_3_L1: number[][] = [
     [480, 480, 480],
     [960, 480],
@@ -65,11 +77,19 @@ const TEMPLATES_3_L2: number[][] = [
     [720, 720],
     [720, 240, 240, 240],
 ];
+// Level 3 for 3/4: sixteenth material filling 1440 ticks.
+const TEMPLATES_3_L3: number[][] = [
+    [480, 120, 120, 120, 120, 480, 480],
+    [120, 120, 120, 120, 480, 480, 480],
+    [360, 120, 480, 480, 480],
+    [480, 360, 120, 480, 480],
+    [120, 120, 120, 120, 120, 120, 120, 120, 480],
+];
 
-function templatesFor(meter: { numerator: 3 | 4 }, level: 1 | 2): number[][] {
+function templatesFor(meter: { numerator: 3 | 4 }, level: 1 | 2 | 3): number[][] {
     const base = meter.numerator === 4
-        ? (level === 1 ? TEMPLATES_4_L1 : [...TEMPLATES_4_L1, ...TEMPLATES_4_L2])
-        : (level === 1 ? TEMPLATES_3_L1 : [...TEMPLATES_3_L1, ...TEMPLATES_3_L2]);
+        ? (level === 1 ? TEMPLATES_4_L1 : level === 2 ? [...TEMPLATES_4_L1, ...TEMPLATES_4_L2] : [...TEMPLATES_4_L1, ...TEMPLATES_4_L2, ...TEMPLATES_4_L3])
+        : (level === 1 ? TEMPLATES_3_L1 : level === 2 ? [...TEMPLATES_3_L1, ...TEMPLATES_3_L2] : [...TEMPLATES_3_L1, ...TEMPLATES_3_L2, ...TEMPLATES_3_L3]);
     return base.filter(t => t.reduce((a, b) => a + b, 0) === meter.numerator * PPQ);
 }
 
