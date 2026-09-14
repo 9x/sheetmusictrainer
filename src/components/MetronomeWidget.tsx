@@ -27,7 +27,10 @@ interface MetronomeWidgetProps {
     showAutoAdvance?: boolean;
     /** Compact layout (phrase transport row). */
     compact?: boolean;
-    /** 'option': show the sync/free toggle (Phrase Mode). null: plain on/off. */
+    /** 'option': show the sync checkbox (Phrase Mode) that replaces the pace
+     *  dropdown: checked = clicks/beats only with the exercise (preview &
+     *  run, count-in included); unchecked = free-running metronome.
+     *  null: plain on/off (single-note modes). */
     syncMode?: 'option' | null;
     /** External gate (sync mode): true while the exercise runs. */
     gate?: boolean | null;
@@ -85,18 +88,14 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
                     <span>Metronome</span>
                 </label>
                 {syncMode === 'option' ? (
-                    <button
-                        className={`switch-button ${rhythm.syncToExercise ? 'active' : ''}`}
-                        onClick={() => onUpdate({
-                            syncToExercise: !rhythm.syncToExercise,
-                            active: true, // armed in either mode; the mode decides behavior
-                        })}
-                        title={rhythm.syncToExercise
-                            ? 'Sync: starts with the exercise (count-in). Click while idle: off.'
-                            : 'Free: runs independently — start/stop it yourself.'}
-                    >
-                        <div className="switch-thumb" />
-                    </button>
+                    <label style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <input
+                            type="checkbox"
+                            checked={!!rhythm.syncToExercise}
+                            onChange={(e) => onUpdate({ syncToExercise: e.target.checked })}
+                        />
+                        Sync to exercise
+                    </label>
                 ) : (
                     <button
                         className={`switch-button ${rhythm.active ? 'active' : ''}`}

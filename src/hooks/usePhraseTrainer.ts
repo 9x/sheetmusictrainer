@@ -507,11 +507,13 @@ export function usePhraseTrainer(
             }
             // Tempo pace: click along with the preview so the rhythm is
             // audible while listening (quarter beats over the full span).
+            // Registered in PREVIEW_GROUP so stopping the preview also stops
+            // its clicks (no ghost metronomes after an aborted preview).
             if (paceRef.current === 'tempo' && configRef.current.clickSound) {
                 const totalTicks = events.reduce((a, e) => Math.max(a, e.startTick + e.durationTicks), 0);
                 const beats = Math.floor(totalTicks / PPQ);
                 for (let i = 0; i < beats; i++) {
-                    audioEngine.playClickAt(t0 + i * spb, CLICK_VOLUME, i % 4 === 0);
+                    audioEngine.playClickAt(t0 + i * spb, CLICK_VOLUME, i % 4 === 0, PREVIEW_GROUP);
                 }
             }
             setPhaseBoth('preview');

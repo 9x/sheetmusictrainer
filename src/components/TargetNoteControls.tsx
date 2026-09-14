@@ -10,7 +10,7 @@
  * (mirrored into phrase settings), so state stays consistent across modes.
  */
 import { useMemo } from 'react';
-import { Key, Guitar, Music } from 'lucide-react';
+import { Key, Guitar, Music, SlidersHorizontal } from 'lucide-react';
 import { useSettings } from '../context/useSettings';
 import { getPracticeFilter, type PracticeFilter } from '../types/SettingsTypes';
 import { MODE_LABELS, TONICS, isMode, keyFor, type ModeId } from '../music/scales';
@@ -81,14 +81,32 @@ export const TargetNoteControls: React.FC = () => {
 
     const allSelected = pf.strings.length === 0;
 
+    const anyActive = pf.keyEnabled || pf.fretWindowEnabled || pf.strings.length > 0;
     return (
-        <div className="practice-filter-grid">
+        <div className="practice-filter-grid" style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px', gridColumn: '1 / -1' }}>
+            {/* Section header: unified with Tuner/Metronome style */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label className="control-label" style={{ marginBottom: 0 }}>
+                    <SlidersHorizontal size={18} />
+                    <span>Limit notes</span>
+                </label>
+                {anyActive && (
+                    <button
+                        className="link-button"
+                        style={{ fontSize: '11px', padding: 0 }}
+                        onClick={() => setFilter({ keyEnabled: false, fretWindowEnabled: false, strings: [] })}
+                    >
+                        Clear all
+                    </button>
+                )}
+            </div>
+
             {/* Key filter */}
-            <div className="control-group" style={{ gridColumn: '1 / -1' }}>
+            <div className="control-group">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <label className="control-label">
                         <Key size={18} />
-                        <span>Target key (limits notes)</span>
+                        <span>Key</span>
                     </label>
                     <button
                         className={`switch-button ${pf.keyEnabled ? 'active' : ''}`}
@@ -149,13 +167,17 @@ export const TargetNoteControls: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <label className="control-label">
                             <Guitar size={18} />
-                            <span>Strings (limits notes)</span>
+                            <span>Strings</span>
                         </label>
-                        {allSelected && (
-                            <span style={{ fontSize: '11px', opacity: 0.7 }}>all</span>
-                        )}
+                        <button
+                            className={`switch-button ${!allSelected ? 'active' : ''}`}
+                            onClick={() => setFilter({ strings: allSelected ? [0] : [] })}
+                            title={allSelected ? 'All strings — toggle on to restrict' : 'Restrict to selected strings'}
+                        >
+                            <div className="switch-thumb" />
+                        </button>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    {!allSelected && <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
                         {Array.from({ length: stringCount }, (_, i) => {
                             const active = allSelected || pf.strings.includes(i);
                             return (
@@ -170,7 +192,7 @@ export const TargetNoteControls: React.FC = () => {
                                 </button>
                             );
                         })}
-                    </div>
+                    </div>}
                     {pf.strings.length > 0 && (
                         <button
                             className="link-button"
@@ -189,7 +211,7 @@ export const TargetNoteControls: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <label className="control-label">
                             <Music size={18} />
-                            <span>Fret window (limits notes)</span>
+                            <span>Fret window</span>
                         </label>
                         <button
                             className={`switch-button ${pf.fretWindowEnabled ? 'active' : ''}`}

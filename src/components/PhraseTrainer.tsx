@@ -82,16 +82,18 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         // (single source of truth across modes; the phrase-local BPM control
         // was replaced by the common metronome widget in Controls).
         phrase.bpm = settings.rhythm.bpm;
+        // Pace is now DERIVED from the metronome widget's sync checkbox:
+        // checked = tempo (sync), unchecked = step (at your pace).
+        const pace: PhraseSettings['pace'] = settings.rhythm.syncToExercise ? 'tempo' : 'step';
+        phrase.pace = pace;
         // Click decision — ONE source: the metronome widget's sound checkbox.
-        // - Tempo + syncToExercise: the run clicks when armed && sound
-        //   (silent while idle; starts with the exercise incl. count-in).
-        // - Tempo + free metronome: the widget clicks freely; the run stays
-        //   silent (its beats are visual only) to avoid doubling.
-        // - Step: widget clicks freely; phrase clickSound follows the switch.
-        const sync = settings.rhythm.syncToExercise;
-        phrase.clickSound = phrase.pace === 'tempo'
-            ? (sync ? settings.rhythm.active && settings.rhythm.sound : false)
-            : settings.rhythm.active && settings.rhythm.sound;
+        // - Sync (tempo): run clicks when armed && sound (count-in incl.);
+        //   widget silent while idle.
+        // - Free metronome: widget clicks freely; the run stays silent to
+        //   avoid doubling (sync off in tempo = free widget during runs).
+        phrase.clickSound = pace === 'tempo'
+            ? settings.rhythm.active && settings.rhythm.sound
+            : settings.rhythm.active && settings.rhythm.sound && !settings.rhythm.syncToExercise;
         const setPhrase = useCallback((updates: Partial<PhraseSettings>) => {
             updateSettings(s => {
                 const next = { ...s, phrase: { ...getPhraseSettings(s), ...updates } };
@@ -616,13 +618,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
 
                             {phrase.material === 'arpeggio' && (
                                 <>
-                                    <label>Chord
-                                        <select value={phrase.arpeggioDegree} onChange={e => setPhrase({ arpeggioDegree: e.target.value, arpeggioBars: 1 })}>
-                                            {(Object.keys(ARPEGGIO_DEGREE_LABELS) as ArpeggioDegree[]).map(d => (
-                                                <option key={d} value={d}>{ARPEGGIO_DEGREE_LABELS[d]}</option>
-                                            ))}
-                                        </select>
-                                    </label>
                                     <label>Pattern
                                         <select value={phrase.arpeggioPattern} onChange={e => setPhrase({ arpeggioPattern: e.target.value as PhraseSettings['arpeggioPattern'] })}>
                                             <option value="up">Up</option>
@@ -633,12 +628,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                                 <option value="giuliani-pim">p-i-m</option>
                                                 <option value="giuliani-pima">p-i-m-a</option>
                                                 <option value="giuliani-pami">p-a-m-i</option>
-                                                <option value="giuliani-mami">m-a-m-i</option>
-                                                <option value="giuliani-ami">a-m-i</option>
+                                                <option value="giuliani-aim">a-i-m</option>
                                                 <option value="giuliani-pimamim">p-i-m-a-m-i</option>
-                                                <option value="giuliani-papima">p-a-p-i-m-a</option>
-                                                <option value="giuliani-amipim">a-m-i-p-i-m</option>
-                                                <option value="giuliani-miamim">m-i-a-m-i-m</option>
+                                                <option value="giuliani-pmamim">p-m-a-m-i-m</option>
+                                                <option value="giuliani-peamama">p-e-a-m-a-m</option>
                                             </optgroup>
                                         </select>
                                     </label>
@@ -662,35 +655,32 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                             </select>
                                         </label>
                                     )}
-                                    {phrase.arpeggioBars > 1 && (
-                                        <div style={{ gridColumn: '1 / -1' }}>
-                                            <span style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '4px' }}>
-                                                Chord pool ({phrase.arpeggioChordSelection.length === 0 ? 'all 7' : `${phrase.arpeggioChordSelection.length} selected`}):
-                                            </span>
-                                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                                {(Object.keys(ARPEGGIO_DEGREE_LABELS) as ArpeggioDegree[]).map(d => {
-                                                    const active = phrase.arpeggioChordSelection.length === 0 || phrase.arpeggioChordSelection.includes(d);
-                                                    return (
-                                                        <button
-                                                            key={d}
-                                                            className={`control-button small ${active ? 'active' : ''}`}
-                                                            style={{ minWidth: '42px', padding: '5px 8px', fontSize: '12px' }}
-                                                            onClick={() => {
-                                                                // Toggle; empty selection = all back on.
-                                                                const cur = phrase.arpeggioChordSelection.length === 0
-                                                                    ? (Object.keys(ARPEGGIO_DEGREE_LABELS) as ArpeggioDegree[])
-                                                                    : [...phrase.arpeggioChordSelection as ArpeggioDegree[]];
-                                                                const next = cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d];
-                                                                setPhrase({ arpeggioChordSelection: next });
-                                                            }}
-                                                        >
-                                                            {ARPEGGIO_DEGREE_LABELS[d]}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <span style={{ fontSize: '11px', opacity: 0.7, display: 'block', marginBottom: '4px' }}>
+                                            Chords ({phrase.arpeggioChordSelection.length === 0 ? 'all 7' : `${phrase.arpeggioChordSelection.length} selected`}):
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                            {(Object.keys(ARPEGGIO_DEGREE_LABELS) as ArpeggioDegree[]).map(d => {
+                                                const active = phrase.arpeggioChordSelection.length === 0 || phrase.arpeggioChordSelection.includes(d);
+                                                return (
+                                                    <button
+                                                        key={d}
+                                                        className={`control-button small ${active ? 'active' : ''}`}
+                                                        style={{ minWidth: '42px', padding: '5px 8px', fontSize: '12px' }}
+                                                        onClick={() => {
+                                                            const cur = phrase.arpeggioChordSelection.length === 0
+                                                                ? (Object.keys(ARPEGGIO_DEGREE_LABELS) as ArpeggioDegree[])
+                                                                : [...phrase.arpeggioChordSelection as ArpeggioDegree[]];
+                                                            const next = cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d];
+                                                            setPhrase({ arpeggioChordSelection: next });
+                                                        }}
+                                                    >
+                                                        {ARPEGGIO_DEGREE_LABELS[d]}
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
-                                    )}
+                                    </div>
                                     <label>Rhythm
                                         <select value={phrase.arpeggioRhythm} onChange={e => setPhrase({ arpeggioRhythm: e.target.value as PhraseSettings['arpeggioRhythm'] })}>
                                             <option value="quarters">Quarter notes</option>
@@ -763,28 +753,9 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 </span>
                             )}
 
-                            <label>Pace
-                                <select
-                                    value={phrase.pace}
-                                    onChange={e => {
-                                        const pace = e.target.value as PhraseSettings['pace'];
-                                        setPhrase({ pace });
-                                        // "Sync to metronome" only makes sense with the
-                                        // metronome running — switch it on automatically.
-                                        if (pace === 'tempo' && !settings.rhythm.active) {
-                                            setSettings(s => ({ ...s, rhythm: { ...s.rhythm, active: true } }));
-                                        }
-                                    }}
-                                >
-                                    <option value="step">At your pace</option>
-                                    <option value="tempo">Sync to metronome</option>
-                                </select>
-                            </label>
-                            {phrase.pace === 'tempo' && (
-                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
-                                    Tempo (BPM): set it on the metronome in the tools below — shared across modes.
-                                </span>
-                            )}
+                            {/* Pace lives in the metronome widget now:
+                                'Sync to exercise' checked = tempo pace,
+                                unchecked = at-your-pace (step). */}
                             <label className="phrase-check">
                                 <input
                                     type="checkbox"
@@ -795,7 +766,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             </label>
                             {phrase.pace === 'tempo' && (
                                 <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
-                                    Clicks: use the metronome's "Click sound" checkbox (with count-in, synced).
+                                    BPM + click: on the metronome widget below.
                                 </span>
                             )}
                             <label className="phrase-check">

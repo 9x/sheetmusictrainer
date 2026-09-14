@@ -140,8 +140,10 @@ class AudioEngine {
      * Short NON-TONAL metronome click (~10 ms noise burst). Not registered in
      * the pitched-audio gate; instead the mic is blanked for 30 ms so the
      * click itself can't be scored as a pitch (contract E2).
+     * Optional groupId: the click becomes cancellable via cancelGroup (used
+     * by preview clicks so stopping a preview also stops its clicks).
      */
-    playClickAt(time: number, volume = 0.5, accent = false): void {
+    playClickAt(time: number, volume = 0.5, accent = false, groupId?: string): void {
         const ctx = this.ensureContext();
         if (!this.noiseBuffer) {
             const len = Math.floor(ctx.sampleRate * 0.01);
@@ -160,6 +162,11 @@ class AudioEngine {
         src.start(time);
         src.stop(time + 0.02);
         this.clickBlankUntil = Math.max(this.clickBlankUntil, time + 0.03);
+        if (groupId) {
+            // Register as a cancellable node (cast: clicks are buffer sources,
+            // cancelGroup only calls stop() on them, which BufferSource has).
+            this.active.push({ osc: src as unknown as OscillatorNode, gain: gainNode, endsAt: time + 0.02, groupId });
+        }
     }
 
     /** True for ~30 ms after a scheduled click (mic frames should be skipped). */

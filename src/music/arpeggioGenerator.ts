@@ -21,12 +21,10 @@ export type ArpeggioPattern =
     | 'giuliani-pim'   // root-third-fifth (p-i-m)
     | 'giuliani-pima'  // root-third-fifth-octave (p-i-m-a)
     | 'giuliani-pami'  // root-octave-fifth-third (p-a-m-i)
-    | 'giuliani-mami'  // third-fifth-octave-third (inner-voice feel)
-    | 'giuliani-ami'   // octave-fifth-third (descending from the top)
+    | 'giuliani-aim'   // root-octave-third (upper voices first)
     | 'giuliani-pimamim'  // p-i-m-a-m-i (six-note rolling figure)
-    | 'giuliani-papima'   // p-a-p-i-m-a (bass-skip pattern)
-    | 'giuliani-amipim'   // a-m-i-p-i-m (tremolo-adjacent)
-    | 'giuliani-miamim';  // m-i-a-m-i-m (triple-string figure)
+    | 'giuliani-pmamim'   // p-m-a-m-i-m (asymmetric upper-voice figure)
+    | 'giuliani-peamama'; // p-e-a-m-a-m (wide bass + upper pairs)
 export type ArpeggioCoverage = 'one-octave' | 'two-octave';
 /** How the chord per bar is chosen in sequence mode. */
 export type ArpeggioProgression = 'random' | 'functional' | 'diatonic-cycle';
@@ -65,29 +63,34 @@ export const PATTERN_LABELS: Record<ArpeggioPattern, string> = {
     'giuliani-pim': 'Giuliani p-i-m',
     'giuliani-pima': 'Giuliani p-i-m-a',
     'giuliani-pami': 'Giuliani p-a-m-i',
-    'giuliani-mami': 'Giuliani m-a-m-i',
-    'giuliani-ami': 'Giuliani a-m-i',
+    'giuliani-aim': 'Giuliani a-i-m',
     'giuliani-pimamim': 'Giuliani p-i-m-a-m-i',
-    'giuliani-papima': 'Giuliani p-a-p-i-m-a',
-    'giuliani-amipim': 'Giuliani a-m-i-p-i-m',
-    'giuliani-miamim': 'Giuliani m-i-a-m-i-m',
+    'giuliani-pmamim': 'Giuliani p-m-a-m-i-m',
+    'giuliani-peamama': 'Giuliani p-e-a-m-a-m',
 };
 
 /**
- * Giuliani figures: chord-cycle index per note (0=root 1=third 2=fifth
- * 3=octave). Each figure repeats with an octave register shift per
- * repetition, mirroring the p-i-m-a feel of the 120 right-hand studies.
+ * Giuliani figures — NOTE sequences (not fingerings): the thumb (p) always
+ * takes the bass/root, the remaining notes ride the upper chord tones.
+ * Indices into the octave cycle [0=root, 1=third, 2=fifth, 3=octave]; the
+ * figure repeats with an ascending octave shift per repetition (the bass
+ * stays in place — like the Maestoso studies).
  */
 const GIULIANI_FIGURES: Record<string, number[]> = {
+    // Studies 1–20 feel: bass + two upper voices, ascending
     'giuliani-pim': [0, 1, 2],
+    // Studies 21–40 feel: bass + three upper voices
     'giuliani-pima': [0, 1, 2, 3],
+    // Descending upper voices after the bass
     'giuliani-pami': [0, 3, 2, 1],
-    'giuliani-mami': [1, 2, 3, 1],
-    'giuliani-ami': [3, 2, 1],
+    // Upper voices first (a-i-m), bass anchored at start of each cycle
+    'giuliani-aim': [0, 3, 1],
+    // Six-note rolling figure (studies 61–80 territory)
     'giuliani-pimamim': [0, 1, 2, 3, 2, 1],
-    'giuliani-papima': [0, 3, 0, 1, 2, 3],
-    'giuliani-amipim': [3, 2, 1, 0, 1, 2],
-    'giuliani-miamim': [2, 1, 3, 2, 1, 2],
+    // Asymmetric: bass + upper triad roll
+    'giuliani-pmamim': [0, 2, 3, 2, 1, 2],
+    // Wide: bass, fifth, octave, then upper-voice pairs
+    'giuliani-peamama': [0, 2, 3, 1, 3, 1],
 };
 
 /** pc of a spelled degree (step letter + alter). */
