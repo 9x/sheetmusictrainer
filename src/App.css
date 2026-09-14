@@ -1103,3 +1103,21 @@ button {
     flex: none;
     opacity: 0.9;
 }
+
+.live-note-staff svg {
+    display: block; /* inline SVG baseline gap made the box taller than the SVG */
+}
+
+/* Zen mode: center the core UI vertically; the exit button is position:fixed
+   and stays at the top. `safe center` avoids clipping when content is taller
+   than the viewport. */
+.app-container.zen-mode {
+    display: flex;
+    flex-direction: column;
+}
+
+.app-container.zen-mode .main-stage {
+    flex: 1;
+    justify-content: safe center;
+    justify-content: center;
+}

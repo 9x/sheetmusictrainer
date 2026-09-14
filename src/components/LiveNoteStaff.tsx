@@ -42,7 +42,10 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         container.innerHTML = '';
 
         const renderer = new Renderer(container, Renderer.Backends.SVG);
-        renderer.resize(width, 74);
+        // Enough headroom for the instrument's written range: guitar first
+        // position reaches written E3 — about four ledger lines BELOW the
+        // treble staff. A 74px box clipped those (half-invisible staff).
+        renderer.resize(width, 112);
         const context = renderer.getContext();
 
         const resolvedColor =
@@ -52,7 +55,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         context.setFillStyle(resolvedColor);
         context.setStrokeStyle(resolvedColor);
 
-        const stave = new Stave(0, 10, width - 2);
+        const stave = new Stave(0, 28, width - 2);
         stave.setDefaultLedgerLineStyle({ strokeStyle: resolvedColor, lineWidth: 2 });
         stave.addClef(clef);
         if (keySignature) stave.addKeySignature(keySignature);
@@ -81,6 +84,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
             ref={containerRef}
             className="live-note-staff"
             style={{ width }}
+            // (height comes from the SVG)
             role="img"
             aria-label={midi !== null ? `Currently played: note` : 'No note currently detected'}
         />
