@@ -16,6 +16,7 @@ export interface ScheduleEntry {
     readonly at: number;
     /** Beat number within the count-in (count-in-beat only). */
     readonly beat?: number;
+    readonly accent?: boolean;
     /** Event index (note-end only). */
     readonly index?: number;
 }
@@ -41,7 +42,7 @@ export function buildSchedule(score: Score, bpm: number, startAt: number, countI
     const entries: ScheduleEntry[] = [];
 
     for (let i = 0; i < countInBeats; i++) {
-        entries.push({ kind: 'count-in-beat', at: startAt + i * spb, beat: i });
+        entries.push({ kind: 'count-in-beat', at: startAt + i * spb, beat: i, accent: i === 0 });
     }
 
     const scoreStart = startAt + countInBeats * spb;
@@ -53,7 +54,7 @@ export function buildSchedule(score: Score, bpm: number, startAt: number, countI
     const barTicks = score.meter.numerator * PPQ;
     for (let i = 0; i < beatCount; i++) {
         const tick = i * PPQ;
-        entries.push({ kind: 'beat', at: scoreStart + (tick / PPQ) * spb, beat: (tick % barTicks === 0) ? i : undefined, index: i });
+        entries.push({ kind: 'beat', at: scoreStart + (tick / PPQ) * spb, beat: i, accent: tick % barTicks === 0, index: i });
     }
 
     scoreEvents(score).forEach((e, i) => {

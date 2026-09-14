@@ -18,6 +18,8 @@ import { buildSchedule, sanitizeBpm, type ScheduleEntry } from '../game/PhraseTr
 import { PPQ } from '../score/model';
 import { audioEngine } from '../audio/AudioEngine';
 import { subscribeRawFrames } from './rawFrameBus';
+import { phraseRunBus } from './phraseRunBus';
+import { phraseBeatBus } from './phraseBeatBus';
 
 export type PhrasePhase = 'ready' | 'countIn' | 'playing' | 'paused' | 'preview' | 'done';
 
@@ -118,6 +120,9 @@ export function usePhraseTrainer(
     const setPhaseBoth = useCallback((p: PhrasePhase) => {
         phaseRef.current = p;
         setPhase(p);
+        // Expose run state so the shared metronome can gate its click/pendulum:
+        // only running during count-in and playing, never idle/preview/paused.
+        phraseRunBus.set(p === 'countIn' || p === 'playing');
     }, []);
 
     useEffect(() => { paceRef.current = config.pace; }, [config.pace]);
@@ -197,7 +202,17 @@ export function usePhraseTrainer(
                 countInBeatsRef.current > 0 &&
                 e.at <= scoreStartRef.current + 0.02;
             if ((e.kind === 'count-in-beat' || e.kind === 'beat') && !isRedundantDownbeat && configRef.current.clickSound) {
-                audioEngine.playClickAt(e.at, CLICK_VOLUME, e.kind === 'count-in-beat' ? e.beat === 0 : e.beat !== undefined);
+                audioEngine.playClickAt(e.at, CLICK_VOLUME, e.kind === 'count-in-beat' ? e.beat === 0 : e.accent === true);
+            }
+            // Publish every beat to the shared bus so the metronome widget's
+            // pendulum stays in sync with the run (click or no click).
+            if (e.kind === 'count-in-beat' || e.kind === 'beat') {
+                phraseBeatBus.emit(e.beat ?? 0, e.at);
+            }
+            // Publish every beat to the shared bus so the metronome widget's
+            // pendulum stays in sync with the run (click or no click).
+            if (e.kind === 'count-in-beat' || e.kind === 'beat') {
+                phraseBeatBus.emit(e.kind === 'count-in-beat' ? (e.beat ?? 0) : ((e.beat ?? 0) + countInBeatsRef.current), e.at);
             }
             clickIdxRef.current++;
         }

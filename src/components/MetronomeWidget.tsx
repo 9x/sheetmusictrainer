@@ -9,6 +9,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useMetronome } from '../hooks/useMetronome';
 import { getTempoMarking } from '../music/TempoMarkings';
+import { phraseBeatBus } from '../hooks/phraseBeatBus';
+import { audioEngine } from '../audio/AudioEngine';
 import type { RhythmSettings } from '../types/SettingsTypes';
 
 interface MetronomeWidgetProps {
@@ -20,6 +22,9 @@ interface MetronomeWidgetProps {
     onBeat?: () => void;
     /** Compact layout (phrase transport row). */
     compact?: boolean;
+    /** External gate (Phrase Mode): the metronome only ticks while the
+     *  phrase run is active — user toggle arms it, the gate fires it. */
+    gate?: boolean | null;
 }
 
 export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
@@ -28,9 +33,12 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
     showAutoAdvance = false,
     onBeat,
     compact = false,
+    gate = null,
 }) => {
-    // Single metronome instance: drives both the audible click and the
-    // pendulum parity flip (perfectly in sync).
+    // Gated mode (Phrase Mode): the widget does NOT run its own scheduler —
+    // the phrase run drives both the audible click and this pendulum via
+    // phraseBeatBus, so visual and click are always the same clock.
+    // Non-gated: widget ticks itself (single metronome instance below).
     const [beatParity, setBeatParity] = useState(0);
     const lastTickRef = useRef(0);
     const onBeatRef = useRef(onBeat);
@@ -45,10 +53,19 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
         onBeatRef.current?.();
     }, []);
 
+    // Gated: mirror phrase-run beats onto the pendulum at their audio times.
+    useEffect(() => {
+        if (gate === null || !gate) return;
+        return phraseBeatBus.subscribe((_beat, at) => {
+            const delay = Math.max(0, (at - audioEngine.now()) * 1000);
+            window.setTimeout(() => setBeatParity(p => (p + 1) % 2), delay);
+        });
+    }, [gate]);
+
     const { restart } = useMetronome({
         bpm: rhythm.bpm,
-        volume: rhythm.sound ? rhythm.volume : 0,
-        playing: rhythm.active,
+        volume: rhythm.sound && gate === null ? rhythm.volume : 0,
+        playing: rhythm.active && (gate === null || gate),
         onTick: handleTick,
     });
     void restart;

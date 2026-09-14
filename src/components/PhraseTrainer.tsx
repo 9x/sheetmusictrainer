@@ -80,10 +80,13 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         // (single source of truth across modes; the phrase-local BPM control
         // was replaced by the common metronome widget in Controls).
         phrase.bpm = settings.rhythm.bpm;
-        // "Sync to metronome": phrase tempo pace reuses the common metronome
-        // click — never both (the phrase clickSound is disabled in that case).
+        // "Sync to metronome": the phrase run IS the click source while it
+        // plays (scheduler-driven, with count-in) — the metronome widget only
+        // mirrors the beats visually and is muted in Phrase Mode, so clicks
+        // can never double. The separate-click checkbox stays as an explicit
+        // opt-in for a click even in "at your pace" mode.
         const metronomeActive = settings.rhythm.active;
-        phrase.clickSound = phrase.pace === 'tempo' && phrase.clickSound && !metronomeActive;
+        phrase.clickSound = phrase.pace === 'tempo' ? true : phrase.clickSound && metronomeActive;
         const setPhrase = useCallback((updates: Partial<PhraseSettings>) => {
             updateSettings(s => {
                 const next = { ...s, phrase: { ...getPhraseSettings(s), ...updates } };
@@ -690,13 +693,18 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 Virtual input only
                             </label>
                             {phrase.pace === 'tempo' && (
+                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
+                                    Clicks come from the run (with count-in); the metronome widget mirrors the beats.
+                                </span>
+                            )}
+                            {phrase.pace === 'step' && (
                                 <label className="phrase-check">
                                     <input
                                         type="checkbox"
                                         checked={phrase.clickSound}
                                         onChange={e => setPhrase({ clickSound: e.target.checked })}
                                     />
-                                    Separate phrase click (off = use the metronome click)
+                                    Metronome click while practicing (requires metronome on)
                                 </label>
                             )}
                             <label className="phrase-check">
@@ -708,8 +716,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 Auto-continue
                             </label>
                         </div>
-                        {phrase.pace === 'tempo' && phrase.clickSound && (
-                            <p className="phrase-note">Phrase click active — switch the metronome off to avoid double clicks, or untick this to reuse the metronome click.</p>
+                        {phrase.pace === 'tempo' && (
+                            <p className="phrase-note">The run clicks a full count-in bar, then one click per beat. The metronome pendulum mirrors these beats — set the tempo on the metronome tool.</p>
                         )}
                         <p className="phrase-note">
                             Matching checks pitch, not fingering — several fretboard positions produce the same pitch.

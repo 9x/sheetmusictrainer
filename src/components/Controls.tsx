@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import { Guitar, Music, Gauge } from 'lucide-react';
 import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
@@ -5,7 +6,7 @@ import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 import { TuningMeter } from './TuningMeter';
 import { TargetNoteControls } from './TargetNoteControls';
 import { MetronomeWidget } from './MetronomeWidget';
-
+import { phraseRunBus } from '../hooks/phraseRunBus';
 import { useSettings } from '../context/useSettings';
 import { type Difficulty, type RhythmSettings } from '../types/SettingsTypes';
 
@@ -19,6 +20,10 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
     const { settings, updateSettings } = useSettings();
     // Alias to minimize refactor, or just use updateSettings. 
     const onUpdateSettings = updateSettings;
+    // Phrase run gate: the metronome only ticks while the phrase trainer is
+    // counting in / playing (armed by the user toggle, fired by the run).
+    const [phraseRunActive, setPhraseRunActive] = useState(false);
+    useEffect(() => phraseRunBus.subscribe(setPhraseRunActive), []);
     const handleTuningChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         onUpdateSettings({ ...settings, tuningId: e.target.value });
     };
@@ -176,6 +181,7 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                         rhythm={settings.rhythm}
                         onUpdate={updateRhythm}
                         showAutoAdvance={!inPhraseMode}
+                        gate={inPhraseMode ? phraseRunActive : null}
                     />
                 </div>
 
