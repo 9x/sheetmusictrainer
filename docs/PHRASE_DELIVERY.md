@@ -23,6 +23,30 @@ Implementation of [PHRASE_MODE_PLAN.md](../PHRASE_MODE_PLAN.md) and
 | R13 Safe lifecycle | ✅ | Pause on tab-hide, mic error, mic-off, dialogs; audio-group cancellation; run tokens; StrictMode-safe; unmount cleanup |
 | R14 Tested delivery | ✅ | 149 unit/integration tests + real-browser synthetic-mic suite (see below) |
 
+## Late feedback round (post first delivery)
+
+- **Guitar octave bug**: the phrase renderer drew sounding pitch; fixed by
+  deriving the written pitch through the shared `spelledPitch` helper, and
+  clef/transpose resolution extracted to `resolveClefTranspose` (used by both
+  modes — requested reuse of proven single-note logic).
+- **Count-in**: an extra 5th click at the score's downbeat made players start
+  a beat early (perceived as "play the note before"); removed (the count-in's
+  last click IS the downbeat).
+- **Tempo timing proven**: browser test plays every Ode note exactly in its
+  audio window → 8/8 matched (also caught + fixed false scoring during the
+  count-in itself).
+- **Repeated notes**: release-based re-arm + 2.5 s at-your-pace timeout + a
+  clear status hint ("release, then strike again").
+- **Auto-continue** (tempo, default on): exercises roll to the next section
+  (wrapping), melodies roll a new seed, scale drills restart.
+- **BPM widget**: −/+ buttons + slider + free-typing text field (commit on
+  blur/Enter) — the single-note widget pattern.
+- **Live-note staff** next to the mic readout: written-pitch mini staff with
+  8va/8vb normalization; box matches the mic button; VexFlow's
+  `space_above_staff_ln` (~40.5px) offset compensated (see TECHNICAL_REALIZATION).
+- **Library**: 19 items (5 verified PD melodies + 14 labeled originals).
+- **Zen centering** + live staff sizing/overlap per user feedback.
+
 ## Verification actually performed
 
 - `npm run lint`, `npm run build`, `npm test -- --run`: all green (149 tests,
