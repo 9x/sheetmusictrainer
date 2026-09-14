@@ -13,7 +13,7 @@
  *   microphone frame rate.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Renderer, Stave, StaveNote, GhostNote, Accidental, Voice, Formatter, StaveConnector, Beam, StaveTie, Annotation } from 'vexflow';
+import { Renderer, Stave, StaveNote, GhostNote, Accidental, Voice, Formatter, StaveConnector, Beam, StaveTie, Annotation, Dot } from 'vexflow';
 import { scoreEvents, type Score } from '../score/model';
 import { STEP_LETTERS, type StepLetter } from '../score/model';
 import type { NoteStatus } from '../game/PhraseMatcher';
@@ -165,6 +165,11 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                     const ticks = fragEnd - cursor;
                     const code = durationCode(ticks);
                     if (!code) { cursor = fragEnd; continue; }
+                    // 'd' suffix encodes a dotted duration; the visible dot is
+                    // a modifier that must be added explicitly (VexFlow only
+                    // reads the base duration for spacing otherwise).
+                    const isDotted = code.endsWith('d');
+                    const baseCode = isDotted ? code.slice(0, -1) : code;
 
                     const rest = ev.pitch === null;
                     const staveKey: 'treble' | 'bass' = rest
@@ -174,7 +179,7 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
 
                     let note: StaveNote;
                     if (rest) {
-                        note = new StaveNote({ keys: ['b/4'], duration: `${code}r`, clef: staveKey });
+                        note = new StaveNote({ keys: ['b/4'], duration: `${baseCode}r`, clef: staveKey });
                     } else {
                         const p = ev.pitch!;
                         // WRITTEN pitch for the staff: sounding midi + display
@@ -195,9 +200,10 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                         measureState[stateKey] = written.alter;
                         note = new StaveNote({
                             keys: [keyString(written.step, written.alter, written.octave)],
-                            duration: code,
+                            duration: baseCode,
                             clef: staveKey,
                         });
+                        if (isDotted) Dot.buildAndAttach([note]);
                         if (glyph) note.addModifier(new Accidental(glyph));
                     }
 
