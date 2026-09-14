@@ -16,7 +16,7 @@ import { usePhraseTrainer, type PhraseTrainerApi, type PhrasePhase } from '../ho
 import { getPhraseSettings, getPracticeFilter, type PhraseSettings, type PracticeFilter } from '../types/SettingsTypes';
 import { rawFrameCount } from '../hooks/rawFrameBus';
 import { audioEngine } from '../audio/AudioEngine';
-import { computePlayableNotes, isFrettedInstrument, positionsWithinWindow, fretWindowNotes } from '../music/playableRange';
+import { computePlayableNotes, isFrettedInstrument, positionsWithinWindow } from '../music/playableRange';
 import { generateMelody } from '../music/melodyGenerator';
 import { generateScaleDrill } from '../music/scaleDrills';
 import { generateArpeggio, type ArpeggioDegree } from '../music/arpeggioGenerator';
@@ -109,39 +109,22 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
 
         // ---- Playable pool ----------------------------------------------------
         const pool = useMemo(() => {
-            // Unified filter: strings ∩ fret window take precedence for fretted
-            // instruments (same semantics as the single-note modes).
-            if (fretted && currentTuning && (pf.strings.length > 0 || pf.fretWindowEnabled)) {
+            // Unified filter: strings ∩ fret window, computed identically to
+            // the single-note modes (full 0–12 fretboard when no filter is
+            // active — the legacy difficulty ranges no longer apply).
+            if (fretted && currentTuning) {
                 const all = currentTuning.strings;
                 const selected = pf.strings.length > 0
                     ? all.filter((_, i) => pf.strings.includes(i))
                     : all;
-                if (selected.length > 0) {
-                    if (pf.fretWindowEnabled) {
-                        const lo = Math.max(0, Math.min(24, pf.fretMin));
-                        const hi = Math.max(lo, Math.min(24, pf.fretMax));
-                        return selected.flatMap(open => {
-                            const notes: number[] = [];
-                            for (let fret = lo; fret <= hi; fret++) notes.push(open + fret);
-                            return notes;
-                        }).sort((a, b) => a - b);
-                    }
-                    // Strings only: use their full range
-                    const maxFret = Math.max(...all.map(open => {
-                        let f = 0;
-                        while (open + f <= 127) f++;
-                        return Math.min(f - 1, 24);
-                    }));
-                    return selected.flatMap(open => {
-                        const notes: number[] = [];
-                        for (let fret = 0; fret <= maxFret; fret++) notes.push(open + fret);
-                        return notes;
-                    }).sort((a, b) => a - b);
-                }
-                return [];
-            }
-            if (phrase.fretWindowEnabled && fretted && currentTuning) {
-                return fretWindowNotes(currentTuning, phrase.fretMin, phrase.fretMax);
+                if (selected.length === 0) return [];
+                const lo = pf.fretWindowEnabled ? Math.max(0, Math.min(24, pf.fretMin)) : 0;
+                const hi = pf.fretWindowEnabled ? Math.max(lo, Math.min(24, pf.fretMax)) : 12;
+                return selected.flatMap(open => {
+                    const notes: number[] = [];
+                    for (let fret = lo; fret <= hi; fret++) notes.push(open + fret);
+                    return notes;
+                }).sort((a, b) => a - b);
             }
             return computePlayableNotes({
                 instrumentId: settings.instrument,
@@ -640,6 +623,13 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                             <option value="down">Down</option>
                                             <option value="updown">Up &amp; down</option>
                                             <option value="1235">1-2-3-5</option>
+                                            <optgroup label="Giuliani studies">
+                                                <option value="giuliani-pim">p-i-m</option>
+                                                <option value="giuliani-pima">p-i-m-a</option>
+                                                <option value="giuliani-pami">p-a-m-i</option>
+                                                <option value="giuliani-mami">m-a-m-i</option>
+                                                <option value="giuliani-ami">a-m-i</option>
+                                            </optgroup>
                                         </select>
                                     </label>
                                     <label>Coverage

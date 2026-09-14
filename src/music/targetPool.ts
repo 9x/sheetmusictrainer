@@ -40,7 +40,10 @@ export function computeTargetPool(input: TargetPoolInput): number[] {
     const tuning = TUNINGS[input.tuningId];
     const fretted = isFrettedInstrument(input.instrumentId) && !!tuning;
 
-    // 1+2: base pool with string selection and optional fret window
+    // 1+2: base pool with string selection and optional fret window.
+    // For fretted instruments with NO filters the pool is the full fretboard
+    // (frets 0–12) — the legacy difficulty ranges no longer apply since the
+    // Note Set dropdown was removed.
     let base: number[];
     if (fretted) {
         const all = tuning!.strings;
@@ -49,7 +52,7 @@ export function computeTargetPool(input: TargetPoolInput): number[] {
             : all;
         if (selected.length === 0) return [];
         const lo = input.fretWindowEnabled ? Math.max(0, Math.min(24, input.fretMin)) : 0;
-        const hi = input.fretWindowEnabled ? Math.max(lo, Math.min(24, input.fretMax)) : 24;
+        const hi = input.fretWindowEnabled ? Math.max(lo, Math.min(24, input.fretMax)) : 12;
         base = selected.flatMap(open => {
             const notes: number[] = [];
             for (let fret = lo; fret <= hi; fret++) notes.push(open + fret);

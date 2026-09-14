@@ -14,7 +14,15 @@ import { STEP_LETTERS, LETTER_PC, type StepLetter } from '../score/model';
 import { makeRng } from './melodyGenerator';
 
 export type ArpeggioDegree = 'I' | 'ii' | 'iii' | 'IV' | 'V' | 'vi' | 'vii0';
-export type ArpeggioPattern = 'up' | 'down' | 'updown' | '1235';
+export type ArpeggioPattern =
+    | 'up' | 'down' | 'updown' | '1235'
+    // Giuliani-style right-hand figures over one chord (indices into the
+    // chord cycle per note; 1=root 2=third 3=fifth 4=octave):
+    | 'giuliani-pim'   // root-third-fifth (p-i-m)
+    | 'giuliani-pima'  // root-third-fifth-octave (p-i-m-a)
+    | 'giuliani-pami'  // root-octave-fifth-third (p-a-m-i)
+    | 'giuliani-mami'  // third-fifth-octave-third (inner-voice feel)
+    | 'giuliani-ami';  // octave-fifth-third (descending from the top)
 export type ArpeggioCoverage = 'one-octave' | 'two-octave';
 /** How the chord per bar is chosen in sequence mode. */
 export type ArpeggioProgression = 'random' | 'functional' | 'diatonic-cycle';
@@ -43,6 +51,28 @@ const DEGREE_INDEX: Record<ArpeggioDegree, number> = {
 
 export const ARPEGGIO_DEGREE_LABELS: Record<ArpeggioDegree, string> = {
     I: 'I', ii: 'ii', iii: 'iii', IV: 'IV', V: 'V', vi: 'vi', 'vii0': 'vii°',
+};
+
+export const PATTERN_LABELS: Record<ArpeggioPattern, string> = {
+    up: 'Up', down: 'Down', updown: 'Up & down', '1235': '1-2-3-5',
+    'giuliani-pim': 'Giuliani p-i-m',
+    'giuliani-pima': 'Giuliani p-i-m-a',
+    'giuliani-pami': 'Giuliani p-a-m-i',
+    'giuliani-mami': 'Giuliani m-a-m-i',
+    'giuliani-ami': 'Giuliani a-m-i',
+};
+
+/**
+ * Giuliani figures: chord-cycle index per note (0=root 1=third 2=fifth
+ * 3=octave). Each figure repeats with an octave register shift per
+ * repetition, mirroring the p-i-m-a feel of the 120 right-hand studies.
+ */
+const GIULIANI_FIGURES: Record<string, number[]> = {
+    'giuliani-pim': [0, 1, 2],
+    'giuliani-pima': [0, 1, 2, 3],
+    'giuliani-pami': [0, 3, 2, 1],
+    'giuliani-mami': [1, 2, 3, 1],
+    'giuliani-ami': [3, 2, 1],
 };
 
 /** pc of a spelled degree (step letter + alter). */
@@ -143,6 +173,26 @@ function buildPath(key: KeyContext, degreeIndex: number, pool: number[], coverag
                 path.push(base[1] + 12 * oct);
                 path.push(base[2] + 12 * oct);
                 path.push(base[0] + 12 * (oct + 1));
+            }
+            return path;
+        }
+        default: {
+            // Giuliani figure: cycle [root, third, fifth, octave] with the
+            // figure selecting cycle positions per note; the octave wraps so
+            // e.g. p-i-m over C-E-G becomes C E G | C' E' G' ... (ascending
+            // octave register shift every figure repetition).
+            const figure = GIULIANI_FIGURES[pattern];
+            // 4-note cycle per octave: root, third, fifth, octave
+            const cycleOct = (oct: number): number[] => [
+                base[0] + 12 * oct, base[1] + 12 * oct, base[2] + 12 * oct, base[0] + 12 * (oct + 1),
+            ];
+            const path: number[] = [];
+            for (let oct = 0; oct < octavesWanted; oct++) {
+                const c = cycleOct(oct);
+                for (const idx of figure) {
+                    const note = c[idx];
+                    if (note !== undefined && (oct === 0 || pool.includes(note))) path.push(note);
+                }
             }
             return path;
         }
@@ -272,7 +322,7 @@ export function generateArpeggio(
     }
 
     const chordName = `${key.tonic} ${ARPEGGIO_DEGREE_LABELS[config.degree]}`;
-    const patternLabel = { up: 'up', down: 'down', updown: 'up & down', '1235': '1-2-3-5' }[config.pattern];
+    const patternLabel = PATTERN_LABELS[config.pattern];
     // Single-bar paths can overflow into extra bars (updown/two-octave);
     // sequence mode always has exactly `bars` measures.
     const totalMeasures = bars === 1 ? Math.max(1, Math.ceil((cursor) / full)) : bars;
