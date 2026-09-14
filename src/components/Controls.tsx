@@ -1,4 +1,4 @@
-import { Settings, Guitar, Music, Gauge } from 'lucide-react';
+import { Guitar, Music, Gauge } from 'lucide-react';
 import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 
@@ -19,10 +19,6 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
     const { settings, updateSettings } = useSettings();
     // Alias to minimize refactor, or just use updateSettings. 
     const onUpdateSettings = updateSettings;
-    const handleDifficultyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        onUpdateSettings({ ...settings, difficulty: e.target.value as Difficulty });
-    };
-
     const handleTuningChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         onUpdateSettings({ ...settings, tuningId: e.target.value });
     };
@@ -112,23 +108,6 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                              If Tuning is hidden, Note Set becomes Item 2. 
                              I'll forgo complexity and just render what's available. */}
 
-                {/* Row 2, Col 1 */}
-                <div className="control-group">
-                    <label className="control-label">
-                        <Settings size={18} />
-                        <span>Note Set</span>
-                    </label>
-                    <select
-                        value={settings.difficulty}
-                        onChange={handleDifficultyChange}
-                        className="control-select"
-                    >
-                        {currentInstrumentDef.ranges.map(r => (
-                            <option key={r.id} value={r.id}>{r.label}</option>
-                        ))}
-                    </select>
-                </div>
-
                 {/* Row 2, Col 2 */}
                 {!inPhraseMode && (
                 <div className="control-group">
@@ -159,40 +138,6 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                 </div>
                 )}
 
-                {/* Row 3: Fret Range (Full Width) */}
-                {currentInstrumentDef.ranges.find(r => r.id === settings.difficulty)?.type === 'custom_fret' && (
-                    <div className="control-group" style={{ gridColumn: '1 / -1' }}>
-                        <label className="control-label">
-                            <span>Fret Range</span>
-                        </label>
-                        <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <span style={{ fontSize: '12px', opacity: 0.7 }}>Min</span>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="24"
-                                    value={settings.customMinFret ?? 0}
-                                    onChange={(e) => onUpdateSettings({ ...settings, customMinFret: parseInt(e.target.value) || 0 })}
-                                    className="control-input"
-                                    style={{ width: '100%', padding: '4px' }}
-                                />
-                            </div>
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <span style={{ fontSize: '12px', opacity: 0.7 }}>Max</span>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    max="24"
-                                    value={settings.customMaxFret ?? 12}
-                                    onChange={(e) => onUpdateSettings({ ...settings, customMaxFret: parseInt(e.target.value) || 0 })}
-                                    className="control-input"
-                                    style={{ width: '100%', padding: '4px' }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Target-note filter: unified controls, all modes */}

@@ -72,7 +72,7 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
 
             {rhythm.active && (
                 <div className="rhythm-details" style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                    {/* Linear pendulum */}
+                    {/* Linear pendulum — same element, left transitions each beat */}
                     <div
                         style={{
                             position: 'relative',
@@ -84,7 +84,6 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
                         aria-hidden
                     >
                         <div
-                            key={beatParity}
                             style={{
                                 position: 'absolute',
                                 top: '50%',
