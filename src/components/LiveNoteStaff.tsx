@@ -42,10 +42,12 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         container.innerHTML = '';
 
         const renderer = new Renderer(container, Renderer.Backends.SVG);
-        // Enough headroom for the instrument's written range: guitar first
-        // position reaches written E3 — about four ledger lines BELOW the
-        // treble staff. A 74px box clipped those (half-invisible staff).
-        renderer.resize(width, 112);
+        // Match the mic button height (64px) so the staff is vertically
+        // aligned with it. The stave is centered in the box; extreme ledger
+        // lines (very high/low notes) intentionally OVERFLOW the box
+        // (CSS overflow: visible) and may overlap neighboring elements —
+        // preferred over reserving large empty headroom.
+        renderer.resize(width, 64);
         const context = renderer.getContext();
 
         const resolvedColor =
@@ -55,7 +57,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         context.setFillStyle(resolvedColor);
         context.setStrokeStyle(resolvedColor);
 
-        const stave = new Stave(0, 28, width - 2);
+        const stave = new Stave(0, 13, width - 2);
         stave.setDefaultLedgerLineStyle({ strokeStyle: resolvedColor, lineWidth: 2 });
         stave.addClef(clef);
         if (keySignature) stave.addKeySignature(keySignature);

@@ -1104,8 +1104,13 @@ button {
     opacity: 0.9;
 }
 
+.live-note-staff {
+    height: 64px; /* matches the mic button — vertical centering via the bar's align-items */
+}
+
 .live-note-staff svg {
     display: block; /* inline SVG baseline gap made the box taller than the SVG */
+    overflow: visible; /* extreme ledger lines overlap neighbors instead of adding whitespace */
 }
 
 /* Zen mode: center the core UI vertically; the exit button is position:fixed
