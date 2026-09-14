@@ -3,6 +3,7 @@ import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
 import { getTempoMarking } from '../music/TempoMarkings';
 import { TuningMeter } from './TuningMeter';
+import { TargetNoteControls } from './TargetNoteControls';
 
 import { useSettings } from '../context/useSettings';
 import { type Difficulty, type RhythmSettings } from '../types/SettingsTypes';
@@ -192,6 +193,9 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                     </div>
                 )}
             </div>
+
+            {/* Target-note filter: unified controls, all modes */}
+            <TargetNoteControls />
 
             {/* Bottom Section: Tools Grid (2 Columns now) */}
             <div className="tools-grid" style={inPhraseMode ? { gridTemplateColumns: '1fr' } : undefined}>

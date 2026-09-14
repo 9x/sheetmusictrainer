@@ -13,13 +13,13 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { useSettings } from '../context/useSettings';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { usePhraseTrainer, type PhraseTrainerApi, type PhrasePhase } from '../hooks/usePhraseTrainer';
-import { getPhraseSettings, type PhraseSettings } from '../types/SettingsTypes';
+import { getPhraseSettings, getPracticeFilter, type PhraseSettings, type PracticeFilter } from '../types/SettingsTypes';
 import { rawFrameCount } from '../hooks/rawFrameBus';
 import { audioEngine } from '../audio/AudioEngine';
 import { computePlayableNotes, isFrettedInstrument, positionsWithinWindow, fretWindowNotes } from '../music/playableRange';
 import { generateMelody } from '../music/melodyGenerator';
 import { generateScaleDrill } from '../music/scaleDrills';
-import { isMode, MODE_LABELS, TONICS, type ModeId } from '../music/scales';
+import { isMode, type ModeId } from '../music/scales';
 import { scoreEvents, type Result, type Score, type ScoreEvent } from '../score/model';
 import { getNoteDetails } from '../music/NoteUtils';
 import { EXERCISES, loadExercise } from '../exercises/library';
@@ -68,8 +68,27 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const setSettings = updateSettings;
         const { playNote } = useAudioPlayer();
         const phrase = getPhraseSettings(settings);
+        // Unified target-note controls: Phrase Mode reads/writes the shared
+        // practice filter so all modes expose identical key/fret-window state.
+        const pf = getPracticeFilter(settings);
+        phrase.keyTonic = pf.keyTonic;
+        phrase.keyMode = pf.keyMode;
+        phrase.fretWindowEnabled = pf.fretWindowEnabled;
+        phrase.fretMin = pf.fretMin;
+        phrase.fretMax = pf.fretMax;
         const setPhrase = useCallback((updates: Partial<PhraseSettings>) => {
-            updateSettings(s => ({ ...s, phrase: { ...getPhraseSettings(s), ...updates } }));
+            updateSettings(s => {
+                const next = { ...s, phrase: { ...getPhraseSettings(s), ...updates } };
+                // Mirror shared filter fields into the unified practice filter.
+                const shared: Partial<PracticeFilter> = {};
+                if ('keyTonic' in updates) shared.keyTonic = updates.keyTonic;
+                if ('keyMode' in updates) shared.keyMode = updates.keyMode;
+                if ('fretWindowEnabled' in updates) shared.fretWindowEnabled = updates.fretWindowEnabled;
+                if ('fretMin' in updates) shared.fretMin = updates.fretMin;
+                if ('fretMax' in updates) shared.fretMax = updates.fretMax;
+                if (Object.keys(shared).length > 0) next.practice = { ...getPracticeFilter(s), ...shared };
+                return next;
+            });
         }, [updateSettings]);
 
         const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
@@ -489,22 +508,9 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             </label>
 
                             {(phrase.material === 'melody' || phrase.material === 'scale') && (
-                                <>
-                                    <label>Key
-                                        <select value={phrase.keyTonic} onChange={e => setPhrase({ keyTonic: e.target.value })}>
-                                            {Object.keys(TONICS).filter(t => !['C#', 'Gb', 'D#', 'G#', 'A#'].includes(t)).map(t => (
-                                                <option key={t} value={t}>{t}</option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                    <label>Mode
-                                        <select value={phrase.keyMode} onChange={e => setPhrase({ keyMode: e.target.value })}>
-                                            {(Object.keys(MODE_LABELS) as ModeId[]).map(m => (
-                                                <option key={m} value={m}>{MODE_LABELS[m]}</option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                </>
+                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
+                                    Key/mode: use the "Target key" controls below the sheet — shared across modes.
+                                </span>
                             )}
 
                             {phrase.material === 'melody' && (
@@ -604,28 +610,9 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             )}
 
                             {fretted && (
-                                <>
-                                    <label className="phrase-check">
-                                        <input
-                                            type="checkbox"
-                                            checked={phrase.fretWindowEnabled}
-                                            onChange={e => setPhrase({ fretWindowEnabled: e.target.checked })}
-                                        />
-                                        Fret window
-                                    </label>
-                                    {phrase.fretWindowEnabled && (
-                                        <>
-                                            <label>Min fret
-                                                <input type="number" min={0} max={24} value={phrase.fretMin}
-                                                    onChange={e => setPhrase({ fretMin: Math.max(0, Math.min(24, parseInt(e.target.value) || 0)) })} />
-                                            </label>
-                                            <label>Max fret
-                                                <input type="number" min={0} max={24} value={phrase.fretMax}
-                                                    onChange={e => setPhrase({ fretMax: Math.max(0, Math.min(24, parseInt(e.target.value) || 0)) })} />
-                                            </label>
-                                        </>
-                                    )}
-                                </>
+                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
+                                    Fret window: use the "Fret window" controls below the sheet — shared across modes.
+                                </span>
                             )}
 
                             <label>Pace

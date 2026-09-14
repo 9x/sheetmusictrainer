@@ -1,5 +1,30 @@
 export type Difficulty = string;
 
+/** Unified target-note filter, shared by all game modes (v2 controls). */
+export interface PracticeFilter {
+    /** Restrict target notes to pitch classes of this key/mode (null = off). */
+    keyEnabled: boolean;
+    keyTonic: string;
+    keyMode: string; // ModeId
+    /** Restrict target notes to a fret window (fretted instruments only). */
+    fretWindowEnabled: boolean;
+    fretMin: number;
+    fretMax: number;
+}
+
+export const DEFAULT_PRACTICE_FILTER: PracticeFilter = {
+    keyEnabled: false,
+    keyTonic: 'C',
+    keyMode: 'major',
+    fretWindowEnabled: false,
+    fretMin: 0,
+    fretMax: 4,
+};
+
+export function getPracticeFilter(s: AppSettings): PracticeFilter {
+    return { ...DEFAULT_PRACTICE_FILTER, ...(s.practice ?? {}) };
+}
+
 export interface RhythmSettings {
     mode: 'bpm' | 'seconds';
     bpm: number;
@@ -68,6 +93,8 @@ export function getPhraseSettings(s: AppSettings): PhraseSettings {
 
 export interface AppSettings {
     phrase?: PhraseSettings;
+    /** Unified target-note filter (key + fret window), all modes. */
+    practice?: PracticeFilter;
     difficulty: Difficulty;
     showHint: boolean;
     showFretboard: boolean;
@@ -114,6 +141,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     zenMode: false,
     gameMode: 'sight_reading',
     phrase: DEFAULT_PHRASE_SETTINGS,
+    practice: DEFAULT_PRACTICE_FILTER,
     customMinFret: 0,
     customMaxFret: 12,
     autoPlaySightReading: false,
