@@ -126,7 +126,6 @@ function App() {
       const onInteractive =
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLButtonElement ||
         target instanceof HTMLSelectElement ||
         !!target?.isContentEditable;
 
@@ -135,12 +134,17 @@ function App() {
         else if (settings.zenMode) setSettings(s => ({ ...s, zenMode: false }));
         return;
       }
-      // Focused buttons handle their own keys (native activation);
-      // global shortcuts must not double-fire or block them.
-      if (onInteractive) return;
+      // Text inputs and selects must keep their native keys — shortcuts are
+      // for typing-free contexts. FOCUSED BUTTONS however stay eligible:
+      // after a click the button keeps focus, and blocking global shortcuts
+      // there made N/R/P/L silently dead until the user clicked elsewhere.
+      // Space/Enter on a focused button activate it natively and return below,
+      // so no double-fire.
 
-      // Prevent default for space to stop scrolling
-      if (e.code === 'Space') {
+      // Prevent default for space to stop scrolling (Space on a focused
+      // button activates it natively — preventDefault only applies when the
+      // focus is on the body, where the shortcut below takes over).
+      if (e.code === 'Space' && !(target instanceof HTMLButtonElement)) {
         e.preventDefault();
       }
 
@@ -171,7 +175,9 @@ function App() {
             setListening(l => !l);
             break;
         }
-        if (e.code === 'Space' || e.code === 'Enter') {
+        // Space/Enter on a focused button natively activate that button
+        // (e.g. Start); only treat them as pause-toggle when NOT on a button.
+        if ((e.code === 'Space' || e.code === 'Enter') && !(e.target instanceof HTMLButtonElement)) {
           phraseRef.current?.pauseToggle();
         }
         return;
@@ -221,7 +227,7 @@ function App() {
           break;
       }
 
-      if (e.code === 'Space' || e.code === 'Enter') {
+      if ((e.code === 'Space' || e.code === 'Enter') && !(e.target instanceof HTMLButtonElement)) {
         singleNoteRef.current?.skipNote();
       }
     };

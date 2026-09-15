@@ -307,9 +307,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         }, [scoreOk, fixedMaterial, pool, fullScore]);
 
         const nextAction = useCallback(() => {
-            if (phrase.material === 'melody' || (phrase.material === 'arpeggio' && phrase.arpeggioBars > 1)) {
-                setMelodySeed(s => (s + 1) % 999983);
-            } else if (fixedMaterial && scoreOk) {
+            if (fixedMaterial && scoreOk) {
                 const total = fullScore!.value.measures.length;
                 const nextStart = phrase.startBar + phrase.barCount;
                 if (nextStart > total) {
@@ -317,6 +315,12 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 } else {
                     setPhrase({ startBar: nextStart });
                 }
+                return;
+            }
+            // Seeded material: roll a new variation (giuliani and single-chord
+            // arpeggios included — they take melodySeed too).
+            if (phrase.material === 'melody' || phrase.material === 'arpeggio' || phrase.material === 'giuliani') {
+                setMelodySeed(s => (s + 1) % 999983);
             }
         }, [phrase.material, phrase.startBar, phrase.barCount, fixedMaterial, scoreOk, fullScore, setPhrase]);
 
@@ -766,10 +770,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 <RotateCcw size={18} />
                                 Retry
                             </button>
-                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || fixedMaterial) && (
+                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || phrase.material === 'giuliani' || fixedMaterial) && (
                                 <button className="hint-button" onClick={nextAction} title="New melody / next bars (N)">
                                     <SkipForward size={18} />
-                                    {phrase.material === 'melody' ? 'New' : 'Next'}
+                                    {(fixedMaterial || phrase.material === 'scale') ? 'Next' : 'New'}
                                 </button>
                             )}
                             {phrase.pace === 'step' && (
@@ -787,10 +791,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 <RotateCcw size={18} />
                                 Retry
                             </button>
-                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || fixedMaterial) && (
+                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || phrase.material === 'giuliani' || fixedMaterial) && (
                                 <button className="hint-button" onClick={nextAction} title="New / Next (N)">
                                     <SkipForward size={18} />
-                                    {phrase.material === 'melody' ? 'New' : 'Next'}
+                                    {(fixedMaterial || phrase.material === 'scale') ? 'Next' : 'New'}
                                 </button>
                             )}
                         </>
