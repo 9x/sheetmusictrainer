@@ -134,7 +134,7 @@ export interface AppSettings {
     instrument: string;
     rhythm: RhythmSettings;
     zenMode: boolean;
-    gameMode: 'sight_reading' | 'ear_training' | 'phrase';
+    gameMode: 'sight_reading' | 'ear_training' | 'phrase' | 'assist';
     customMinFret?: number;
     customMaxFret?: number;
     autoPlaySightReading?: boolean;

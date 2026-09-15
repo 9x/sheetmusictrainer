@@ -8,6 +8,7 @@ import { SingleNoteTrainer, type SingleNoteHandle } from './components/SingleNot
 import { LiveNoteStaff } from './components/LiveNoteStaff';
 import { resolveClefTranspose } from './music/InstrumentConfigs';
 import { PhraseTrainer, type PhraseHandle } from './components/PhraseTrainer';
+import { AssistMode } from './components/AssistMode';
 import { usePitchDetector } from './hooks/usePitchDetector';
 import { useSettings } from './context/useSettings';
 import { audioEngine } from './audio/AudioEngine';
@@ -26,6 +27,7 @@ function App() {
   const setSettings = updateSettings;
 
   const isPhrase = settings.gameMode === 'phrase';
+  const isAssist = settings.gameMode === 'assist';
 
   const currentTuning = TUNINGS[settings.tuningId];
   const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
@@ -175,6 +177,25 @@ function App() {
         return;
       }
 
+      if (isAssist) {
+        // Assist mode: only display shortcuts — no trainer actions.
+        switch (e.key.toLowerCase()) {
+          case 'h':
+            setSettings(s => ({ ...s, showHint: !s.showHint }));
+            break;
+          case 'z':
+            setSettings(s => ({ ...s, zenMode: !s.zenMode }));
+            break;
+          case 'v':
+            setSettings(s => ({ ...s, showFretboard: !s.showFretboard }));
+            break;
+          case 'l':
+            setListening(l => !l);
+            break;
+        }
+        return;
+      }
+
       switch (e.key.toLowerCase()) {
         case 'h':
           setSettings(s => ({ ...s, showHint: !s.showHint }));
@@ -207,16 +228,16 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [settings, showHelp, isPhrase, setSettings]);
+  }, [settings, showHelp, isPhrase, isAssist, setSettings]);
 
-  // 'm' cycles all three modes from phrase mode too.
+  // 'm' cycles back to sight reading from phrase/assist modes.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== 'm') return;
       const target = e.target as HTMLElement | null;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ||
         target instanceof HTMLButtonElement || target instanceof HTMLSelectElement || target?.isContentEditable) return;
-      if (settings.gameMode === 'phrase') {
+      if (settings.gameMode === 'phrase' || settings.gameMode === 'assist') {
         setSettings(s => ({ ...s, gameMode: 'sight_reading' }));
       }
     };
@@ -263,6 +284,13 @@ function App() {
               >
                 Phrases
               </button>
+              <button
+                className={`toggle-option ${settings.gameMode === 'assist' ? 'active' : ''}`}
+                onClick={() => setSettings(s => ({ ...s, gameMode: 'assist' }))}
+                title="Practice companion: shows played notes while you work from paper"
+              >
+                Assist
+              </button>
             </div>
 
             <button
@@ -303,6 +331,11 @@ function App() {
             ref={phraseRef}
             listening={listening}
             micError={error}
+            windowWidth={windowWidth}
+          />
+        ) : isAssist ? (
+          <AssistMode
+            pitchData={displayedPitch}
             windowWidth={windowWidth}
           />
         ) : (
