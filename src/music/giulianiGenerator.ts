@@ -204,33 +204,53 @@ export function generateGiulianiStudy(
 
     // Rhythm: one note per slot (figure repeats); one figure per beat.
     const figure = FIGURES[config.pattern];
-    // Each figure repetition occupies one beat; repetitions per bar = meter.numerator.
-    const notesPerBar = config.meter.numerator * figure.length;
-    const noteDur = full / notesPerBar;
+    // Renderable note durations only (durationCode subset). Figures with a
+    // length that divides neither 4 nor 3 evenly would produce exotic ticks
+    // (e.g. 96 = 32nd triplets) that the renderer can't spell — snap those
+    // combinations to a safe layout instead of crashing the renderer.
+    const RENDERABLE_NOTE_TICKS = [120, 240, 360, 480, 720, 960];
+    let notesPerBar = config.meter.numerator * figure.length;
+    let noteDur = full / notesPerBar;
+    if (!RENDERABLE_NOTE_TICKS.includes(noteDur)) {
+        // Fall back: one figure per TWO beats (halves the notes per bar),
+        // then per bar, then quarters as last resort.
+        for (const div of [2, 3, 4]) {
+            const cand = full / div;
+            if (cand % figure.length === 0 && RENDERABLE_NOTE_TICKS.includes(cand / figure.length)) {
+                notesPerBar = div * figure.length;
+                noteDur = cand / figure.length;
+                break;
+            }
+        }
+        if (!RENDERABLE_NOTE_TICKS.includes(noteDur)) {
+            // Final fallback: quarter-note walk through the figure (cycling).
+            notesPerBar = config.meter.numerator;
+            noteDur = PPQ;
+        }
+    }
 
     let cursor = 0;
     for (let b = 0; b < usableBars.length; b++) {
         const { degreeIndex, placement } = usableBars[b];
         if (!placement) continue;
         chordSymbols.push(chordNameFor(key, degreeIndex));
-        for (let beat = 0; beat < config.meter.numerator; beat++) {
-            for (let f = 0; f < figure.length; f++) {
-                const slot = figure[f];
-                const note = placement[slot];
-                if (!note) continue;
-                // spelling via key degree of this pc
-                const pc = ((note.midi % 12) + 12) % 12;
-                const d = key.degrees.find(deg => degreePc(deg) === pc);
-                if (!d) continue;
-                const octave = (note.midi - pc) / 12 - 1;
-                events.push({
-                    id: `g${b}-${beat}-${f}`,
-                    startTick: cursor,
-                    durationTicks: noteDur,
-                    pitch: { midi: note.midi, step: d.step, alter: d.alter, octave },
-                });
-                cursor += noteDur;
-            }
+        for (let n = 0; n < notesPerBar; n++) {
+            const f = n % figure.length;
+            const slot = figure[f];
+            const note = placement[slot];
+            if (!note) continue;
+            // spelling via key degree of this pc
+            const pc = ((note.midi % 12) + 12) % 12;
+            const d = key.degrees.find(deg => degreePc(deg) === pc);
+            if (!d) continue;
+            const octave = (note.midi - pc) / 12 - 1;
+            events.push({
+                id: `g${b}-${n}`,
+                startTick: cursor,
+                durationTicks: noteDur,
+                pitch: { midi: note.midi, step: d.step, alter: d.alter, octave },
+            });
+            cursor += noteDur;
         }
     }
 

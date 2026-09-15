@@ -46,7 +46,9 @@ describe('generateGiulianiStudy', () => {
         expect(r.ok).toBe(true);
         if (!r.ok) return;
         const ev = scoreEvents(r.value);
-        expect(ev.length).toBe(4 * 4 * 6);
+        // 4/4: figure falls back to quarter-note walk (6-note figure over 4
+        // beats is not renderable in even subdivisions) — 4 bars × 4 quarters
+        expect(ev.length).toBe(16);
         expect(validateScore(r.value)).toEqual([]);
     });
 
