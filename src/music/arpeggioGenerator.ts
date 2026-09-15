@@ -29,7 +29,8 @@ export type ArpeggioPattern =
     | '1353'   // root-third-fifth-third
     | '15453'  // root-octave-fifth-octave-fifth-octave
     | '132532' // long broken-chord wave
-    | 'custom'; // user-defined pattern from customPattern digits
+    | 'custom' // user-defined pattern from customPattern digits
+    | 'random'; // one broken-chord figure, chosen randomly per exercise (seed)
 export type ArpeggioCoverage = 'one-octave' | 'two-octave';
 /** How the chord per bar is chosen in sequence mode. */
 export type ArpeggioProgression = 'random' | 'functional' | 'diatonic-cycle';
@@ -73,6 +74,7 @@ export const PATTERN_LABELS: Record<ArpeggioPattern, string> = {
     '15453': '1-5-4-5-3-5',
     '132532': '1-3-2-5-3-2',
     'custom': 'Custom…',
+    'random': 'Random',
 };
 
 /**
@@ -373,6 +375,18 @@ function pushRestFill(events: ScoreEvent[], fromTick: number, untilTick: number)
     }
 }
 
+/**
+ * Resolve the effective broken-chord figure for this exercise. 'random'
+ * picks one deterministic figure per seed so every auto-continued run gets
+ * a fresh broken-chord pattern while remaining reproducible.
+ */
+function resolveRandomPattern(pattern: ArpeggioPattern, seed: number): ArpeggioPattern {
+    if (pattern !== 'random') return pattern;
+    const figures = Object.keys(BROKEN_FIGURES);
+    const rng = makeRng(seed * 7919 + 13);
+    return figures[Math.floor(rng() * figures.length)] as ArpeggioPattern;
+}
+
 export function generateArpeggio(
     config: ArpeggioConfig,
     eligiblePitches: number[],
@@ -382,7 +396,7 @@ export function generateArpeggio(
     if (pool.length === 0) return { ok: false, error: 'No playable notes in the selected range — widen the note set.' };
 
     const bars = config.bars ?? 1;
-    const pattern = config.pattern;
+    const pattern = resolveRandomPattern(config.pattern, config.seed ?? 0);
     const coverage = config.coverage;
 
     // ---- Chord sequence ----------------------------------------------------
@@ -493,7 +507,7 @@ export function generateArpeggio(
     }
 
     const chordName = `${key.tonic} ${ARPEGGIO_DEGREE_LABELS[config.degree]}`;
-    const patternLabel = PATTERN_LABELS[config.pattern];
+    const patternLabel = PATTERN_LABELS[pattern];
     const totalMeasures = Math.max(1, Math.ceil(events.reduce((s, e) => Math.max(s, e.startTick + e.durationTicks), 0) / barLength));
     const title = bars === 1
         ? `Arpeggio — ${chordName} (${patternLabel}, ${coverage})`

@@ -197,6 +197,29 @@ describe('generateArpeggio — always-eighths + custom pattern', () => {
         expect(bad.ok).toBe(false);
     });
 
+    it('random pattern resolves to a valid broken-chord figure per seed', () => {
+        const RENDERABLE = [120, 240, 360, 480, 720, 960, 1440, 1920];
+        const seen = new Set<string>();
+        for (let seed = 0; seed < 30; seed++) {
+            const r = generateArpeggio({ ...base, degree: 'I', pattern: 'random', coverage: 'one-octave', seed }, pool);
+            expect(r.ok).toBe(true);
+            if (!r.ok) continue;
+            for (const e of scoreEvents(r.value)) expect(RENDERABLE).toContain(e.durationTicks);
+            expect(validateScore(r.value)).toEqual([]);
+            // The title reveals the resolved figure label
+            const match = r.value.title.match(/\(([^)]+)\,/);
+            if (match) seen.add(match[1]);
+        }
+        // Across seeds more than one distinct figure should appear
+        expect(seen.size).toBeGreaterThan(1);
+    });
+
+    it('random pattern is deterministic per seed', () => {
+        const a = generateArpeggio({ ...base, degree: 'I', pattern: 'random', coverage: 'two-octave', seed: 42 }, pool);
+        const b = generateArpeggio({ ...base, degree: 'I', pattern: 'random', coverage: 'two-octave', seed: 42 }, pool);
+        expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    });
+
     it('sweep: every pattern × degree × coverage produces only renderable ticks', () => {
         const RENDERABLE = [120, 240, 360, 480, 720, 960, 1440, 1920];
         const patterns = ['up', 'down', 'updown', '1235', '1321', '1325', '1535', '12353', '121321', '1353', '15453', '132532'] as const;

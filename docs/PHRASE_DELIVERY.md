@@ -99,3 +99,35 @@ Implementation of [PHRASE_MODE_PLAN.md](../PHRASE_MODE_PLAN.md) and
 
 - MIDI adapter, motif-based generation, persisted phrase setup, extra
   repertoire, per-note timing scoring — all explicitly deferred in the plan.
+
+## Feedback round 4 (2026-09-15): always-eighths arpeggio/Giuliani + custom/random patterns
+
+**Generator redesign (Phrase Mode materials `arpeggio` + `giuliani`):**
+
+- **Always eighth notes** (240 ticks/note). The quarter-note fallback and
+  stretch-the-last-note logic were removed — the latter produced
+  non-renderable 2880-tick durations (two-octave arpeggio in 6/8) that
+  crashed the VexFlow renderer (white screen).
+- **Auto-derived meter** (`autoArpeggioMeter`): 3/4 vs 4/4 chosen by the
+  smallest rest remainder for the path length (fewer bars as tiebreaker).
+  Giuliani meter derives from figure length (3 voices → 3/4, 4 → 4/4,
+  5 → 4/4 + rest fill, 6 → 3/4). The Meter and Rhythm selects were removed
+  from both setups; leftover bar space is filled with rests built from
+  renderable durations only.
+- **Custom arpeggio pattern**: new `custom` pattern + text field; digits map
+  1=root, 2=third, 3=fifth, 4=octave, 5=fifth above the octave; invalid
+  input fails with an actionable error.
+- **Random arpeggio pattern**: new `random` pattern — one broken-chord
+  figure is chosen deterministically per seed, so every auto-continued run
+  gets a fresh figure while Retry stays reproducible.
+- **Two-octave coverage** doubles the path; the auto-derived meter adjusts
+  (e.g. updown two-octave = 13 notes → 4/4 with a rest fill).
+- **Giuliani**: `pimami` figure corrected to 6 voices; new figures
+  `pimai`, `pmia`, `pmim`; new **alternating bass** option (even bars voice
+  the fifth as the bass — the original studies' thumb-jump feel).
+- **Renderer**: `minWidthPerBar` for sixteenths raised 420 → 500 px
+  (mobile clipping).
+
+**Verification:** 193 unit tests green (`npx vitest run`), `tsc --noEmit`
+clean, production build + deploy to `smt-beta`. A pattern×degree×coverage
+sweep test guarantees every generated duration stays in the renderable set.

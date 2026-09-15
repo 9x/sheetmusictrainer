@@ -61,7 +61,7 @@ export interface PhraseSettings {
     arpeggioDegree: string; // ArpeggioDegree (single-chord mode / sequence start)
     /** Sequence mode: which degrees may appear (empty = all 7). */
     arpeggioChordSelection: string[];
-    arpeggioPattern: 'up' | 'down' | 'updown' | '1235' | 'custom';
+    arpeggioPattern: 'up' | 'down' | 'updown' | '1235' | 'custom' | 'random';
     arpeggioCoverage: 'one-octave' | 'two-octave';
     /** Sequence mode: bars per exercise (1 = single chord). */
     arpeggioBars: number;
