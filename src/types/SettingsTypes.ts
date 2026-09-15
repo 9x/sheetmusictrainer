@@ -61,14 +61,13 @@ export interface PhraseSettings {
     arpeggioDegree: string; // ArpeggioDegree (single-chord mode / sequence start)
     /** Sequence mode: which degrees may appear (empty = all 7). */
     arpeggioChordSelection: string[];
-    arpeggioPattern: 'up' | 'down' | 'updown' | '1235';
+    arpeggioPattern: 'up' | 'down' | 'updown' | '1235' | 'custom';
     arpeggioCoverage: 'one-octave' | 'two-octave';
     /** Sequence mode: bars per exercise (1 = single chord). */
     arpeggioBars: number;
     arpeggioProgression: 'random' | 'functional' | 'diatonic-cycle';
-    arpeggioRhythm: 'quarters' | 'eighths';
     /** Giuliani study material (own category — voicing-enforced). */
-    giulianiPattern: 'pim' | 'pima' | 'pami' | 'aim' | 'pimamim' | 'pmamim';
+    giulianiPattern: 'pim' | 'pima' | 'pami' | 'aim' | 'pimamim' | 'pmamim' | 'piai' | 'pmami' | 'pimami' | 'pimaia' | 'pimai' | 'pmia' | 'pmim';
     giulianiBars: number;
     /** Phrase-local fret window (guitar/bass) — overrides the note set. */
     fretWindowEnabled: boolean;
@@ -87,6 +86,10 @@ export interface PhraseSettings {
     /** Begin the run as soon as the first note is played (no count-in,
      *  step pace only). */
     autoStartOnNote: boolean;
+    /** Custom arpeggio pattern as raw digits (1=root, 2=third, etc.). */
+    customArpeggioPattern?: string;
+    /** Alternating bass thumb for Giuliani studies. */
+    giulianiAlternateBass?: boolean;
 }
 
 export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
@@ -106,7 +109,6 @@ export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
     arpeggioCoverage: 'one-octave',
     arpeggioBars: 1,
     arpeggioProgression: 'functional',
-    arpeggioRhythm: 'quarters',
     giulianiPattern: 'pima',
     giulianiBars: 4,
     fretWindowEnabled: false,
@@ -120,6 +122,8 @@ export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
     autoContinue: true,
     inputMode: 'mic',
     autoStartOnNote: false,
+    customArpeggioPattern: '',
+    giulianiAlternateBass: false,
 };
 
 export function getPhraseSettings(s: AppSettings): PhraseSettings {

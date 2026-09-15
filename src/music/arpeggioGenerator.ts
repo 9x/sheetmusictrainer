@@ -7,6 +7,9 @@
  * (one or two octaves). Chord tones are spelled via the key's degree
  * spelling (same machinery as melody/scale generators), so spelling and
  * validation match the Phrase Mode invariants exactly.
+ *
+ * Arpeggio mode is ALWAYS eighths (240 ticks per note). Meter is auto-derived
+ * from the pattern length — the user no longer picks rhythm or meter.
  */
 import { PPQ, validateScore, type Result, type Score, type ScoreEvent } from '../score/model';
 import { keyFor, type KeyContext, type ModeId } from './scales';
@@ -25,12 +28,11 @@ export type ArpeggioPattern =
     | '121321' // rolling thirds (root-third-root-fifth-third-root)
     | '1353'   // root-third-fifth-third
     | '15453'  // root-octave-fifth-octave-fifth-octave
-    | '132532';// long broken-chord wave
+    | '132532' // long broken-chord wave
+    | 'custom'; // user-defined pattern from customPattern digits
 export type ArpeggioCoverage = 'one-octave' | 'two-octave';
 /** How the chord per bar is chosen in sequence mode. */
 export type ArpeggioProgression = 'random' | 'functional' | 'diatonic-cycle';
-/** Rhythm density for arpeggio sequences. */
-export type ArpeggioRhythm = 'quarters' | 'eighths';
 
 export interface ArpeggioConfig {
     readonly keyTonic: string;
@@ -38,16 +40,17 @@ export interface ArpeggioConfig {
     readonly degree: ArpeggioDegree;
     readonly pattern: ArpeggioPattern;
     readonly coverage: ArpeggioCoverage;
-    readonly meter: { readonly numerator: 3 | 4 | 6; readonly denominator: 4 };
     /** Sequence mode: bars > 1 with chord progression selection. */
     readonly bars?: number;
     readonly progression?: ArpeggioProgression;
-    readonly rhythm?: ArpeggioRhythm;
     /** Restrict progression chords to these degrees (empty = all 7).
      *  The first bar always uses `degree` if it is in the selection. */
     readonly chordSelection?: readonly ArpeggioDegree[];
     /** Seed for progression selection (deterministic). */
     readonly seed?: number;
+    /** User-defined custom pattern digits (1-indexed: 1=root, 2=third, 3=fifth,
+     *  4=octave, 5=fifth-above-octave). Only used when pattern === 'custom'. */
+    readonly customPattern?: string;
 }
 
 /** Degree index (0-based) into the scale for each arpeggio degree label. */
@@ -69,17 +72,14 @@ export const PATTERN_LABELS: Record<ArpeggioPattern, string> = {
     '1353': '1-3-5-3',
     '15453': '1-5-4-5-3-5',
     '132532': '1-3-2-5-3-2',
+    'custom': 'Custom…',
 };
 
 /**
- * Giuliani figures — NOTE sequences (not fingerings): the thumb (p) always
- * takes the bass/root, the remaining notes ride the upper chord tones.
- * Indices into the octave cycle [0=root, 1=third, 2=fifth, 3=octave]; the
- * figure repeats with an ascending octave shift per repetition (the bass
- * stays in place — like the Maestoso studies).
+ * Broken-chord figures — NOTE sequences (not fingerings): the bass takes the
+ * root, the remaining notes ride the upper chord tones.
+ * Indices into the octave cycle [0=root, 1=third, 2=fifth, 3=octave].
  */
-// Broken-chord figures — NOTE sequences on the cycle [0=root, 1=third,
-// 2=fifth, 3=octave]; register ascends per repetition.
 const BROKEN_FIGURES: Record<string, number[]> = {
     '1321': [0, 2, 1, 0],
     '1325': [0, 2, 1, 3],
@@ -90,6 +90,16 @@ const BROKEN_FIGURES: Record<string, number[]> = {
     '15453': [0, 3, 2, 3, 2, 3],
     '132532': [0, 2, 1, 3, 2, 1],
 };
+
+/**
+ * Renderable note durations — subset of VexFlow duration codes the
+ * PhraseSheetMusic renderer accepts. ALL generated durations MUST be in this
+ * set, otherwise the renderer produces ghost slots and crashes or misaligns.
+ */
+const RENDERABLE_NOTE_TICKS = new Set([120, 240, 360, 480, 720, 960, 1440, 1920]);
+
+/** Descending renderable durations for rest fills (largest first). */
+const REST_FILL_TICKS = [1920, 1440, 960, 720, 480, 240];
 
 /** pc of a spelled degree (step letter + alter). */
 const degreePc = (d: { step: StepLetter; alter: number }): number =>
@@ -126,6 +136,29 @@ function spellInKey(key: KeyContext, midi: number): { step: StepLetter; alter: n
     if (!d) return null;
     const octave = (midi - pc) / 12 - 1;
     return { step: d.step, alter: d.alter, octave };
+}
+
+/**
+ * Auto-derive a meter (3/4 or 4/4) from the number of eighths in the phrase.
+ * Always returns 3/4 or 4/4 — 6/8 is never used for arpeggios since it can
+ * produce non-renderable tick sizes with some pattern lengths.
+ *
+ * For N notes at 240 ticks each:
+ *   Try 4/4: bars4 = ceil(N*240 / 1920), remainder4 = bars4*1920 - N*240
+ *   Try 3/4: bars3 = ceil(N*240 / 1440), remainder3 = bars3*1440 - N*240
+ *   Pick the one with smaller remainder (fewer bars as tiebreaker).
+ */
+export function autoArpeggioMeter(noteCount: number): { numerator: 4 | 3; denominator: 4 } {
+    const totalTicks = noteCount * 240;
+    const bars4 = Math.ceil(totalTicks / 1920);
+    const remainder4 = bars4 * 1920 - totalTicks;
+    const bars3 = Math.ceil(totalTicks / 1440);
+    const remainder3 = bars3 * 1440 - totalTicks;
+
+    if (remainder3 < remainder4) return { numerator: 3, denominator: 4 };
+    if (remainder4 < remainder3) return { numerator: 4, denominator: 4 };
+    // equal remainders → prefer fewer bars
+    return bars3 <= bars4 ? { numerator: 3, denominator: 4 } : { numerator: 4, denominator: 4 };
 }
 
 /**
@@ -193,10 +226,10 @@ function buildPath(key: KeyContext, degreeIndex: number, pool: number[], coverag
             return path;
         }
         default: {
-            // Giuliani figure: cycle [root, third, fifth, octave] with the
+            // Broken-chord figure: cycle [root, third, fifth, octave] with the
             // figure selecting cycle positions per note; the octave wraps so
-            // e.g. p-i-m over C-E-G becomes C E G | C' E' G' ... (ascending
-            // octave register shift every figure repetition).
+            // e.g. 1321 over C-E-G becomes C G E C' ... (ascending octave
+            // register shift every figure repetition).
             const figure = BROKEN_FIGURES[pattern];
             // 4-note cycle per octave: root, third, fifth, octave
             const cycleOct = (oct: number): number[] => [
@@ -215,6 +248,131 @@ function buildPath(key: KeyContext, degreeIndex: number, pool: number[], coverag
     }
 }
 
+/**
+ * Parse custom pattern digits into cycle indices (0-based).
+ * Digits are 1-indexed: 1=root, 2=third, 3=fifth, 4=octave, 5=fifth-above-octave.
+ * Returns null for empty/invalid input.
+ */
+function parseCustomPattern(digits: string): number[] | null {
+    if (!digits || digits.trim().length === 0) return null;
+    const result: number[] = [];
+    for (const ch of digits.trim()) {
+        const n = parseInt(ch, 10);
+        if (isNaN(n) || n < 1 || n > 5) return null;
+        // Map 1→0 (root), 2→1 (third), 3→2 (fifth), 4→3 (octave), 5→4 (fifth above octave)
+        result.push(n - 1);
+    }
+    return result.length > 0 ? result : null;
+}
+
+/**
+ * Build a custom path from 0-based digit indices using the one-octave cycle
+ * [root, third, fifth, octave] (index 4 = fifth above the octave).
+ */
+function buildCustomPath(
+    base: number[],
+    pattern: number[],
+    octavesWanted: number,
+    pool: number[],
+): number[] | null {
+    const cycleOct = (oct: number): number[] => [
+        base[0] + 12 * oct, base[1] + 12 * oct, base[2] + 12 * oct, base[0] + 12 * (oct + 1),
+    ];
+
+    const path: number[] = [];
+    for (let oct = 0; oct < octavesWanted; oct++) {
+        const c = cycleOct(oct);
+        // Extend the cycle for digit 5: fifth above the octave (+7 semitones).
+        const extended = [...c, c[3] + 7];
+        for (const idx of pattern) {
+            const note = extended[idx];
+            if (note === undefined) continue;
+            if (oct > 0 && !pool.includes(note)) continue;
+            path.push(note);
+        }
+    }
+    return path.length > 0 ? path : null;
+}
+
+/**
+ * Build the path for one chord (degree), honouring built-in patterns and the
+ * user-defined custom pattern. Returns null when the chord cannot be voiced
+ * in the playable pool.
+ */
+function pathForChord(
+    key: KeyContext,
+    degreeIndex: number,
+    pool: number[],
+    coverage: ArpeggioCoverage,
+    pattern: ArpeggioPattern,
+    customDigits: number[] | null,
+): number[] | null {
+    if (pattern === 'custom') {
+        if (!customDigits) return null;
+        const tones = chordTonesInPool(key, degreeIndex, pool);
+        if (tones.length < 3) return null;
+        const rootPc = degreePc(key.degrees[degreeIndex]);
+        const roots = tones.filter(m => ((m % 12) + 12) % 12 === rootPc);
+        const octavesWanted = coverage === 'one-octave' ? 1 : 2;
+        for (const root of roots) {
+            // chord tones >= root within one octave, including the octave
+            const cycle: number[] = [];
+            for (const midi of tones) {
+                if (midi >= root && midi <= root + 12) cycle.push(midi);
+            }
+            if (!cycle.includes(root + 12) && pool.includes(root + 12)) cycle.push(root + 12);
+            cycle.sort((a, b) => a - b);
+            if (cycle.length < 3 || cycle[0] !== root) continue;
+            const p = buildCustomPath(cycle, customDigits, octavesWanted, pool);
+            if (p) return p;
+        }
+        return null;
+    }
+    return buildPath(key, degreeIndex, pool, coverage, pattern);
+}
+
+/**
+ * Emit one eighth-note event with key-aware spelling.
+ * Returns false when the midi note cannot be spelled in this key.
+ */
+function pushNote(
+    events: ScoreEvent[],
+    key: KeyContext,
+    midi: number,
+    startTick: number,
+    id: string,
+): boolean {
+    const spelled = spellInKey(key, midi);
+    if (!spelled) return false;
+    events.push({
+        id,
+        startTick,
+        durationTicks: 240,
+        pitch: { midi, ...spelled },
+    });
+    return true;
+}
+
+/**
+ * Fill the tail of the material (after the last note) with rests built from
+ * RENDERABLE durations only. Splits the gap greedily, largest duration first.
+ */
+function pushRestFill(events: ScoreEvent[], fromTick: number, untilTick: number): void {
+    let cursor = fromTick;
+    while (cursor < untilTick) {
+        const gap = untilTick - cursor;
+        const dur = REST_FILL_TICKS.find(d => d <= gap);
+        if (!dur) break; // gap smaller than an eighth — should not happen
+        events.push({
+            id: `r${events.length}`,
+            startTick: cursor,
+            durationTicks: dur,
+            pitch: null, // rest
+        });
+        cursor += dur;
+    }
+}
+
 export function generateArpeggio(
     config: ArpeggioConfig,
     eligiblePitches: number[],
@@ -228,10 +386,7 @@ export function generateArpeggio(
     const coverage = config.coverage;
 
     // ---- Chord sequence ----------------------------------------------------
-    // Single-bar mode: the chosen degree for all bars (bars is 1).
-    // Sequence mode: one chord per bar, chosen by progression rule.
     const degreeIndices: number[] = [];
-    // Sequence chord pool: user selection (restricted to it) or all 7.
     const sel = (config.chordSelection ?? []).filter(d => d in DEGREE_INDEX).map(d => DEGREE_INDEX[d as ArpeggioDegree]);
     const pool7 = sel.length > 0 ? Array.from(new Set(sel)).sort((a, b) => a - b) : [0, 1, 2, 3, 4, 5, 6];
     if (bars === 1) {
@@ -241,8 +396,6 @@ export function generateArpeggio(
         const pick = <T,>(arr: T[]): T => arr[Math.floor(rng() * arr.length)];
         for (let b = 0; b < bars; b++) {
             if (b === 0) {
-                // First bar: a random chord FROM THE SELECTION — fixed starts
-                // repeated the exercise identically every time.
                 degreeIndices.push(pool7.includes(DEGREE_INDEX[config.degree]) && rng() < 0.34
                     ? DEGREE_INDEX[config.degree]
                     : pick(pool7));
@@ -250,20 +403,10 @@ export function generateArpeggio(
             }
             const prev = degreeIndices[b - 1];
             if (config.progression === 'diatonic-cycle') {
-                // Next diatonic degree that is also in the selection
                 let next = (prev + 1) % 7;
                 for (let tries = 0; tries < 7 && !pool7.includes(next); tries++) next = (next + 1) % 7;
                 degreeIndices.push(next);
             } else if (config.progression === 'functional') {
-                // Simple tonal function rules (major-oriented; mirrored for
-                // minor by degree relationships below):
-                //   I   -> {IV, V, vi}
-                //   ii  -> {V}
-                //   iii -> {IV, vi}
-                //   IV  -> {I, V}
-                //   V   -> {I, vi}
-                //   vi  -> {ii, IV}
-                //   vii -> {I}
                 const NEXT: Record<number, number[]> = {
                     0: [3, 4, 5],
                     1: [4],
@@ -273,86 +416,85 @@ export function generateArpeggio(
                     5: [1, 3],
                     6: [0],
                 };
-                // functional: honor the selection — filter rule targets by it
                 const targets = (NEXT[prev] ?? [0]).filter(d => pool7.includes(d));
                 degreeIndices.push(pick(targets.length > 0 ? targets : pool7.filter(d => d !== prev)));
             } else {
-                // random: any selected degree, avoid immediate repetition
                 const candidates = pool7.filter(d => d !== prev);
                 degreeIndices.push(pick(candidates.length > 0 ? candidates : pool7));
             }
         }
     }
 
-    // ---- Path per bar: one arpeggio cycle per chord -------------------------
-    const full = config.meter.numerator * PPQ;
-    const perBarSegments: { path: number[]; degreeIndex: number }[] = [];
-    for (const di of degreeIndices) {
-        const path = buildPath(key, di, pool, coverage, pattern);
-        if (!path || path.length === 0) {
-            return {
-                ok: false,
-                error: 'The arpeggio does not fit the playable range — widen the range (strings/fret window) or pick another degree.',
-            };
-        }
-        perBarSegments.push({ path, degreeIndex: di });
+    // ---- Custom pattern digits (only for pattern === 'custom') --------------
+    const customDigits = pattern === 'custom' ? parseCustomPattern(config.customPattern ?? '') : null;
+    if (pattern === 'custom' && !customDigits) {
+        return { ok: false, error: 'Custom pattern is empty or invalid — enter digits like "1321" (1=root, 2=third, 3=fifth, 4=octave).' };
     }
 
-    // ---- Events: fit each segment into one bar ------------------------------
-    const rhythm = config.rhythm ?? 'quarters';
+    // ---- Build the path for the first chord ----------------------------------
+    // All bars share the same pattern, so the path length (and thus meter) is
+    // derived from the first chord's voicing. Sequence mode repeats the path
+    // within each bar, so the meter also derives from the path length itself.
+    const firstPath = pathForChord(key, degreeIndices[0], pool, coverage, pattern, customDigits);
+    if (!firstPath || firstPath.length === 0) {
+        return {
+            ok: false,
+            error: 'The arpeggio does not fit the playable range — widen the range (strings/fret window) or pick another degree.',
+        };
+    }
+    const meter = autoArpeggioMeter(firstPath.length);
+    const notesPerBar = meter.numerator * 2; // 2 eighths per beat
+    const barLength = meter.numerator * PPQ;
+    const noteDur = 240; // always eighths
+
+    // ---- Events: single-chord vs sequence mode --------------------------------
     const events: ScoreEvent[] = [];
     const chordSymbols: (string | null)[] = [];
-    let cursor = 0;
-    for (let b = 0; b < bars; b++) {
-        const { path, degreeIndex } = perBarSegments[b];
-        chordSymbols.push(chordNameFor(key, degreeIndex));
-        if (bars === 1) {
-            // Single-bar mode (v1 behavior): whole path, final note extended
-            // to fill the bar — or, when the path overflows one bar, spread
-            // over the needed bars with the overflow in the last note.
-            const barCount = Math.max(1, Math.ceil((path.length * PPQ) / full));
-            const totalTicks = barCount * full;
-            const lastDuration = PPQ + (totalTicks - path.length * PPQ);
-            path.forEach((midi, n) => {
-                const spelled = spellInKey(key, midi);
-                if (!spelled) return;
-                const dur = n === path.length - 1 ? lastDuration : PPQ;
-                events.push({ id: `a${b}-${n}`, startTick: cursor, durationTicks: dur, pitch: { midi, ...spelled } });
-                cursor += dur;
-            });
-            continue;
-        }
-        // Sequence mode: fit the bar exactly. 'quarters': one note per beat,
-        // cycling up/down through the path. 'eighths': two notes per beat.
-        const slots = rhythm === 'quarters' ? 1 : 2;
-        const notesPerBar = config.meter.numerator * slots;
-        const line: number[] = [];
-        let dir = 1;
-        let lastIdx = 0;
-        while (line.length < notesPerBar) {
-            line.push(path[lastIdx]);
-            if (lastIdx + dir < 0 || lastIdx + dir >= path.length) dir = -dir;
-            else lastIdx += dir;
-        }
-        const noteDur = full / notesPerBar;
-        line.forEach((midi, n) => {
-            const spelled = spellInKey(key, midi);
-            if (!spelled) return;
-            events.push({
-                id: `a${b}-${n}`,
-                startTick: cursor,
-                durationTicks: noteDur,
-                pitch: { midi, ...spelled },
-            });
+
+    if (bars === 1) {
+        // Single-chord mode: the path plays once; any remaining ticks in the
+        // final bar(s) become rests (renderable durations only). The path is
+        // NEVER stretched — durations stay at 240 ticks.
+        const barCount = Math.max(1, Math.ceil((firstPath.length * noteDur) / barLength));
+        chordSymbols.push(chordNameFor(key, degreeIndices[0]));
+
+        let cursor = 0;
+        for (let slot = 0; slot < firstPath.length; slot++) {
+            pushNote(events, key, firstPath[slot], cursor, `a0-${slot}`);
             cursor += noteDur;
-        });
+        }
+        const totalTicks = barCount * barLength;
+        if (cursor < totalTicks) pushRestFill(events, cursor, totalTicks);
+    } else {
+        // Sequence mode: one chord per bar, each bar holds exactly
+        // `notesPerBar` eighths (the path cycles if it is shorter, and is
+        // truncated if longer — with two-octave coverage the auto-derived
+        // meter always gives enough room).
+        let cursor = 0;
+        for (let b = 0; b < bars; b++) {
+            const di = degreeIndices[b];
+            chordSymbols.push(chordNameFor(key, di));
+            const barPath = pathForChord(key, di, pool, coverage, pattern, customDigits);
+            if (!barPath || barPath.length === 0) {
+                return { ok: false, error: `Cannot voice arpeggio for chord ${chordNameFor(key, di)}.` };
+            }
+            for (let n = 0; n < notesPerBar; n++) {
+                pushNote(events, key, barPath[n % barPath.length], cursor, `a${b}-${n}`);
+                cursor += noteDur;
+            }
+        }
+    }
+
+    // ---- Validate all durations are renderable -----------------------------
+    for (const e of events) {
+        if (!RENDERABLE_NOTE_TICKS.has(e.durationTicks)) {
+            return { ok: false, error: `Internal arpeggio error: non-renderable duration ${e.durationTicks} at ${e.id}.` };
+        }
     }
 
     const chordName = `${key.tonic} ${ARPEGGIO_DEGREE_LABELS[config.degree]}`;
     const patternLabel = PATTERN_LABELS[config.pattern];
-    // Single-bar paths can overflow into extra bars (updown/two-octave);
-    // sequence mode always has exactly `bars` measures.
-    const totalMeasures = bars === 1 ? Math.max(1, Math.ceil((cursor) / full)) : bars;
+    const totalMeasures = Math.max(1, Math.ceil(events.reduce((s, e) => Math.max(s, e.startTick + e.durationTicks), 0) / barLength));
     const title = bars === 1
         ? `Arpeggio — ${chordName} (${patternLabel}, ${coverage})`
         : `Arpeggio — ${key.tonic}: ${bars} bars (${config.progression ?? 'functional'})`;
@@ -360,12 +502,12 @@ export function generateArpeggio(
         version: 1,
         id: `arpeggio-${config.keyTonic}-${config.keyMode}-${config.degree}-${config.pattern}-${config.coverage}-${bars}b-${config.progression ?? 'single'}-${config.seed ?? 0}`,
         title,
-        meter: config.meter,
+        meter,
         key: { tonic: config.keyTonic, mode: config.keyMode, signature: key.signature },
         measures: Array.from({ length: totalMeasures }, (_, i) => ({
             number: i + 1,
-            startTick: i * full,
-            durationTicks: full,
+            startTick: i * barLength,
+            durationTicks: barLength,
         })),
         chordSymbols: bars === 1
             // repeat the single chord symbol across the overflow bars

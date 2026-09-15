@@ -193,16 +193,18 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 }, pool);
             }
             if (phrase.material === 'giuliani') {
+                // Meter is auto-derived inside the generator from the figure
+                // length (always eighths) — the user no longer picks a meter.
                 return generateGiulianiStudy({
                     keyTonic: phrase.keyTonic,
                     keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
                     pattern: phrase.giulianiPattern,
-                    meter: { numerator: phrase.meterNumerator, denominator: 4 },
                     tuningId: settings.tuningId,
                     bars: phrase.giulianiBars,
                     chordSelection: phrase.arpeggioChordSelection as string[],
                     seed: melodySeed,
                     allowedStrings: pf.strings,
+                    alternateBass: phrase.giulianiAlternateBass ?? false,
                 }, pool);
             }
             if (phrase.material === 'arpeggio') {
@@ -212,11 +214,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     degree: (phrase.arpeggioDegree as ArpeggioDegree) || 'I',
                     pattern: phrase.arpeggioPattern,
                     coverage: phrase.arpeggioCoverage,
-                    meter: { numerator: phrase.meterNumerator, denominator: 4 },
                     bars: phrase.arpeggioBars,
                     progression: phrase.arpeggioProgression,
                     chordSelection: phrase.arpeggioChordSelection as ArpeggioDegree[],
-                    rhythm: phrase.arpeggioRhythm,
+                    customPattern: phrase.customArpeggioPattern,
                     seed: melodySeed,
                 }, pool);
             }
@@ -233,9 +234,9 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         }, [phrase.material, phrase.keyTonic, phrase.keyMode, phrase.bars, phrase.meterNumerator,
             phrase.rhythmLevel, phrase.scaleDirection, phrase.scaleCoverage, phrase.scaleRhythm, phrase.libraryId,
             phrase.arpeggioDegree, phrase.arpeggioPattern, phrase.arpeggioCoverage,
-            phrase.arpeggioBars, phrase.arpeggioProgression, phrase.arpeggioRhythm,
+            phrase.arpeggioBars, phrase.arpeggioProgression,
             phrase.arpeggioChordSelection, melodySeed,
-            phrase.giulianiPattern, phrase.giulianiBars,
+            phrase.giulianiPattern, phrase.giulianiBars, phrase.giulianiAlternateBass,
             melodySeed, pool, importedScore]);
 
         const fullScore: Result<Score> | null = useMemo(() => {
@@ -651,9 +652,24 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                                 <option value="121321">1-2-1-3-2-1</option>
                                                 <option value="15453">1-5-4-5-3-5</option>
                                                 <option value="132532">1-3-2-5-3-2</option>
+                                                <option value="custom">Custom…</option>
                                             </optgroup>
                                         </select>
                                     </label>
+                                    {phrase.arpeggioPattern === 'custom' && (
+                                        <label>Custom pattern
+                                            <input
+                                                type="text"
+                                                value={phrase.customArpeggioPattern || ''}
+                                                onChange={e => setPhrase({ customArpeggioPattern: e.target.value.replace(/[^1-5]/g, '') })}
+                                                placeholder="e.g. 1321"
+                                                style={{ width: '90px' }}
+                                            />
+                                            <span style={{ fontSize: '11px', opacity: 0.7, display: 'block' }}>
+                                                Digits: 1=root, 2=third, 3=fifth, 4=octave, 5=fifth-above-octave
+                                            </span>
+                                        </label>
+                                    )}
                                     <label>Coverage
                                         <select value={phrase.arpeggioCoverage} onChange={e => setPhrase({ arpeggioCoverage: e.target.value as PhraseSettings['arpeggioCoverage'] })}>
                                             <option value="one-octave">One octave</option>
@@ -700,19 +716,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                             })}
                                         </div>
                                     </div>
-                                    <label>Rhythm
-                                        <select value={phrase.arpeggioRhythm} onChange={e => setPhrase({ arpeggioRhythm: e.target.value as PhraseSettings['arpeggioRhythm'] })}>
-                                            <option value="quarters">Quarter notes</option>
-                                            <option value="eighths">Eighth notes</option>
-                                        </select>
-                                    </label>
-                                    <label>Meter
-                                        <select value={phrase.meterNumerator} onChange={e => setPhrase({ meterNumerator: Math.max(3, Math.min(6, Number(e.target.value))) as 3 | 4 | 6 })}>
-                                            <option value={4}>4/4</option>
-                                            <option value={3}>3/4</option>
-                                            <option value={6}>6/8</option>
-                                        </select>
-                                    </label>
                                 </>
                             )}
 
@@ -730,15 +733,16 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                             {[1, 2, 4, 6, 8].map(b => <option key={b} value={b}>{b} bars</option>)}
                                         </select>
                                     </label>
-                                    <label>Meter
-                                        <select value={phrase.meterNumerator} onChange={e => setPhrase({ meterNumerator: Math.max(3, Math.min(6, Number(e.target.value))) as 3 | 4 | 6 })}>
-                                            <option value={4}>4/4</option>
-                                            <option value={3}>3/4</option>
-                                            <option value={6}>6/8</option>
-                                        </select>
+                                    <label style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={phrase.giulianiAlternateBass ?? false}
+                                            onChange={e => setPhrase({ giulianiAlternateBass: e.target.checked })}
+                                        />
+                                        Alternating bass (fifth on even bars)
                                     </label>
                                     <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
-                                        Chords: from the arpeggio chord pool; voicing enforced (bass + upper strings).
+                                        Meter is derived from the pattern; chords come from the arpeggio chord pool; voicing enforced (bass + upper strings).
                                     </span>
                                 </>
                             )}

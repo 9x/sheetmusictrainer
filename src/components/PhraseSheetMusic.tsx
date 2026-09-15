@@ -109,7 +109,7 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
     // horizontal room than quarters) so narrow screens wrap into more rows
     // instead of clipping notes.
     const densestTick = Math.min(...events.filter(e => e.pitch).map(e => e.durationTicks), 1920);
-    const minWidthPerBar = densestTick <= 120 ? 420 : densestTick <= 240 ? 330 : 240;
+    const minWidthPerBar = densestTick <= 120 ? 500 : densestTick <= 240 ? 330 : 240;
     const barsPerRow = Math.max(1, Math.min(4, Math.floor((width - 40) / minWidthPerBar)));
     const rowCount = Math.max(1, Math.ceil(totalBars / barsPerRow));
     const isGrand = clef === 'grand';
