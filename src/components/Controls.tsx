@@ -30,17 +30,23 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
         });
     };
 
+    const inPhraseMode = settings.gameMode === 'phrase';
+
     const pf = getPracticeFilter(settings);
     const activeFilterCount =
         (pf.keyEnabled ? 1 : 0) +
         (pf.strings.length > 0 ? 1 : 0) +
         (pf.fretWindowEnabled ? 1 : 0);
 
-    const inPhraseMode = settings.gameMode === 'phrase';
+    // Phrase Mode hosts the filter inside its Setup panel (above the
+    // notation) — no footer filter button there.
+    const showFilterButton = !inPhraseMode;
+    const shouldShowFilters = showFilterButton && filtersOpen;
 
     return (
         <div className="controls-container">
             {/* Note filter: collapsed behind a button — visible only when needed */}
+            {showFilterButton && (
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
                 <button
                     className={`hint-button ${filtersOpen ? 'active' : ''}`}
@@ -59,7 +65,8 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                     )}
                 </button>
             </div>
-            {filtersOpen && <TargetNoteControls />}
+            )}
+            {shouldShowFilters && <TargetNoteControls />}
 
             {/* Bottom Section: Tools Grid (2 Columns now) */}
             <div className="tools-grid" style={inPhraseMode ? { gridTemplateColumns: '1fr' } : undefined}>

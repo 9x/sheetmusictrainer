@@ -1040,9 +1040,9 @@ button {
 }
 
 .phrase-setup {
-    margin-top: 16px;
-    border-top: 1px solid color-mix(in srgb, var(--color-text-main) 12%, transparent);
-    padding-top: 12px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-text-main) 12%, transparent);
+    padding-bottom: 12px;
 }
 
 .phrase-setup summary {

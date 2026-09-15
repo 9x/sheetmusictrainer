@@ -28,6 +28,7 @@ import { getNoteDetails } from '../music/NoteUtils';
 import { EXERCISES, loadExercise } from '../exercises/library';
 import { parseAbc } from '../exercises/abcParser';
 import { PhraseSheetMusic } from './PhraseSheetMusic';
+import { TargetNoteControls } from './TargetNoteControls';
 import { Fretboard } from './Fretboard';
 import { PianoKeys } from './PianoKeys';
 import { TUNINGS, getFretboardPositions } from '../music/Tunings';
@@ -435,118 +436,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     </span>
                 </div>
 
-                <div className="sheet-music-container">
-                    {scoreOk ? (
-                        <PhraseSheetMusic
-                            score={trainer.activeScore}
-                            currentIdx={trainer.currentIdx}
-                            statuses={trainer.statuses}
-                            clef={activeClef}
-                            transpose={activeTranspose}
-                            width={staffWidth}
-                            theme={settings.theme}
-                        />
-                    ) : (
-                        <div className="phrase-error">{materialError}</div>
-                    )}
-                </div>
-
-                {trainer.error && <div className="error-message">{trainer.error}</div>}
-                {importError && <div className="error-message">{importError}</div>}
-                {rangeWarning && <div className="phrase-warning">{rangeWarning}</div>}
-
-                <div className="feedback-area">
-                    {trainer.phase === 'countIn' && (
-                        <span
-                            className="phrase-countin"
-                            style={{
-                                display: 'inline-block',
-                                minWidth: '20px',
-                                padding: '1px 7px',
-                                marginRight: '8px',
-                                borderRadius: '10px',
-                                fontSize: '11px',
-                                opacity: 0.75,
-                                background: 'color-mix(in srgb, var(--color-text-main) 10%, transparent)',
-                            }}
-                            aria-label={`Count-in: ${trainer.countInLeft} beats left`}
-                        >{trainer.countInLeft}</span>
-                    )}
-                    <div className="instruction-text phrase-status">{statusText}</div>
-                </div>
-
-                {/* Transport — reuses the single-note button styles/behavior */}
-                <div className="action-row phrase-transport">
-                    <button className="skip-button" onClick={startAction} title="Start / Pause (Space)">
-                        {trainer.phase === 'playing' || trainer.phase === 'countIn' ? <Pause size={18} /> : <Play size={18} />}
-                        {startLabel}
-                    </button>
-                    {!settings.zenMode && (
-                        <>
-                            <button
-                                className="hint-button"
-                                onClick={trainer.previewToggle}
-                                title="Preview the phrase (P)"
-                            >
-                                {trainer.phase === 'preview' ? <Square size={18} /> : <Volume2 size={18} />}
-                                {trainer.phase === 'preview' ? 'Stop' : 'Preview'}
-                            </button>
-                            <button className="hint-button" onClick={trainer.retry} title="Retry from the start (R)">
-                                <RotateCcw size={18} />
-                                Retry
-                            </button>
-                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || fixedMaterial) && (
-                                <button className="hint-button" onClick={nextAction} title="New melody / next bars (N)">
-                                    <SkipForward size={18} />
-                                    {phrase.material === 'melody' ? 'New' : 'Next'}
-                                </button>
-                            )}
-                            {phrase.pace === 'step' && (
-                                <button className="hint-button" onClick={trainer.skip} title="Skip this note (S)">
-                                    <SkipForward size={18} />
-                                    Skip
-                                </button>
-                            )}
-                        </>
-                    )}
-                    {/* Same virtual-instrument / hint toggles as single-note mode */}
-                    {trainer.phase === 'done' && settings.zenMode && (
-                        <>
-                            <button className="hint-button" onClick={trainer.retry} title="Retry (R)">
-                                <RotateCcw size={18} />
-                                Retry
-                            </button>
-                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || fixedMaterial) && (
-                                <button className="hint-button" onClick={nextAction} title="New / Next (N)">
-                                    <SkipForward size={18} />
-                                    {phrase.material === 'melody' ? 'New' : 'Next'}
-                                </button>
-                            )}
-                        </>
-                    )}
-                    {!settings.zenMode && currentInstrumentDef.showTuning && (
-                        <button
-                            className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
-                            onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
-                            title={`Toggle Virtual ${currentInstrumentDef.displayName} (Keyboard Shortcut: V)`}
-                        >
-                            <Guitar size={18} />
-                            {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
-                        </button>
-                    )}
-                    {!settings.zenMode && (
-                        <button
-                            className={`hint-button ${settings.showHint ? 'active' : ''}`}
-                            onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
-                            title="Keyboard Shortcut: H"
-                        >
-                            <HelpCircle size={18} />
-                            {settings.showHint ? "Hide Hint" : "Show Hint"}
-                        </button>
-                    )}
-                </div>
-
-                {/* Setup panel */}
+                {/* Setup panel — above the notation, holds material options
+                    plus the shared note filter (key/strings/fret window) */}
                 {!settings.zenMode && (
                     <details className="phrase-setup">
                         <summary><ChevronDown size={16} /> Setup</summary>
@@ -561,8 +452,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                     <option value="import">Imported file</option>
                                 </select>
                             </label>
-
-                            {(phrase.material === 'melody' || phrase.material === 'scale' || phrase.material === 'arpeggio') && null}
 
                             {phrase.material === 'melody' && (
                                 <>
@@ -778,8 +667,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 </label>
                             )}
 
-                            {fretted && null}
-
                             {/* Pace lives in the metronome widget now:
                                 'Sync to exercise' checked = tempo pace,
                                 unchecked = at-your-pace (step). */}
@@ -815,8 +702,121 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             Matching checks pitch, not fingering — several fretboard positions produce the same pitch.
                             For repeated identical notes, briefly release between notes so each attack is detected.
                         </p>
+                        <TargetNoteControls />
                     </details>
                 )}
+
+                <div className="sheet-music-container">
+                    {scoreOk ? (
+                        <PhraseSheetMusic
+                            score={trainer.activeScore}
+                            currentIdx={trainer.currentIdx}
+                            statuses={trainer.statuses}
+                            clef={activeClef}
+                            transpose={activeTranspose}
+                            width={staffWidth}
+                            theme={settings.theme}
+                        />
+                    ) : (
+                        <div className="phrase-error">{materialError}</div>
+                    )}
+                </div>
+
+                {trainer.error && <div className="error-message">{trainer.error}</div>}
+                {importError && <div className="error-message">{importError}</div>}
+                {rangeWarning && <div className="phrase-warning">{rangeWarning}</div>}
+
+                <div className="feedback-area">
+                    {trainer.phase === 'countIn' && (
+                        <span
+                            className="phrase-countin"
+                            style={{
+                                display: 'inline-block',
+                                minWidth: '20px',
+                                padding: '1px 7px',
+                                marginRight: '8px',
+                                borderRadius: '10px',
+                                fontSize: '11px',
+                                opacity: 0.75,
+                                background: 'color-mix(in srgb, var(--color-text-main) 10%, transparent)',
+                            }}
+                            aria-label={`Count-in: ${trainer.countInLeft} beats left`}
+                        >{trainer.countInLeft}</span>
+                    )}
+                    <div className="instruction-text phrase-status">{statusText}</div>
+                </div>
+
+                {/* Transport — reuses the single-note button styles/behavior */}
+                <div className="action-row phrase-transport">
+                    <button className="skip-button" onClick={startAction} title="Start / Pause (Space)">
+                        {trainer.phase === 'playing' || trainer.phase === 'countIn' ? <Pause size={18} /> : <Play size={18} />}
+                        {startLabel}
+                    </button>
+                    {!settings.zenMode && (
+                        <>
+                            <button
+                                className="hint-button"
+                                onClick={trainer.previewToggle}
+                                title="Preview the phrase (P)"
+                            >
+                                {trainer.phase === 'preview' ? <Square size={18} /> : <Volume2 size={18} />}
+                                {trainer.phase === 'preview' ? 'Stop' : 'Preview'}
+                            </button>
+                            <button className="hint-button" onClick={trainer.retry} title="Retry from the start (R)">
+                                <RotateCcw size={18} />
+                                Retry
+                            </button>
+                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || fixedMaterial) && (
+                                <button className="hint-button" onClick={nextAction} title="New melody / next bars (N)">
+                                    <SkipForward size={18} />
+                                    {phrase.material === 'melody' ? 'New' : 'Next'}
+                                </button>
+                            )}
+                            {phrase.pace === 'step' && (
+                                <button className="hint-button" onClick={trainer.skip} title="Skip this note (S)">
+                                    <SkipForward size={18} />
+                                    Skip
+                                </button>
+                            )}
+                        </>
+                    )}
+                    {/* Same virtual-instrument / hint toggles as single-note mode */}
+                    {trainer.phase === 'done' && settings.zenMode && (
+                        <>
+                            <button className="hint-button" onClick={trainer.retry} title="Retry (R)">
+                                <RotateCcw size={18} />
+                                Retry
+                            </button>
+                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || fixedMaterial) && (
+                                <button className="hint-button" onClick={nextAction} title="New / Next (N)">
+                                    <SkipForward size={18} />
+                                    {phrase.material === 'melody' ? 'New' : 'Next'}
+                                </button>
+                            )}
+                        </>
+                    )}
+                    {!settings.zenMode && currentInstrumentDef.showTuning && (
+                        <button
+                            className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
+                            onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
+                            title={`Toggle Virtual ${currentInstrumentDef.displayName} (Keyboard Shortcut: V)`}
+                        >
+                            <Guitar size={18} />
+                            {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
+                        </button>
+                    )}
+                    {!settings.zenMode && (
+                        <button
+                            className={`hint-button ${settings.showHint ? 'active' : ''}`}
+                            onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
+                            title="Keyboard Shortcut: H"
+                        >
+                            <HelpCircle size={18} />
+                            {settings.showHint ? "Hide Hint" : "Show Hint"}
+                        </button>
+                    )}
+                </div>
+
 
                 {/* Hint instruments */}
                 {(settings.showHint || settings.showFretboard) && currentInstrumentDef.showTuning && (
