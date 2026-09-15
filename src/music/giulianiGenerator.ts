@@ -269,6 +269,7 @@ export function generateGiulianiStudy(
     let cursor = 0;
     for (let b = 0; b < usableBars.length; b++) {
         const { degreeIndex, placement } = usableBars[b];
+        if (!placement) continue; // filtered above, but satisfies strict TS
         chordSymbols.push(chordNameFor(key, degreeIndex));
         for (let n = 0; n < fillSlots; n++) {
             const f = n % figure.length;

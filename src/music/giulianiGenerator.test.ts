@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateGiulianiStudy } from './giulianiGenerator';
+import { generateGiulianiStudy, type GiulianiPattern } from './giulianiGenerator';
 import { scoreEvents, validateScore } from '../score/model';
 
 const strings = [40, 45, 50, 55, 59, 64];
