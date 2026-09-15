@@ -123,24 +123,24 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      const onInteractive =
+      // Text inputs / selects keep their native keys — shortcuts must not
+      // fire while typing. FOCUSED BUTTONS however stay eligible: after a
+      // click the button keeps focus, and gating there made N/R/P/L
+      // silently dead until the user clicked elsewhere. Space/Enter on a
+      // focused button activate it natively (guarded below), so no
+      // double-fire.
+      const onTextEntry =
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement ||
         !!target?.isContentEditable;
+      if (onTextEntry) return;
 
       if (e.code === 'Escape') {
         if (showHelp) setShowHelp(false);
         else if (settings.zenMode) setSettings(s => ({ ...s, zenMode: false }));
         return;
       }
-      // Text inputs and selects must keep their native keys — shortcuts are
-      // for typing-free contexts. FOCUSED BUTTONS however stay eligible:
-      // after a click the button keeps focus, and blocking global shortcuts
-      // there made N/R/P/L silently dead until the user clicked elsewhere.
-      // Space/Enter on a focused button activate it natively and return below,
-      // so no double-fire.
-
       // Prevent default for space to stop scrolling (Space on a focused
       // button activates it natively — preventDefault only applies when the
       // focus is on the body, where the shortcut below takes over).
