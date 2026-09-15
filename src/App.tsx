@@ -165,6 +165,12 @@ function App() {
           case 'n':
             phraseRef.current?.next();
             break;
+          case 'arrowleft':
+            phraseRef.current?.previewStep(-1);
+            break;
+          case 'arrowright':
+            phraseRef.current?.previewStep(1);
+            break;
           case 's':
             phraseRef.current?.skip();
             break;
@@ -430,6 +436,7 @@ function App() {
                 <>
                   <div className="help-item"><span>Start / Pause / Resume</span><span className="shortcut-key">Space</span></div>
                   <div className="help-item"><span>Preview phrase (Play / Stop)</span><span className="shortcut-key">P</span></div>
+                  <div className="help-item"><span>While previewing: step note forward / back</span><span className="shortcut-key">→ / ←</span></div>
                   <div className="help-item"><span>Retry phrase</span><span className="shortcut-key">R</span></div>
                   <div className="help-item"><span>New melody / next bars</span><span className="shortcut-key">N</span></div>
                   <div className="help-item"><span>Skip note (at your pace)</span><span className="shortcut-key">S</span></div>

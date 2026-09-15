@@ -35,11 +35,12 @@ import { TUNINGS, getFretboardPositions } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS, resolveClefTranspose } from '../music/InstrumentConfigs';
 const AUTO_CONTINUE_DELAY_MS = 1500;
 
-import { Play, Pause, RotateCcw, SkipForward, Volume2, Square, ChevronDown, Music2, Upload, HelpCircle, Guitar } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, SkipBack, Volume2, Square, ChevronDown, Music2, Upload, HelpCircle, Guitar } from 'lucide-react';
 
 export interface PhraseHandle {
     pauseToggle: () => void;
     previewToggle: () => void;
+    previewStep: (dir: 1 | -1) => void;
     retry: () => void;
     skip: () => void;
     next: () => void;
@@ -328,6 +329,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         useImperativeHandle(ref, () => ({
             pauseToggle: () => trainer?.pauseToggle(),
             previewToggle: () => trainer?.previewToggle(),
+            previewStep: (dir) => trainer?.previewStep(dir),
             retry: () => trainer?.retry(),
             skip: () => trainer?.skip(),
             pause: () => trainer?.pause(),
@@ -337,8 +339,11 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         // ---- Hints --------------------------------------------------------------
         const activeScore = trainer.activeScore;
         const events = scoreEvents(activeScore);
-        const currentMidi = trainer.currentIdx >= 0 && events[trainer.currentIdx]?.pitch
-            ? events[trainer.currentIdx]!.pitch!.midi
+        // While previewing, the hint instruments follow the preview cursor so
+        // the user can find notes on the fretboard while listening.
+        const displayIdx = trainer.phase === 'preview' ? trainer.previewIdx : trainer.currentIdx;
+        const currentMidi = displayIdx >= 0 && events[displayIdx]?.pitch
+            ? events[displayIdx]!.pitch!.midi
             : null;
 
         const hintPositions = useMemo(() => {
@@ -714,7 +719,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     {scoreOk ? (
                         <PhraseSheetMusic
                             score={trainer.activeScore}
-                            currentIdx={trainer.currentIdx}
+                            currentIdx={trainer.phase === 'preview' ? trainer.previewIdx : trainer.currentIdx}
                             statuses={trainer.statuses}
                             clef={activeClef}
                             transpose={activeTranspose}
@@ -758,8 +763,28 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     </button>
                     {!settings.zenMode && (
                         <>
+                            {trainer.phase === 'preview' && (
+                                <div className="transport-step-group" role="group" aria-label="Preview stepping">
+                                    <button
+                                        className="hint-button step-button"
+                                        onClick={() => trainer.previewStep(-1)}
+                                        title="One event back (while previewing)"
+                                        aria-label="Step back"
+                                    >
+                                        <SkipBack size={16} />
+                                    </button>
+                                    <button
+                                        className="hint-button step-button"
+                                        onClick={() => trainer.previewStep(1)}
+                                        title="One event forward (while previewing)"
+                                        aria-label="Step forward"
+                                    >
+                                        <SkipForward size={16} />
+                                    </button>
+                                </div>
+                            )}
                             <button
-                                className="hint-button"
+                                className={`hint-button ${trainer.phase === 'preview' ? 'active' : ''}`}
                                 onClick={trainer.previewToggle}
                                 title="Preview the phrase (P)"
                             >
@@ -799,27 +824,44 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             )}
                         </>
                     )}
-                    {!settings.zenMode && currentInstrumentDef.showTuning && (
-                        <button
-                            className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
-                            onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
-                            title={`Toggle Virtual ${currentInstrumentDef.displayName} (Keyboard Shortcut: V)`}
-                        >
-                            <Guitar size={18} />
-                            {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
-                        </button>
-                    )}
-                    {!settings.zenMode && (
-                        <button
-                            className={`hint-button ${settings.showHint ? 'active' : ''}`}
-                            onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
-                            title="Keyboard Shortcut: H"
-                        >
-                            <HelpCircle size={18} />
-                            {settings.showHint ? "Hide Hint" : "Show Hint"}
-                        </button>
-                    )}
                 </div>
+
+                {/* Display toggles — separate row, switch style (like the
+                    tuner/metronome switches): pure show/hide, no run state. */}
+                {!settings.zenMode && (
+                    <div className="display-toggles">
+                        {currentInstrumentDef.showTuning && (
+                            <div className="display-toggle">
+                                <span className="display-toggle-label">
+                                    <Guitar size={15} />
+                                    {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
+                                </span>
+                                <button
+                                    className={`switch-button ${settings.showFretboard ? 'active' : ''}`}
+                                    onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
+                                    title={`Toggle Virtual ${currentInstrumentDef.displayName} (Keyboard Shortcut: V)`}
+                                    aria-label={`Show virtual ${currentInstrumentDef.displayName}`}
+                                >
+                                    <div className="switch-thumb" />
+                                </button>
+                            </div>
+                        )}
+                        <div className="display-toggle">
+                            <span className="display-toggle-label">
+                                <HelpCircle size={15} />
+                                Hint
+                            </span>
+                            <button
+                                className={`switch-button ${settings.showHint ? 'active' : ''}`}
+                                onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
+                                title="Keyboard Shortcut: H"
+                                aria-label="Show hint"
+                            >
+                                <div className="switch-thumb" />
+                            </button>
+                        </div>
+                    </div>
+                )}
 
 
                 {/* Hint instruments */}

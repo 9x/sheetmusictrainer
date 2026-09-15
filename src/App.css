@@ -1172,3 +1172,37 @@ button {
   margin: 0;
   text-align: center;
 }
+
+/* ---- Transport step group (preview stepping) ---------------------------- */
+.transport-step-group {
+  display: flex;
+  gap: 6px;
+}
+
+.step-button {
+  padding: 0.4rem 0.55rem;
+}
+
+/* ---- Display toggles (virtual instrument / hint show-hide) -------------- */
+/* Separate row of pure show/hide switches, styled like the tuner and
+   metronome switches — visually distinct from transport actions. */
+.display-toggles {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-lg);
+  margin-top: 10px;
+}
+
+.display-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.display-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}

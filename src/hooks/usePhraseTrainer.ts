@@ -56,6 +56,8 @@ const REARM_AFTER_SUSTAINED_MS = 2500;
 
 export interface PhraseTrainerApi {
     readonly phase: PhrasePhase;
+    /** Event index the preview cursor points at (-1 when not previewing). */
+    readonly previewIdx: number;
     /** Active slice the user is currently working through (may be a resume tail). */
     readonly activeScore: Score;
     readonly statuses: NoteStatus[];
@@ -76,6 +78,9 @@ export interface PhraseTrainerApi {
     retry: () => void;
     skip: () => void;
     previewToggle: () => void;
+    /** While previewing: step one event forward/backward (player-style).
+      * Plays the note at the new position and moves the preview indicator. */
+    previewStep: (dir: 1 | -1) => void;
     virtualTap: (midi: number) => void;
     /** External pause (settings dialog, visibility change handled internally). */
     pause: () => void;
@@ -95,6 +100,7 @@ export function usePhraseTrainer(
     const [countInLeft, setCountInLeft] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [repeatedNoteBlocked, setRepeatedNoteBlocked] = useState(false);
+    const [previewIdx, setPreviewIdx] = useState(-1);
     const [accumulated, setAccumulated] = useState<PhraseSummary>({ total: 0, matched: 0, missed: 0, skipped: 0 });
 
     // ---- Active slice (resume tails replace it) ---------------------------
@@ -102,6 +108,7 @@ export function usePhraseTrainer(
 
     const matcherRef = useRef<PhraseMatcher | null>(null);
     const repeatBlockedRef = useRef(false);
+    const previewIdxRef = useRef(-1);
     const phaseRef = useRef<PhrasePhase>('ready');
     const paceRef = useRef(config.pace);
     const configRef = useRef(config);
@@ -157,6 +164,8 @@ export function usePhraseTrainer(
         setAccumulated({ total: 0, matched: 0, missed: 0, skipped: 0 });
         audioEngine.cancelGroup(PREVIEW_GROUP);
         audioEngine.cancelGroup(CLICK_GROUP);
+        previewIdxRef.current = -1;
+        setPreviewIdx(-1);
         setPhaseBoth('ready');
         setCurrentIdx(-1);
         setCountInLeft(0);
@@ -485,25 +494,26 @@ export function usePhraseTrainer(
         advanceStep(m);
     }, [advanceStep]);
 
-    const previewToggle = useCallback(() => {
-        if (phaseRef.current === 'preview') {
-            audioEngine.cancelGroup(PREVIEW_GROUP);
-            if (previewTimerRef.current) { clearTimeout(previewTimerRef.current); previewTimerRef.current = null; }
-            setPhaseBoth('ready');
-            return;
-        }
-        pause();
-        runTokenRef.current++;
-        const token = runTokenRef.current;
+    const stopPreview = useCallback(() => {
+        audioEngine.cancelGroup(PREVIEW_GROUP);
+        if (previewTimerRef.current) { clearTimeout(previewTimerRef.current); previewTimerRef.current = null; }
+        previewIdxRef.current = -1;
+        setPreviewIdx(-1);
+        setPhaseBoth('ready');
+    }, [setPhaseBoth]);
+
+    const playPreviewFrom = useCallback((fromIdx: number, token: number) => {
         void audioEngine.ensureRunning().then(() => {
             if (runTokenRef.current !== token) return;
             const bpm = sanitizeBpm(configRef.current.bpm);
             const spb = 60 / bpm;
             const t0 = audioEngine.now() + 0.15;
             const vol = configRef.current.previewVolume ?? 0.4;
+            const startTick = fromIdx > 0 ? events[fromIdx].startTick : 0;
             for (const e of events) {
                 if (!e.pitch) continue;
-                audioEngine.scheduleNote(e.pitch.midi, t0 + (e.startTick / PPQ) * spb, (e.durationTicks / PPQ) * spb, vol, PREVIEW_GROUP);
+                if (e.startTick < startTick) continue;
+                audioEngine.scheduleNote(e.pitch.midi, t0 + ((e.startTick - startTick) / PPQ) * spb, (e.durationTicks / PPQ) * spb, vol, PREVIEW_GROUP);
             }
             // Tempo pace: click along with the preview so the rhythm is
             // audible while listening (quarter beats over the full span).
@@ -511,20 +521,47 @@ export function usePhraseTrainer(
             // its clicks (no ghost metronomes after an aborted preview).
             if (paceRef.current === 'tempo' && configRef.current.clickSound) {
                 const totalTicks = events.reduce((a, e) => Math.max(a, e.startTick + e.durationTicks), 0);
-                const beats = Math.floor(totalTicks / PPQ);
+                const beats = Math.floor((totalTicks - startTick) / PPQ);
                 for (let i = 0; i < beats; i++) {
-                    audioEngine.playClickAt(t0 + i * spb, CLICK_VOLUME, i % 4 === 0, PREVIEW_GROUP);
+                    audioEngine.playClickAt(t0 + i * spb, CLICK_VOLUME, (fromIdx + i) % 4 === 0, PREVIEW_GROUP);
                 }
             }
             setPhaseBoth('preview');
-            const totalSec = (events.reduce((a, e) => Math.max(a, e.startTick + e.durationTicks), 0) / PPQ) * spb;
+            const totalSec = ((events.reduce((a, e) => Math.max(a, e.startTick + e.durationTicks), 0) - startTick) / PPQ) * spb;
+            if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
             previewTimerRef.current = setTimeout(() => {
                 if (runTokenRef.current === token) {
                     setPhaseBoth('ready');
+                    setPreviewIdx(-1);
                 }
             }, 150 + totalSec * 1000 + 200);
         });
-    }, [events, pause, setPhaseBoth]);
+    }, [events, setPhaseBoth]);
+
+    const previewToggle = useCallback(() => {
+        if (phaseRef.current === 'preview') {
+            stopPreview();
+            return;
+        }
+        pause();
+        runTokenRef.current++;
+        const token = runTokenRef.current;
+        setPreviewIdx(0);
+        previewIdxRef.current = 0;
+        playPreviewFrom(0, token);
+    }, [pause, playPreviewFrom, stopPreview]);
+
+    /** Player-style stepping while previewing: move the cursor, play that
+      * single note so the user can find it on the instrument. */
+    const previewStep = useCallback((dir: 1 | -1) => {
+        if (phaseRef.current !== 'preview') return;
+        const nextIdx = Math.max(0, Math.min(events.length - 1, previewIdxRef.current + dir));
+        if (nextIdx === previewIdxRef.current) return;
+        previewIdxRef.current = nextIdx;
+        setPreviewIdx(nextIdx);
+        const token = ++runTokenRef.current;
+        playPreviewFrom(nextIdx, token);
+    }, [events.length, playPreviewFrom]);
 
     const virtualTap = useCallback((midi: number) => {
         const p = phaseRef.current;
@@ -602,6 +639,7 @@ export function usePhraseTrainer(
         statuses,
         currentIdx,
         countInLeft,
+        previewIdx,
         scoreStart: scoreStartRef.current,
         spb: spbRef.current,
         error,
@@ -611,6 +649,7 @@ export function usePhraseTrainer(
         retry,
         skip,
         previewToggle,
+        previewStep,
         virtualTap,
         pause,
         stop,
