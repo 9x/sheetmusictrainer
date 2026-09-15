@@ -101,6 +101,35 @@ export const TargetNoteControls: React.FC = () => {
                 )}
             </div>
 
+            {/* Display key signature (sheet notation) */}
+            <div className="control-group">
+                <label className="control-label">
+                    <span>Key signature (display)</span>
+                </label>
+                <select
+                    value={settings.keySignature}
+                    onChange={e => updateSettings(s => ({ ...s, keySignature: e.target.value }))}
+                    className="control-select"
+                    aria-label="Display key signature"
+                >
+                    <optgroup label="Major Keys">
+                        <option value="C">C Major</option>
+                        <option value="G">G Major</option>
+                        <option value="D">D Major</option>
+                        <option value="A">A Major</option>
+                        <option value="E">E Major</option>
+                        <option value="F">F Major</option>
+                        <option value="Bb">Bb Major</option>
+                        <option value="Eb">Eb Major</option>
+                    </optgroup>
+                    <optgroup label="Minor Keys">
+                        <option value="Am">A Minor</option>
+                        <option value="Em">E Minor</option>
+                        <option value="Dm">D Minor</option>
+                    </optgroup>
+                </select>
+            </div>
+
             {/* Key filter */}
             <div className="control-group">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

@@ -13,7 +13,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { useSettings } from '../context/useSettings';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { usePhraseTrainer, type PhraseTrainerApi, type PhrasePhase } from '../hooks/usePhraseTrainer';
-import { getPhraseSettings, getPracticeFilter, type PhraseSettings, type PracticeFilter } from '../types/SettingsTypes';
+import { getPhraseSettings, getPracticeFilter, type PhraseSettings } from '../types/SettingsTypes';
 import { rawFrameCount } from '../hooks/rawFrameBus';
 import { audioEngine } from '../audio/AudioEngine';
 import { computePlayableNotes, isFrettedInstrument, positionsWithinWindow } from '../music/playableRange';
@@ -71,14 +71,9 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const setSettings = updateSettings;
         const { playNote } = useAudioPlayer();
         const phrase = getPhraseSettings(settings);
-        // Unified target-note controls: Phrase Mode reads/writes the shared
-        // practice filter so all modes expose identical key/fret-window state.
+        // Unified target-note controls: Phrase Mode reads the shared practice
+        // filter (single source of truth across all modes).
         const pf = getPracticeFilter(settings);
-        phrase.keyTonic = pf.keyTonic;
-        phrase.keyMode = pf.keyMode;
-        phrase.fretWindowEnabled = pf.fretWindowEnabled;
-        phrase.fretMin = pf.fretMin;
-        phrase.fretMax = pf.fretMax;
         // Unified metronome: phrase tempo reads from the shared rhythm BPM
         // (single source of truth across modes; the phrase-local BPM control
         // was replaced by the common metronome widget in Controls).
@@ -96,18 +91,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             ? settings.rhythm.active && settings.rhythm.sound
             : settings.rhythm.active && settings.rhythm.sound && !settings.rhythm.syncToExercise;
         const setPhrase = useCallback((updates: Partial<PhraseSettings>) => {
-            updateSettings(s => {
-                const next = { ...s, phrase: { ...getPhraseSettings(s), ...updates } };
-                // Mirror shared filter fields into the unified practice filter.
-                const shared: Partial<PracticeFilter> = {};
-                if ('keyTonic' in updates) shared.keyTonic = updates.keyTonic;
-                if ('keyMode' in updates) shared.keyMode = updates.keyMode;
-                if ('fretWindowEnabled' in updates) shared.fretWindowEnabled = updates.fretWindowEnabled;
-                if ('fretMin' in updates) shared.fretMin = updates.fretMin;
-                if ('fretMax' in updates) shared.fretMax = updates.fretMax;
-                if (Object.keys(shared).length > 0) next.practice = { ...getPracticeFilter(s), ...shared };
-                return next;
-            });
+            updateSettings(s => ({ ...s, phrase: { ...getPhraseSettings(s), ...updates } }));
         }, [updateSettings]);
         const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
         const currentTuning = TUNINGS[settings.tuningId];
@@ -140,7 +124,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 customMaxFret: settings.customMaxFret,
             });
         }, [pf.strings, pf.fretWindowEnabled, pf.fretMin, pf.fretMax, fretted, currentTuning,
-            phrase.fretWindowEnabled, phrase.fretMin, phrase.fretMax,
             settings.instrument, settings.difficulty, settings.tuningId, settings.customMinFret, settings.customMaxFret]);
 
         // ---- Imported score (session-only) --------------------------------------
@@ -173,8 +156,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const baseScore: Result<Score> | null = useMemo(() => {
             if (phrase.material === 'melody') {
                 const result = generateMelody({
-                    keyTonic: phrase.keyTonic,
-                    keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
+                    keyTonic: pf.keyTonic,
+                    keyMode: (isMode(pf.keyMode) ? pf.keyMode : 'major') as ModeId,
                     bars: phrase.bars,
                     meter: { numerator: phrase.meterNumerator, denominator: 4 },
                     rhythmLevel: phrase.rhythmLevel,
@@ -184,8 +167,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             }
             if (phrase.material === 'scale') {
                 return generateScaleDrill({
-                    keyTonic: phrase.keyTonic,
-                    keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
+                    keyTonic: pf.keyTonic,
+                    keyMode: (isMode(pf.keyMode) ? pf.keyMode : 'major') as ModeId,
                     direction: phrase.scaleDirection,
                     coverage: phrase.scaleCoverage,
                     meter: { numerator: phrase.meterNumerator, denominator: 4 },
@@ -196,8 +179,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 // Meter is auto-derived inside the generator from the figure
                 // length (always eighths) — the user no longer picks a meter.
                 return generateGiulianiStudy({
-                    keyTonic: phrase.keyTonic,
-                    keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
+                    keyTonic: pf.keyTonic,
+                    keyMode: (isMode(pf.keyMode) ? pf.keyMode : 'major') as ModeId,
                     pattern: phrase.giulianiPattern,
                     tuningId: settings.tuningId,
                     bars: phrase.giulianiBars,
@@ -209,8 +192,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             }
             if (phrase.material === 'arpeggio') {
                 return generateArpeggio({
-                    keyTonic: phrase.keyTonic,
-                    keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
+                    keyTonic: pf.keyTonic,
+                    keyMode: (isMode(pf.keyMode) ? pf.keyMode : 'major') as ModeId,
                     degree: (phrase.arpeggioDegree as ArpeggioDegree) || 'I',
                     pattern: phrase.arpeggioPattern,
                     coverage: phrase.arpeggioCoverage,
@@ -231,7 +214,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 return { ok: true, value: importedScore };
             }
             return null;
-        }, [phrase.material, phrase.keyTonic, phrase.keyMode, phrase.bars, phrase.meterNumerator,
+        }, [phrase.material, pf.keyTonic, pf.keyMode, phrase.bars, phrase.meterNumerator,
             phrase.rhythmLevel, phrase.scaleDirection, phrase.scaleCoverage, phrase.scaleRhythm, phrase.libraryId,
             phrase.arpeggioDegree, phrase.arpeggioPattern, phrase.arpeggioCoverage,
             phrase.arpeggioBars, phrase.arpeggioProgression,
@@ -355,11 +338,11 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
 
         const hintPositions = useMemo(() => {
             if (!settings.showHint || !currentInstrumentDef.showTuning || !currentTuning || currentMidi === null) return [];
-            if (phrase.fretWindowEnabled) {
-                return positionsWithinWindow(currentMidi, currentTuning, phrase.fretMin, phrase.fretMax);
+            if (pf.fretWindowEnabled) {
+                return positionsWithinWindow(currentMidi, currentTuning, pf.fretMin, pf.fretMax);
             }
             return getFretboardPositions(currentMidi, currentTuning);
-        }, [settings.showHint, currentInstrumentDef, currentTuning, currentMidi, phrase.fretWindowEnabled, phrase.fretMin, phrase.fretMax]);
+        }, [settings.showHint, currentInstrumentDef, currentTuning, currentMidi, pf.fretWindowEnabled, pf.fretMin, pf.fretMax]);
 
         const handleVirtualPlay = useCallback((midi: number) => {
             if (!settings.virtualGuitarMute) {
@@ -579,11 +562,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 </select>
                             </label>
 
-                            {(phrase.material === 'melody' || phrase.material === 'scale' || phrase.material === 'arpeggio') && (
-                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
-                                    Key/mode: use the "Target key" controls below the sheet — shared across modes.
-                                </span>
-                            )}
+                            {(phrase.material === 'melody' || phrase.material === 'scale' || phrase.material === 'arpeggio') && null}
 
                             {phrase.material === 'melody' && (
                                 <>
@@ -799,11 +778,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 </label>
                             )}
 
-                            {fretted && (
-                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
-                                    Fret window: use the "Fret window" controls below the sheet — shared across modes.
-                                </span>
-                            )}
+                            {fretted && null}
 
                             {/* Pace lives in the metronome widget now:
                                 'Sync to exercise' checked = tempo pace,
@@ -816,11 +791,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 />
                                 Virtual input only
                             </label>
-                            {phrase.pace === 'tempo' && (
-                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
-                                    BPM + click: on the metronome widget below.
-                                </span>
-                            )}
                             <label className="phrase-check">
                                 <input
                                     type="checkbox"
@@ -839,7 +809,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             </label>
                         </div>
                         {phrase.pace === 'tempo' && (
-                            <p className="phrase-note">The run clicks a full count-in bar, then one click per beat. The metronome pendulum mirrors these beats — set the tempo on the metronome tool.</p>
+                            <p className="phrase-note">Tempo and click sound live on the metronome tool (Sync checked = the run sets the pace; unchecked = play at your own pace with a free metronome).</p>
                         )}
                         <p className="phrase-note">
                             Matching checks pitch, not fingering — several fretboard positions produce the same pitch.
@@ -878,7 +848,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                     onPlayNote={handleVirtualPlay}
                                     onHover={setHoveredMidi}
                                     showHints={settings.showHint}
-                                    maxFrets={Math.max(15, phrase.fretWindowEnabled ? phrase.fretMax + 1 : 0)}
+                                    maxFrets={Math.max(15, pf.fretWindowEnabled ? pf.fretMax + 1 : 0)}
                                 />
                             )
                         )}

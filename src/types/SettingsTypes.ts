@@ -49,8 +49,6 @@ export interface PhraseSettings {
     material: PhraseMaterial;
     libraryId: string;
     /** Imported score id (the parsed score lives in component state, session-only). */
-    keyTonic: string;
-    keyMode: string; // ModeId
     bars: number; // 1–8 (melodies)
     meterNumerator: 3 | 4 | 6;
     rhythmLevel: 1 | 2 | 3;
@@ -69,10 +67,6 @@ export interface PhraseSettings {
     /** Giuliani study material (own category — voicing-enforced). */
     giulianiPattern: 'pim' | 'pima' | 'pami' | 'aim' | 'pimamim' | 'pmamim' | 'piai' | 'pmami' | 'pimami' | 'pimaia' | 'pimai' | 'pmia' | 'pmim';
     giulianiBars: number;
-    /** Phrase-local fret window (guitar/bass) — overrides the note set. */
-    fretWindowEnabled: boolean;
-    fretMin: number;
-    fretMax: number;
     /** Practice range for library/import material (1-based, inclusive). */
     startBar: number;
     barCount: number;
@@ -95,8 +89,6 @@ export interface PhraseSettings {
 export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
     material: 'melody',
     libraryId: '',
-    keyTonic: 'C',
-    keyMode: 'major',
     bars: 2,
     meterNumerator: 4,
     rhythmLevel: 1,
@@ -111,9 +103,6 @@ export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
     arpeggioProgression: 'functional',
     giulianiPattern: 'pima',
     giulianiBars: 4,
-    fretWindowEnabled: false,
-    fretMin: 0,
-    fretMax: 4,
     startBar: 1,
     barCount: 2,
     pace: 'step',
