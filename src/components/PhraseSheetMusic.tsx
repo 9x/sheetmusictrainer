@@ -105,7 +105,12 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
 
     const events = scoreEvents(score);
     const totalBars = score.measures.length;
-    const barsPerRow = Math.max(1, Math.min(4, Math.floor((width - 40) / 210)));
+    // Min width per bar grows with notation density (eighths/16ths need more
+    // horizontal room than quarters) so narrow screens wrap into more rows
+    // instead of clipping notes.
+    const densestTick = Math.min(...events.filter(e => e.pitch).map(e => e.durationTicks), 1920);
+    const minWidthPerBar = densestTick <= 120 ? 320 : densestTick <= 240 ? 260 : 210;
+    const barsPerRow = Math.max(1, Math.min(4, Math.floor((width - 40) / minWidthPerBar)));
     const rowCount = Math.max(1, Math.ceil(totalBars / barsPerRow));
     const isGrand = clef === 'grand';
     const rowHeight = isGrand ? 250 : 140;

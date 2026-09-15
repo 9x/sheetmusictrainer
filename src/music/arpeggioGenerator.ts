@@ -21,7 +21,11 @@ export type ArpeggioPattern =
     | '1321'   // root-fifth-third-root
     | '1325'   // root-fifth-third-octave
     | '1535'   // root-octave-fifth-octave
-    | '12353'; // root-third-fifth-octave-fifth
+    | '12353'  // root-third-fifth-octave-fifth
+    | '121321' // rolling thirds (root-third-root-fifth-third-root)
+    | '1353'   // root-third-fifth-third
+    | '15453'  // root-octave-fifth-octave-fifth-octave
+    | '132532';// long broken-chord wave
 export type ArpeggioCoverage = 'one-octave' | 'two-octave';
 /** How the chord per bar is chosen in sequence mode. */
 export type ArpeggioProgression = 'random' | 'functional' | 'diatonic-cycle';
@@ -61,6 +65,10 @@ export const PATTERN_LABELS: Record<ArpeggioPattern, string> = {
     '1325': '1-3-2-5(8)',
     '1535': '1-5-3-5(8)',
     '12353': '1-2-3-5-3',
+    '121321': '1-2-1-3-2-1',
+    '1353': '1-3-5-3',
+    '15453': '1-5-4-5-3-5',
+    '132532': '1-3-2-5-3-2',
 };
 
 /**
@@ -77,6 +85,10 @@ const BROKEN_FIGURES: Record<string, number[]> = {
     '1325': [0, 2, 1, 3],
     '1535': [0, 3, 2, 3],
     '12353': [0, 1, 2, 3, 2],
+    '121321': [0, 1, 0, 2, 1, 0],
+    '1353': [0, 1, 2, 1],
+    '15453': [0, 3, 2, 3, 2, 3],
+    '132532': [0, 2, 1, 3, 2, 1],
 };
 
 /** pc of a spelled degree (step letter + alter). */

@@ -647,6 +647,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                                 <option value="1325">1-3-2-5(8)</option>
                                                 <option value="1535">1-5-3-5(8)</option>
                                                 <option value="12353">1-2-3-5-3</option>
+                                                <option value="1353">1-3-5-3</option>
+                                                <option value="121321">1-2-1-3-2-1</option>
+                                                <option value="15453">1-5-4-5-3-5</option>
+                                                <option value="132532">1-3-2-5-3-2</option>
                                             </optgroup>
                                         </select>
                                     </label>

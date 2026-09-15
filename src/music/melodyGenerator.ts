@@ -65,6 +65,22 @@ const TEMPLATES_4_L3: number[][] = [
     [480, 480, 360, 120, 480],
     [720, 120, 120, 120, 120, 480],
 ];
+// 6/8 templates (6 quarter-ticks = 2880 per bar; 8th-note oriented).
+const TEMPLATES_6_L1: number[][] = [
+    [240, 240, 240, 240, 240, 240, 480, 480],
+    [480, 480, 240, 240, 240, 240, 480, 480],
+    [240, 240, 480, 480, 480, 240, 240, 240, 240],
+    [960, 480, 480, 480, 480],
+    [480, 480, 480, 480, 960],
+    [1440, 480, 480, 480],
+];
+const TEMPLATES_6_L2: number[][] = [
+    [480, 480, 120, 120, 120, 120, 240, 240, 480, 480],
+    [120, 120, 120, 120, 480, 480, 240, 240, 240, 240, 240, 240],
+    [720, 240, 240, 480, 480, 240, 240, 240, 240],
+    [360, 120, 480, 720, 480, 240, 240, 240, 240],
+    [480, 240, 240, 480, 240, 240, 480, 240, 240, 240],
+];
 const TEMPLATES_3_L1: number[][] = [
     [480, 480, 480],
     [960, 480],
@@ -87,10 +103,23 @@ const TEMPLATES_3_L3: number[][] = [
 ];
 
 function templatesFor(meter: { numerator: 3 | 4 | 6 }, level: 1 | 2 | 3): number[][] {
-    const base = meter.numerator === 4
-        ? (level === 1 ? TEMPLATES_4_L1 : level === 2 ? [...TEMPLATES_4_L1, ...TEMPLATES_4_L2] : [...TEMPLATES_4_L1, ...TEMPLATES_4_L2, ...TEMPLATES_4_L3])
-        : (level === 1 ? TEMPLATES_3_L1 : level === 2 ? [...TEMPLATES_3_L1, ...TEMPLATES_3_L2] : [...TEMPLATES_3_L1, ...TEMPLATES_3_L2, ...TEMPLATES_3_L3]);
-    return base.filter(t => t.reduce((a, b) => a + b, 0) === meter.numerator * PPQ);
+    let base: number[][];
+    if (meter.numerator === 4) {
+        base = level === 1 ? TEMPLATES_4_L1 : level === 2 ? [...TEMPLATES_4_L1, ...TEMPLATES_4_L2] : [...TEMPLATES_4_L1, ...TEMPLATES_4_L2, ...TEMPLATES_4_L3];
+    } else if (meter.numerator === 6) {
+        base = level === 1 ? TEMPLATES_6_L1 : [...TEMPLATES_6_L1, ...TEMPLATES_6_L2];
+    } else {
+        base = level === 1 ? TEMPLATES_3_L1 : level === 2 ? [...TEMPLATES_3_L1, ...TEMPLATES_3_L2] : [...TEMPLATES_3_L1, ...TEMPLATES_3_L2, ...TEMPLATES_3_L3];
+    }
+    const out = base.filter(t => t.reduce((a, b) => a + b, 0) === meter.numerator * PPQ);
+    // Never return an empty pool — fall back to the closest available level
+    // so generator.pick on an empty array can never crash the app.
+    if (out.length === 0) {
+        const all = [...TEMPLATES_4_L1, ...TEMPLATES_4_L2, ...TEMPLATES_3_L1, ...TEMPLATES_3_L2, ...TEMPLATES_6_L1];
+        const anyFit = all.filter(t => t.reduce((a, b) => a + b, 0) === meter.numerator * PPQ);
+        return anyFit.length > 0 ? anyFit : [[meter.numerator * PPQ]];
+    }
+    return out;
 }
 
 /** Motion weights by semitone distance (soft preference, contract C3). */

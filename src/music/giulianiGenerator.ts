@@ -17,12 +17,16 @@ import { TUNINGS, type Tuning } from '../music/Tunings';
 import { makeRng } from './melodyGenerator';
 
 export type GiulianiPattern =
-    | 'pim'    // Studies 1–20 feel: bass + two upper voices
-    | 'pima'   // Studies 21–40: bass + three upper voices
-    | 'pami'   // bass + descending upper voices
-    | 'aim'    // upper voices first
-    | 'pimamim'// six-note rolling
-    | 'pmamim';// asymmetric
+    | 'pim'      // Studies 1–20 feel: bass + two upper voices
+    | 'pima'     // Studies 21–40: bass + three upper voices
+    | 'pami'     // bass + descending upper voices
+    | 'aim'      // upper voices first
+    | 'pimamim'  // six-note rolling
+    | 'pmamim'   // asymmetric
+    | 'piai'     // bass + octave-third (wide spacing)
+    | 'pmami'    // bass + fifth-octave-third
+    | 'pimami'   // bass-third-fifth-third (waltz-like)
+    | 'pimaia';  // bass with two upper-voice pairs
 
 export const GIULIANI_PATTERN_LABELS: Record<GiulianiPattern, string> = {
     pim: 'p-i-m (3 voices)',
@@ -31,6 +35,10 @@ export const GIULIANI_PATTERN_LABELS: Record<GiulianiPattern, string> = {
     aim: 'a-i-m',
     pimamim: 'p-i-m-a-m-i',
     pmamim: 'p-m-a-m-i-m',
+    piai: 'p-i-a-i (wide)',
+    pmami: 'p-m-a-m-i',
+    pimami: 'p-i-m-a-m-i (waltz)',
+    pimaia: 'p-i-m-a-i-a',
 };
 
 /** Figure voice slots per repetition (indices into the cycle [root, third, fifth, octave]). */
@@ -41,6 +49,10 @@ const FIGURES: Record<GiulianiPattern, number[]> = {
     aim: [0, 3, 1],
     pimamim: [0, 1, 2, 3, 2, 1],
     pmamim: [0, 2, 3, 2, 1, 2],
+    piai: [0, 1, 3, 1],
+    pmami: [0, 2, 3, 2, 1],
+    pimami: [0, 1, 2, 3, 2],
+    pimaia: [0, 1, 2, 3, 1, 3],
 };
 
 export interface GiulianiConfig {
