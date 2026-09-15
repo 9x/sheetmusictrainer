@@ -35,7 +35,7 @@ import { TUNINGS, getFretboardPositions } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS, resolveClefTranspose } from '../music/InstrumentConfigs';
 const AUTO_CONTINUE_DELAY_MS = 1500;
 
-import { Play, Pause, RotateCcw, SkipForward, SkipBack, Volume2, Square, ChevronDown, Music2, Upload, HelpCircle, Guitar } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, SkipBack, Volume2, ChevronDown, Music2, Upload, HelpCircle, Guitar } from 'lucide-react';
 
 export interface PhraseHandle {
     pauseToggle: () => void;
@@ -341,7 +341,9 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const events = scoreEvents(activeScore);
         // While previewing, the hint instruments follow the preview cursor so
         // the user can find notes on the fretboard while listening.
-        const displayIdx = trainer.phase === 'preview' ? trainer.previewIdx : trainer.currentIdx;
+        const displayIdx = trainer.phase === 'preview' || trainer.phase === 'previewPaused'
+            ? trainer.previewIdx
+            : trainer.currentIdx;
         const currentMidi = displayIdx >= 0 && events[displayIdx]?.pitch
             ? events[displayIdx]!.pitch!.midi
             : null;
@@ -373,7 +375,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const statusText = useMemo(() => {
             if (!scoreOk) return materialError ?? 'No material.';
             const p = trainer.phase;
-            if (p === 'preview') return 'Listen …';
+            if (p === 'preview') return 'Listen … (pause to step note by note)';
+            if (p === 'previewPaused') return 'Paused — step with ⏮ ⏭ or ← →, resume with P';
             if (p === 'countIn') return `Count-in: ${trainer.countInLeft}`;
             if (p === 'paused') return 'Paused';
             if (p === 'done') {
@@ -392,12 +395,13 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             const p = trainer.phase;
             if (p === 'playing' || p === 'countIn') return 'Pause';
             if (p === 'paused') return 'Resume';
-            if (p === 'preview') return 'Stop preview';
+            if (p === 'preview') return 'Pause';
+            if (p === 'previewPaused') return 'Resume';
             return 'Start';
         }, [trainer.phase]);
 
         const startAction = useMemo(() => {
-            if (trainer.phase === 'preview') return trainer.previewToggle;
+            if (trainer.phase === 'preview' || trainer.phase === 'previewPaused') return trainer.previewToggle;
             return trainer.pauseToggle;
         }, [trainer]);
 
@@ -719,7 +723,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     {scoreOk ? (
                         <PhraseSheetMusic
                             score={trainer.activeScore}
-                            currentIdx={trainer.phase === 'preview' ? trainer.previewIdx : trainer.currentIdx}
+                            currentIdx={trainer.phase === 'preview' || trainer.phase === 'previewPaused' ? trainer.previewIdx : trainer.currentIdx}
                             statuses={trainer.statuses}
                             clef={activeClef}
                             transpose={activeTranspose}
@@ -763,7 +767,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     </button>
                     {!settings.zenMode && (
                         <>
-                            {trainer.phase === 'preview' && (
+                            {trainer.phase === 'previewPaused' && (
                                 <div className="transport-step-group" role="group" aria-label="Preview stepping">
                                     <button
                                         className="hint-button step-button"
@@ -784,12 +788,15 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 </div>
                             )}
                             <button
-                                className={`hint-button ${trainer.phase === 'preview' ? 'active' : ''}`}
+                                className={`hint-button ${trainer.phase === 'preview' || trainer.phase === 'previewPaused' ? 'active' : ''}`}
                                 onClick={trainer.previewToggle}
-                                title="Preview the phrase (P)"
+                                title="Preview: play / pause / resume (P)"
                             >
-                                {trainer.phase === 'preview' ? <Square size={18} /> : <Volume2 size={18} />}
-                                {trainer.phase === 'preview' ? 'Stop' : 'Preview'}
+                                {trainer.phase === 'preview'
+                                    ? <><Pause size={18} /> Pause</>
+                                    : trainer.phase === 'previewPaused'
+                                        ? <><Play size={18} /> Resume</>
+                                        : <><Volume2 size={18} /> Preview</>}
                             </button>
                             <button className="hint-button" onClick={trainer.retry} title="Retry from the start (R)">
                                 <RotateCcw size={18} />

@@ -21,7 +21,7 @@ import { subscribeRawFrames } from './rawFrameBus';
 import { phraseRunBus } from './phraseRunBus';
 import { phraseBeatBus } from './phraseBeatBus';
 
-export type PhrasePhase = 'ready' | 'countIn' | 'playing' | 'paused' | 'preview' | 'done';
+export type PhrasePhase = 'ready' | 'countIn' | 'playing' | 'paused' | 'preview' | 'previewPaused' | 'done';
 
 export interface PhraseSelection {
     readonly startBar: number;
@@ -109,6 +109,7 @@ export function usePhraseTrainer(
     const matcherRef = useRef<PhraseMatcher | null>(null);
     const repeatBlockedRef = useRef(false);
     const previewIdxRef = useRef(-1);
+    const previewToggleRef = useRef<(() => void) | null>(null);
     const phaseRef = useRef<PhrasePhase>('ready');
     const paceRef = useRef(config.pace);
     const configRef = useRef(config);
@@ -124,6 +125,10 @@ export function usePhraseTrainer(
     const runTokenRef = useRef(0);
     const repeatTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    /** Audio time the preview cursor is scheduled to reach (for pause). */
+    const previewEndAtRef = useRef(0);
+    /** Audio-time interval that advances the preview cursor. */
+    const previewTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const events = useMemo(() => scoreEvents(activeScore), [activeScore]);
 
@@ -164,6 +169,7 @@ export function usePhraseTrainer(
         setAccumulated({ total: 0, matched: 0, missed: 0, skipped: 0 });
         audioEngine.cancelGroup(PREVIEW_GROUP);
         audioEngine.cancelGroup(CLICK_GROUP);
+        if (previewTickRef.current) { clearInterval(previewTickRef.current); previewTickRef.current = null; }
         previewIdxRef.current = -1;
         setPreviewIdx(-1);
         setPhaseBoth('ready');
@@ -397,6 +403,15 @@ export function usePhraseTrainer(
     const pauseInternalRef = useRef<(() => void) | null>(null);
 
     const pause = useCallback(() => {
+        if (phaseRef.current === 'preview') {
+            // External pause during preview behaves like preview pause
+            // (cursor kept, stepping enabled) but without phase recursion.
+            audioEngine.cancelGroup(PREVIEW_GROUP);
+            if (previewTickRef.current) { clearInterval(previewTickRef.current); previewTickRef.current = null; }
+            if (previewTimerRef.current) { clearTimeout(previewTimerRef.current); previewTimerRef.current = null; }
+            setPhaseBoth('previewPaused');
+            return;
+        }
         if (phaseRef.current !== 'playing' && phaseRef.current !== 'countIn') return;
         if (repeatTimerRef.current) { clearTimeout(repeatTimerRef.current); repeatTimerRef.current = null; }
         audioEngine.cancelGroup(CLICK_GROUP);
@@ -471,7 +486,7 @@ export function usePhraseTrainer(
             if (paceRef.current === 'tempo') resumeTempo();
             else setPhaseBoth('playing');
         } else if (p === 'ready' || p === 'done') start();
-        // preview: handled by previewToggle
+        else if (p === 'preview' || p === 'previewPaused') previewToggleRef.current?.();
     }, [pause, resumeTempo, setPhaseBoth, start]);
 
     const retry = useCallback(() => {
@@ -494,14 +509,8 @@ export function usePhraseTrainer(
         advanceStep(m);
     }, [advanceStep]);
 
-    const stopPreview = useCallback(() => {
-        audioEngine.cancelGroup(PREVIEW_GROUP);
-        if (previewTimerRef.current) { clearTimeout(previewTimerRef.current); previewTimerRef.current = null; }
-        previewIdxRef.current = -1;
-        setPreviewIdx(-1);
-        setPhaseBoth('ready');
-    }, [setPhaseBoth]);
-
+    /** Preview from event `fromIdx` to the end. A cursor interval mirrors
+      * playback time so the notation indicator follows the sounding note. */
     const playPreviewFrom = useCallback((fromIdx: number, token: number) => {
         void audioEngine.ensureRunning().then(() => {
             if (runTokenRef.current !== token) return;
@@ -510,6 +519,8 @@ export function usePhraseTrainer(
             const t0 = audioEngine.now() + 0.15;
             const vol = configRef.current.previewVolume ?? 0.4;
             const startTick = fromIdx > 0 ? events[fromIdx].startTick : 0;
+            const totalTicks = events.reduce((a, e) => Math.max(a, e.startTick + e.durationTicks), 0);
+            const secPerTick = spb / PPQ;
             for (const e of events) {
                 if (!e.pitch) continue;
                 if (e.startTick < startTick) continue;
@@ -520,48 +531,93 @@ export function usePhraseTrainer(
             // Registered in PREVIEW_GROUP so stopping the preview also stops
             // its clicks (no ghost metronomes after an aborted preview).
             if (paceRef.current === 'tempo' && configRef.current.clickSound) {
-                const totalTicks = events.reduce((a, e) => Math.max(a, e.startTick + e.durationTicks), 0);
                 const beats = Math.floor((totalTicks - startTick) / PPQ);
                 for (let i = 0; i < beats; i++) {
                     audioEngine.playClickAt(t0 + i * spb, CLICK_VOLUME, (fromIdx + i) % 4 === 0, PREVIEW_GROUP);
                 }
             }
             setPhaseBoth('preview');
-            const totalSec = ((events.reduce((a, e) => Math.max(a, e.startTick + e.durationTicks), 0) - startTick) / PPQ) * spb;
-            if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
-            previewTimerRef.current = setTimeout(() => {
-                if (runTokenRef.current === token) {
-                    setPhaseBoth('ready');
-                    setPreviewIdx(-1);
+
+            // Cursor: advance previewIdx by audio time (event start ticks).
+            previewEndAtRef.current = t0 + (totalTicks - startTick) * secPerTick;
+            if (previewTickRef.current) clearInterval(previewTickRef.current);
+            previewTickRef.current = setInterval(() => {
+                if (phaseRef.current !== 'preview' || runTokenRef.current !== token) {
+                    if (previewTickRef.current) { clearInterval(previewTickRef.current); previewTickRef.current = null; }
+                    return;
                 }
-            }, 150 + totalSec * 1000 + 200);
+                const elapsedTicks = Math.max(0, (audioEngine.now() - t0) / secPerTick) + startTick;
+                let idx = previewIdxRef.current;
+                let advanced = false;
+                while (idx + 1 < events.length && events[idx + 1].startTick <= elapsedTicks) { idx++; advanced = true; }
+                if (advanced) { previewIdxRef.current = idx; setPreviewIdx(idx); }
+                if (audioEngine.now() >= previewEndAtRef.current + 0.2) {
+                    if (previewTickRef.current) { clearInterval(previewTickRef.current); previewTickRef.current = null; }
+                    previewIdxRef.current = -1;
+                    setPreviewIdx(-1);
+                    setPhaseBoth('ready');
+                }
+            }, 60);
         });
     }, [events, setPhaseBoth]);
 
+    const stopPreview = useCallback(() => {
+        audioEngine.cancelGroup(PREVIEW_GROUP);
+        if (previewTimerRef.current) { clearTimeout(previewTimerRef.current); previewTimerRef.current = null; }
+        if (previewTickRef.current) { clearInterval(previewTickRef.current); previewTickRef.current = null; }
+        previewIdxRef.current = -1;
+        setPreviewIdx(-1);
+        setPhaseBoth('ready');
+    }, [setPhaseBoth]);
+
+    /** Pause preview: stop scheduled audio, keep the cursor position. */
+    const previewPause = useCallback(() => {
+        if (phaseRef.current !== 'preview') return;
+        audioEngine.cancelGroup(PREVIEW_GROUP);
+        if (previewTimerRef.current) { clearTimeout(previewTimerRef.current); previewTimerRef.current = null; }
+        if (previewTickRef.current) { clearInterval(previewTickRef.current); previewTickRef.current = null; }
+        setPhaseBoth('previewPaused');
+    }, [setPhaseBoth]);
+
     const previewToggle = useCallback(() => {
-        if (phaseRef.current === 'preview') {
-            stopPreview();
+        const p = phaseRef.current;
+        if (p === 'preview') {
+            previewPause();
+            return;
+        }
+        if (p === 'previewPaused') {
+            // Resume from the paused cursor position.
+            runTokenRef.current++;
+            const token = runTokenRef.current;
+            playPreviewFrom(previewIdxRef.current, token);
             return;
         }
         pause();
         runTokenRef.current++;
         const token = runTokenRef.current;
-        setPreviewIdx(0);
         previewIdxRef.current = 0;
+        setPreviewIdx(0);
         playPreviewFrom(0, token);
-    }, [pause, playPreviewFrom, stopPreview]);
+    }, [pause, playPreviewFrom, previewPause, stopPreview]);
+    previewToggleRef.current = previewToggle;
 
-    /** Player-style stepping while previewing: move the cursor, play that
-      * single note so the user can find it on the instrument. */
+    /** Player-style stepping — only while the preview is PAUSED: move the
+      * cursor one event and play that single note (find-it-on-the-neck). */
     const previewStep = useCallback((dir: 1 | -1) => {
-        if (phaseRef.current !== 'preview') return;
+        if (phaseRef.current !== 'previewPaused') return;
         const nextIdx = Math.max(0, Math.min(events.length - 1, previewIdxRef.current + dir));
         if (nextIdx === previewIdxRef.current) return;
         previewIdxRef.current = nextIdx;
         setPreviewIdx(nextIdx);
-        const token = ++runTokenRef.current;
-        playPreviewFrom(nextIdx, token);
-    }, [events.length, playPreviewFrom]);
+        // Play just this one event as an audible cue.
+        runTokenRef.current++;
+        const token = runTokenRef.current;
+        const e = events[nextIdx];
+        void audioEngine.ensureRunning().then(() => {
+            if (runTokenRef.current !== token || !e.pitch) return;
+            audioEngine.scheduleNote(e.pitch.midi, audioEngine.now() + 0.05, (e.durationTicks / PPQ) * (60 / sanitizeBpm(configRef.current.bpm)), configRef.current.previewVolume ?? 0.4, PREVIEW_GROUP);
+        });
+    }, [events, setPhaseBoth]);
 
     const virtualTap = useCallback((midi: number) => {
         const p = phaseRef.current;
@@ -585,6 +641,7 @@ export function usePhraseTrainer(
     const stop = useCallback(() => {
         if (repeatTimerRef.current) { clearTimeout(repeatTimerRef.current); repeatTimerRef.current = null; }
         if (previewTimerRef.current) { clearTimeout(previewTimerRef.current); previewTimerRef.current = null; }
+        if (previewTickRef.current) { clearInterval(previewTickRef.current); previewTickRef.current = null; }
         audioEngine.cancelGroup(PREVIEW_GROUP);
         audioEngine.cancelGroup(CLICK_GROUP);
         runTokenRef.current++;
@@ -613,6 +670,7 @@ export function usePhraseTrainer(
         // Unmount: cancel all scheduled audio and timers.
         if (repeatTimerRef.current) clearTimeout(repeatTimerRef.current);
         if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+        if (previewTickRef.current) clearInterval(previewTickRef.current);
         audioEngine.cancelGroup(PREVIEW_GROUP);
         audioEngine.cancelGroup(CLICK_GROUP);
     }, []);
