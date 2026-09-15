@@ -30,7 +30,7 @@ export interface MelodyConfig {
     readonly keyMode: ModeId;
     /** 1..8 */
     readonly bars: number;
-    readonly meter: { readonly numerator: 3 | 4; readonly denominator: 4 };
+    readonly meter: { readonly numerator: 3 | 4 | 6; readonly denominator: 4 };
     /** 1 = Simple (quarters/halves/wholes), 2 = Mixed (+ paired eighths, dotted quarters),
      *  3 = Elaborate (+ sixteenths, sixteenth groups, dotted eighths). */
     readonly rhythmLevel: 1 | 2 | 3;
@@ -86,7 +86,7 @@ const TEMPLATES_3_L3: number[][] = [
     [120, 120, 120, 120, 120, 120, 120, 120, 480],
 ];
 
-function templatesFor(meter: { numerator: 3 | 4 }, level: 1 | 2 | 3): number[][] {
+function templatesFor(meter: { numerator: 3 | 4 | 6 }, level: 1 | 2 | 3): number[][] {
     const base = meter.numerator === 4
         ? (level === 1 ? TEMPLATES_4_L1 : level === 2 ? [...TEMPLATES_4_L1, ...TEMPLATES_4_L2] : [...TEMPLATES_4_L1, ...TEMPLATES_4_L2, ...TEMPLATES_4_L3])
         : (level === 1 ? TEMPLATES_3_L1 : level === 2 ? [...TEMPLATES_3_L1, ...TEMPLATES_3_L2] : [...TEMPLATES_3_L1, ...TEMPLATES_3_L2, ...TEMPLATES_3_L3]);

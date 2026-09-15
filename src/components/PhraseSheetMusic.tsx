@@ -324,9 +324,33 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                 formatter.joinVoices(voices.map(v => v.voice));
                 formatter.format(voices.map(v => v.voice), formatWidth);
 
+                // --- Beams: BEFORE drawing notes. setBeam must happen prior to
+                // voice.draw — VexFlow decides flag vs beam on this.beam at
+                // draw time; registering late leaves BOTH flag and beam.
+                const beamPairs: { a: Fragment; b2: Fragment }[] = [];
+                const beamed = frags.filter(f => (f.isEighth || f.isSixteenth) && f.note instanceof StaveNote);
+                for (let i = 0; i + 1 < beamed.length; i++) {
+                    const a = beamed[i], b2 = beamed[i + 1];
+                    if (a.staveKey !== b2.staveKey) continue;
+                    const step = a.isSixteenth ? 120 : 240;
+                    if (b2.start - a.start !== step) continue;
+                    if ((a.ticks !== step) || (b2.ticks !== step)) continue;
+                    const beatA = Math.floor((a.start - measureStart) / 480);
+                    const beatB = Math.floor((b2.start - measureStart) / 480);
+                    if (beatA === beatB) beamPairs.push({ a, b2 });
+                }
+                // Apply beams to notes FIRST (suppresses flags), then draw.
+                const beams = beamPairs.map(({ a, b2 }) => {
+                    const beam = new Beam([a.note, b2.note], false);
+                    a.note.setBeam(beam);
+                    b2.note.setBeam(beam);
+                    return beam;
+                });
+
                 treble.setContext(context).draw();
                 if (bass) bass.setContext(context).draw();
                 for (const { voice, stave } of voices) voice.draw(context, stave);
+                for (const beam of beams) beam.setContext(context).draw();
 
                 if (isGrand && isFirstOfRow) {
                     const brace = new StaveConnector(treble, bass!);
@@ -337,27 +361,6 @@ export const PhraseSheetMusic: React.FC<PhraseSheetMusicProps> = ({
                     line.setContext(context).draw();
                 }
 
-                // --- Beams: consecutive eighth/16th pairs within one beat ---
-                // Note: the Beam must be registered on each note via setBeam,
-                // otherwise VexFlow still draws flags (beam === undefined in
-                // shouldDrawFlag) and you get BOTH flag and beam.
-                const beamed = frags.filter(f => (f.isEighth || f.isSixteenth) && f.note instanceof StaveNote);
-                for (let i = 0; i + 1 < beamed.length; i++) {
-                    const a = beamed[i], b2 = beamed[i + 1];
-                    if (a.staveKey !== b2.staveKey) continue;
-                    // consecutive within the same beat, same subdivision size
-                    const step = a.isSixteenth ? 120 : 240;
-                    if (b2.start - a.start !== step) continue;
-                    if ((a.ticks !== step) || (b2.ticks !== step)) continue;
-                    const beatA = Math.floor((a.start - measureStart) / 480);
-                    const beatB = Math.floor((b2.start - measureStart) / 480);
-                    if (beatA === beatB) {
-                        const beam = new Beam([a.note, b2.note], false);
-                        a.note.setBeam(beam);
-                        b2.note.setBeam(beam);
-                        beam.setContext(context).draw();
-                    }
-                }
             }
 
             // --- Ties between consecutive fragments of one event (this row) ---

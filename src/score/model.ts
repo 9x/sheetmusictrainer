@@ -86,7 +86,7 @@ export interface Score {
     readonly version: 1;
     readonly id: string;
     readonly title: string;
-    readonly meter: { readonly numerator: 3 | 4; readonly denominator: 4 };
+    readonly meter: { readonly numerator: 3 | 4 | 6; readonly denominator: 4 };
     readonly key: ScoreKey;
     readonly measures: ScoreMeasure[];
     /** Exactly one voice in v1. */

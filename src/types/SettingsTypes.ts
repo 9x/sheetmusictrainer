@@ -42,7 +42,7 @@ export interface RhythmSettings {
     volume: number;
 }
 
-export type PhraseMaterial = 'melody' | 'scale' | 'arpeggio' | 'library' | 'import';
+export type PhraseMaterial = 'melody' | 'scale' | 'arpeggio' | 'giuliani' | 'library' | 'import';
 export type PhrasePace = 'step' | 'tempo';
 
 export interface PhraseSettings {
@@ -52,7 +52,7 @@ export interface PhraseSettings {
     keyTonic: string;
     keyMode: string; // ModeId
     bars: number; // 1–8 (melodies)
-    meterNumerator: 3 | 4;
+    meterNumerator: 3 | 4 | 6;
     rhythmLevel: 1 | 2 | 3;
     scaleCoverage: 'one-octave' | 'two-octave' | 'position';
     scaleDirection: 'up' | 'down' | 'updown';
@@ -67,6 +67,9 @@ export interface PhraseSettings {
     arpeggioBars: number;
     arpeggioProgression: 'random' | 'functional' | 'diatonic-cycle';
     arpeggioRhythm: 'quarters' | 'eighths';
+    /** Giuliani study material (own category — voicing-enforced). */
+    giulianiPattern: 'pim' | 'pima' | 'pami' | 'aim' | 'pimamim' | 'pmamim';
+    giulianiBars: number;
     /** Phrase-local fret window (guitar/bass) — overrides the note set. */
     fretWindowEnabled: boolean;
     fretMin: number;
@@ -104,6 +107,8 @@ export const DEFAULT_PHRASE_SETTINGS: PhraseSettings = {
     arpeggioBars: 1,
     arpeggioProgression: 'functional',
     arpeggioRhythm: 'quarters',
+    giulianiPattern: 'pima',
+    giulianiBars: 4,
     fretWindowEnabled: false,
     fretMin: 0,
     fretMax: 4,

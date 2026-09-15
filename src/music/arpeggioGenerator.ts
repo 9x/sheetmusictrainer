@@ -18,13 +18,10 @@ export type ArpeggioPattern =
     | 'up' | 'down' | 'updown' | '1235'
     // Giuliani-style right-hand figures over one chord (indices into the
     // chord cycle per note; 1=root 2=third 3=fifth 4=octave):
-    | 'giuliani-pim'   // root-third-fifth (p-i-m)
-    | 'giuliani-pima'  // root-third-fifth-octave (p-i-m-a)
-    | 'giuliani-pami'  // root-octave-fifth-third (p-a-m-i)
-    | 'giuliani-aim'   // root-octave-third (upper voices first)
-    | 'giuliani-pimamim'  // p-i-m-a-m-i (six-note rolling figure)
-    | 'giuliani-pmamim'   // p-m-a-m-i-m (asymmetric upper-voice figure)
-    | 'giuliani-peamama'; // p-e-a-m-a-m (wide bass + upper pairs)
+    | '1321'   // root-fifth-third-root
+    | '1325'   // root-fifth-third-octave
+    | '1535'   // root-octave-fifth-octave
+    | '12353'; // root-third-fifth-octave-fifth
 export type ArpeggioCoverage = 'one-octave' | 'two-octave';
 /** How the chord per bar is chosen in sequence mode. */
 export type ArpeggioProgression = 'random' | 'functional' | 'diatonic-cycle';
@@ -37,7 +34,7 @@ export interface ArpeggioConfig {
     readonly degree: ArpeggioDegree;
     readonly pattern: ArpeggioPattern;
     readonly coverage: ArpeggioCoverage;
-    readonly meter: { readonly numerator: 3 | 4; readonly denominator: 4 };
+    readonly meter: { readonly numerator: 3 | 4 | 6; readonly denominator: 4 };
     /** Sequence mode: bars > 1 with chord progression selection. */
     readonly bars?: number;
     readonly progression?: ArpeggioProgression;
@@ -60,13 +57,10 @@ export const ARPEGGIO_DEGREE_LABELS: Record<ArpeggioDegree, string> = {
 
 export const PATTERN_LABELS: Record<ArpeggioPattern, string> = {
     up: 'Up', down: 'Down', updown: 'Up & down', '1235': '1-2-3-5',
-    'giuliani-pim': 'Giuliani p-i-m',
-    'giuliani-pima': 'Giuliani p-i-m-a',
-    'giuliani-pami': 'Giuliani p-a-m-i',
-    'giuliani-aim': 'Giuliani a-i-m',
-    'giuliani-pimamim': 'Giuliani p-i-m-a-m-i',
-    'giuliani-pmamim': 'Giuliani p-m-a-m-i-m',
-    'giuliani-peamama': 'Giuliani p-e-a-m-a-m',
+    '1321': '1-3-2-1',
+    '1325': '1-3-2-5(8)',
+    '1535': '1-5-3-5(8)',
+    '12353': '1-2-3-5-3',
 };
 
 /**
@@ -76,21 +70,13 @@ export const PATTERN_LABELS: Record<ArpeggioPattern, string> = {
  * figure repeats with an ascending octave shift per repetition (the bass
  * stays in place — like the Maestoso studies).
  */
-const GIULIANI_FIGURES: Record<string, number[]> = {
-    // Studies 1–20 feel: bass + two upper voices, ascending
-    'giuliani-pim': [0, 1, 2],
-    // Studies 21–40 feel: bass + three upper voices
-    'giuliani-pima': [0, 1, 2, 3],
-    // Descending upper voices after the bass
-    'giuliani-pami': [0, 3, 2, 1],
-    // Upper voices first (a-i-m), bass anchored at start of each cycle
-    'giuliani-aim': [0, 3, 1],
-    // Six-note rolling figure (studies 61–80 territory)
-    'giuliani-pimamim': [0, 1, 2, 3, 2, 1],
-    // Asymmetric: bass + upper triad roll
-    'giuliani-pmamim': [0, 2, 3, 2, 1, 2],
-    // Wide: bass, fifth, octave, then upper-voice pairs
-    'giuliani-peamama': [0, 2, 3, 1, 3, 1],
+// Broken-chord figures — NOTE sequences on the cycle [0=root, 1=third,
+// 2=fifth, 3=octave]; register ascends per repetition.
+const BROKEN_FIGURES: Record<string, number[]> = {
+    '1321': [0, 2, 1, 0],
+    '1325': [0, 2, 1, 3],
+    '1535': [0, 3, 2, 3],
+    '12353': [0, 1, 2, 3, 2],
 };
 
 /** pc of a spelled degree (step letter + alter). */
@@ -199,7 +185,7 @@ function buildPath(key: KeyContext, degreeIndex: number, pool: number[], coverag
             // figure selecting cycle positions per note; the octave wraps so
             // e.g. p-i-m over C-E-G becomes C E G | C' E' G' ... (ascending
             // octave register shift every figure repetition).
-            const figure = GIULIANI_FIGURES[pattern];
+            const figure = BROKEN_FIGURES[pattern];
             // 4-note cycle per octave: root, third, fifth, octave
             const cycleOct = (oct: number): number[] => [
                 base[0] + 12 * oct, base[1] + 12 * oct, base[2] + 12 * oct, base[0] + 12 * (oct + 1),

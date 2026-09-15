@@ -19,7 +19,7 @@ export interface DrillConfig {
     readonly keyMode: ModeId;
     readonly direction: DrillDirection;
     readonly coverage: DrillCoverage;
-    readonly meter: { readonly numerator: 3 | 4; readonly denominator: 4 };
+    readonly meter: { readonly numerator: 3 | 4 | 6; readonly denominator: 4 };
     /** Note duration: quarters (default) or eighths. */
     readonly rhythm?: DrillRhythm;
 }

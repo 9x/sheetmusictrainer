@@ -20,6 +20,7 @@ import { computePlayableNotes, isFrettedInstrument, positionsWithinWindow } from
 import { generateMelody } from '../music/melodyGenerator';
 import { generateScaleDrill } from '../music/scaleDrills';
 import { generateArpeggio, type ArpeggioDegree } from '../music/arpeggioGenerator';
+import { generateGiulianiStudy, GIULIANI_PATTERN_LABELS, type GiulianiPattern } from '../music/giulianiGenerator';
 import { isMode, type ModeId } from '../music/scales';
 import { ARPEGGIO_DEGREE_LABELS } from '../music/arpeggioGenerator';
 import { scoreEvents, type Result, type Score, type ScoreEvent } from '../score/model';
@@ -191,6 +192,19 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     rhythm: phrase.scaleRhythm,
                 }, pool);
             }
+            if (phrase.material === 'giuliani') {
+                return generateGiulianiStudy({
+                    keyTonic: phrase.keyTonic,
+                    keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
+                    pattern: phrase.giulianiPattern,
+                    meter: { numerator: phrase.meterNumerator, denominator: 4 },
+                    tuningId: settings.tuningId,
+                    bars: phrase.giulianiBars,
+                    chordSelection: phrase.arpeggioChordSelection as string[],
+                    seed: melodySeed,
+                    allowedStrings: pf.strings,
+                }, pool);
+            }
             if (phrase.material === 'arpeggio') {
                 return generateArpeggio({
                     keyTonic: phrase.keyTonic,
@@ -221,6 +235,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             phrase.arpeggioDegree, phrase.arpeggioPattern, phrase.arpeggioCoverage,
             phrase.arpeggioBars, phrase.arpeggioProgression, phrase.arpeggioRhythm,
             phrase.arpeggioChordSelection, melodySeed,
+            phrase.giulianiPattern, phrase.giulianiBars,
             melodySeed, pool, importedScore]);
 
         const fullScore: Result<Score> | null = useMemo(() => {
@@ -557,6 +572,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                     <option value="melody">Melodies (generated)</option>
                                     <option value="scale">Scale drills</option>
                                     <option value="arpeggio">Arpeggios (generated)</option>
+                                    <option value="giuliani">Giuliani studies</option>
                                     <option value="library">Exercises</option>
                                     <option value="import">Imported file</option>
                                 </select>
@@ -576,9 +592,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                         </select>
                                     </label>
                                     <label>Meter
-                                        <select value={phrase.meterNumerator} onChange={e => setPhrase({ meterNumerator: Number(e.target.value) === 3 ? 3 : 4 })}>
+                                        <select value={phrase.meterNumerator} onChange={e => setPhrase({ meterNumerator: Math.max(3, Math.min(6, Number(e.target.value))) as 3 | 4 | 6 })}>
                                             <option value={4}>4/4</option>
                                             <option value={3}>3/4</option>
+                                            <option value={6}>6/8</option>
                                         </select>
                                     </label>
                                     <label>Rhythm
@@ -608,9 +625,10 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                         </select>
                                     </label>
                                     <label>Meter
-                                        <select value={phrase.meterNumerator} onChange={e => setPhrase({ meterNumerator: Number(e.target.value) === 3 ? 3 : 4 })}>
+                                        <select value={phrase.meterNumerator} onChange={e => setPhrase({ meterNumerator: Math.max(3, Math.min(6, Number(e.target.value))) as 3 | 4 | 6 })}>
                                             <option value={4}>4/4</option>
                                             <option value={3}>3/4</option>
+                                            <option value={6}>6/8</option>
                                         </select>
                                     </label>
                                 </>
@@ -624,14 +642,11 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                             <option value="down">Down</option>
                                             <option value="updown">Up &amp; down</option>
                                             <option value="1235">1-2-3-5</option>
-                                            <optgroup label="Giuliani studies">
-                                                <option value="giuliani-pim">p-i-m</option>
-                                                <option value="giuliani-pima">p-i-m-a</option>
-                                                <option value="giuliani-pami">p-a-m-i</option>
-                                                <option value="giuliani-aim">a-i-m</option>
-                                                <option value="giuliani-pimamim">p-i-m-a-m-i</option>
-                                                <option value="giuliani-pmamim">p-m-a-m-i-m</option>
-                                                <option value="giuliani-peamama">p-e-a-m-a-m</option>
+                                            <optgroup label="Broken-chord figures">
+                                                <option value="1321">1-3-2-1</option>
+                                                <option value="1325">1-3-2-5(8)</option>
+                                                <option value="1535">1-5-3-5(8)</option>
+                                                <option value="12353">1-2-3-5-3</option>
                                             </optgroup>
                                         </select>
                                     </label>
@@ -688,11 +703,39 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                         </select>
                                     </label>
                                     <label>Meter
-                                        <select value={phrase.meterNumerator} onChange={e => setPhrase({ meterNumerator: Number(e.target.value) === 3 ? 3 : 4 })}>
+                                        <select value={phrase.meterNumerator} onChange={e => setPhrase({ meterNumerator: Math.max(3, Math.min(6, Number(e.target.value))) as 3 | 4 | 6 })}>
                                             <option value={4}>4/4</option>
                                             <option value={3}>3/4</option>
+                                            <option value={6}>6/8</option>
                                         </select>
                                     </label>
+                                </>
+                            )}
+
+                            {phrase.material === 'giuliani' && (
+                                <>
+                                    <label>Pattern
+                                        <select value={phrase.giulianiPattern} onChange={e => setPhrase({ giulianiPattern: e.target.value as PhraseSettings['giulianiPattern'] })}>
+                                            {(Object.keys(GIULIANI_PATTERN_LABELS) as GiulianiPattern[]).map(p => (
+                                                <option key={p} value={p}>{GIULIANI_PATTERN_LABELS[p]}</option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label>Length
+                                        <select value={phrase.giulianiBars} onChange={e => setPhrase({ giulianiBars: Math.max(1, Math.min(8, Number(e.target.value))) })}>
+                                            {[1, 2, 4, 6, 8].map(b => <option key={b} value={b}>{b} bars</option>)}
+                                        </select>
+                                    </label>
+                                    <label>Meter
+                                        <select value={phrase.meterNumerator} onChange={e => setPhrase({ meterNumerator: Math.max(3, Math.min(6, Number(e.target.value))) as 3 | 4 | 6 })}>
+                                            <option value={4}>4/4</option>
+                                            <option value={3}>3/4</option>
+                                            <option value={6}>6/8</option>
+                                        </select>
+                                    </label>
+                                    <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
+                                        Chords: from the arpeggio chord pool; voicing enforced (bass + upper strings).
+                                    </span>
                                 </>
                             )}
 
