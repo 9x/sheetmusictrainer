@@ -13,7 +13,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { useSettings } from '../context/useSettings';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { usePhraseTrainer, type PhraseTrainerApi, type PhrasePhase } from '../hooks/usePhraseTrainer';
-import { getPhraseSettings, getPracticeFilter, type PhraseSettings, type PracticeFilter } from '../types/SettingsTypes';
+import { getPhraseSettings, getPracticeFilter, type PhraseSettings } from '../types/SettingsTypes';
 import { rawFrameCount } from '../hooks/rawFrameBus';
 import { audioEngine } from '../audio/AudioEngine';
 import { computePlayableNotes, isFrettedInstrument, positionsWithinWindow } from '../music/playableRange';
@@ -28,17 +28,19 @@ import { getNoteDetails } from '../music/NoteUtils';
 import { EXERCISES, loadExercise } from '../exercises/library';
 import { parseAbc } from '../exercises/abcParser';
 import { PhraseSheetMusic } from './PhraseSheetMusic';
+import { TargetNoteControls } from './TargetNoteControls';
 import { Fretboard } from './Fretboard';
 import { PianoKeys } from './PianoKeys';
 import { TUNINGS, getFretboardPositions } from '../music/Tunings';
 import { INSTRUMENT_DEFINITIONS, resolveClefTranspose } from '../music/InstrumentConfigs';
 const AUTO_CONTINUE_DELAY_MS = 1500;
 
-import { Play, Pause, RotateCcw, SkipForward, Volume2, Square, ChevronDown, Music2, Upload, HelpCircle, Guitar } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, SkipBack, Volume2, ChevronDown, Music2, Upload, HelpCircle, Guitar } from 'lucide-react';
 
 export interface PhraseHandle {
     pauseToggle: () => void;
     previewToggle: () => void;
+    previewStep: (dir: 1 | -1) => void;
     retry: () => void;
     skip: () => void;
     next: () => void;
@@ -71,14 +73,9 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const setSettings = updateSettings;
         const { playNote } = useAudioPlayer();
         const phrase = getPhraseSettings(settings);
-        // Unified target-note controls: Phrase Mode reads/writes the shared
-        // practice filter so all modes expose identical key/fret-window state.
+        // Unified target-note controls: Phrase Mode reads the shared practice
+        // filter (single source of truth across all modes).
         const pf = getPracticeFilter(settings);
-        phrase.keyTonic = pf.keyTonic;
-        phrase.keyMode = pf.keyMode;
-        phrase.fretWindowEnabled = pf.fretWindowEnabled;
-        phrase.fretMin = pf.fretMin;
-        phrase.fretMax = pf.fretMax;
         // Unified metronome: phrase tempo reads from the shared rhythm BPM
         // (single source of truth across modes; the phrase-local BPM control
         // was replaced by the common metronome widget in Controls).
@@ -96,18 +93,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             ? settings.rhythm.active && settings.rhythm.sound
             : settings.rhythm.active && settings.rhythm.sound && !settings.rhythm.syncToExercise;
         const setPhrase = useCallback((updates: Partial<PhraseSettings>) => {
-            updateSettings(s => {
-                const next = { ...s, phrase: { ...getPhraseSettings(s), ...updates } };
-                // Mirror shared filter fields into the unified practice filter.
-                const shared: Partial<PracticeFilter> = {};
-                if ('keyTonic' in updates) shared.keyTonic = updates.keyTonic;
-                if ('keyMode' in updates) shared.keyMode = updates.keyMode;
-                if ('fretWindowEnabled' in updates) shared.fretWindowEnabled = updates.fretWindowEnabled;
-                if ('fretMin' in updates) shared.fretMin = updates.fretMin;
-                if ('fretMax' in updates) shared.fretMax = updates.fretMax;
-                if (Object.keys(shared).length > 0) next.practice = { ...getPracticeFilter(s), ...shared };
-                return next;
-            });
+            updateSettings(s => ({ ...s, phrase: { ...getPhraseSettings(s), ...updates } }));
         }, [updateSettings]);
         const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
         const currentTuning = TUNINGS[settings.tuningId];
@@ -140,7 +126,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 customMaxFret: settings.customMaxFret,
             });
         }, [pf.strings, pf.fretWindowEnabled, pf.fretMin, pf.fretMax, fretted, currentTuning,
-            phrase.fretWindowEnabled, phrase.fretMin, phrase.fretMax,
             settings.instrument, settings.difficulty, settings.tuningId, settings.customMinFret, settings.customMaxFret]);
 
         // ---- Imported score (session-only) --------------------------------------
@@ -173,8 +158,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const baseScore: Result<Score> | null = useMemo(() => {
             if (phrase.material === 'melody') {
                 const result = generateMelody({
-                    keyTonic: phrase.keyTonic,
-                    keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
+                    keyTonic: pf.keyTonic,
+                    keyMode: (isMode(pf.keyMode) ? pf.keyMode : 'major') as ModeId,
                     bars: phrase.bars,
                     meter: { numerator: phrase.meterNumerator, denominator: 4 },
                     rhythmLevel: phrase.rhythmLevel,
@@ -184,8 +169,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             }
             if (phrase.material === 'scale') {
                 return generateScaleDrill({
-                    keyTonic: phrase.keyTonic,
-                    keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
+                    keyTonic: pf.keyTonic,
+                    keyMode: (isMode(pf.keyMode) ? pf.keyMode : 'major') as ModeId,
                     direction: phrase.scaleDirection,
                     coverage: phrase.scaleCoverage,
                     meter: { numerator: phrase.meterNumerator, denominator: 4 },
@@ -196,8 +181,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 // Meter is auto-derived inside the generator from the figure
                 // length (always eighths) — the user no longer picks a meter.
                 return generateGiulianiStudy({
-                    keyTonic: phrase.keyTonic,
-                    keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
+                    keyTonic: pf.keyTonic,
+                    keyMode: (isMode(pf.keyMode) ? pf.keyMode : 'major') as ModeId,
                     pattern: phrase.giulianiPattern,
                     tuningId: settings.tuningId,
                     bars: phrase.giulianiBars,
@@ -209,8 +194,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             }
             if (phrase.material === 'arpeggio') {
                 return generateArpeggio({
-                    keyTonic: phrase.keyTonic,
-                    keyMode: (isMode(phrase.keyMode) ? phrase.keyMode : 'major') as ModeId,
+                    keyTonic: pf.keyTonic,
+                    keyMode: (isMode(pf.keyMode) ? pf.keyMode : 'major') as ModeId,
                     degree: (phrase.arpeggioDegree as ArpeggioDegree) || 'I',
                     pattern: phrase.arpeggioPattern,
                     coverage: phrase.arpeggioCoverage,
@@ -231,7 +216,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 return { ok: true, value: importedScore };
             }
             return null;
-        }, [phrase.material, phrase.keyTonic, phrase.keyMode, phrase.bars, phrase.meterNumerator,
+        }, [phrase.material, pf.keyTonic, pf.keyMode, phrase.bars, phrase.meterNumerator,
             phrase.rhythmLevel, phrase.scaleDirection, phrase.scaleCoverage, phrase.scaleRhythm, phrase.libraryId,
             phrase.arpeggioDegree, phrase.arpeggioPattern, phrase.arpeggioCoverage,
             phrase.arpeggioBars, phrase.arpeggioProgression,
@@ -323,9 +308,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         }, [scoreOk, fixedMaterial, pool, fullScore]);
 
         const nextAction = useCallback(() => {
-            if (phrase.material === 'melody' || (phrase.material === 'arpeggio' && phrase.arpeggioBars > 1)) {
-                setMelodySeed(s => (s + 1) % 999983);
-            } else if (fixedMaterial && scoreOk) {
+            if (fixedMaterial && scoreOk) {
                 const total = fullScore!.value.measures.length;
                 const nextStart = phrase.startBar + phrase.barCount;
                 if (nextStart > total) {
@@ -333,6 +316,12 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                 } else {
                     setPhrase({ startBar: nextStart });
                 }
+                return;
+            }
+            // Seeded material: roll a new variation (giuliani and single-chord
+            // arpeggios included — they take melodySeed too).
+            if (phrase.material === 'melody' || phrase.material === 'arpeggio' || phrase.material === 'giuliani') {
+                setMelodySeed(s => (s + 1) % 999983);
             }
         }, [phrase.material, phrase.startBar, phrase.barCount, fixedMaterial, scoreOk, fullScore, setPhrase]);
 
@@ -340,6 +329,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         useImperativeHandle(ref, () => ({
             pauseToggle: () => trainer?.pauseToggle(),
             previewToggle: () => trainer?.previewToggle(),
+            previewStep: (dir) => trainer?.previewStep(dir),
             retry: () => trainer?.retry(),
             skip: () => trainer?.skip(),
             pause: () => trainer?.pause(),
@@ -349,17 +339,22 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         // ---- Hints --------------------------------------------------------------
         const activeScore = trainer.activeScore;
         const events = scoreEvents(activeScore);
-        const currentMidi = trainer.currentIdx >= 0 && events[trainer.currentIdx]?.pitch
-            ? events[trainer.currentIdx]!.pitch!.midi
+        // While previewing, the hint instruments follow the preview cursor so
+        // the user can find notes on the fretboard while listening.
+        const displayIdx = trainer.phase === 'preview' || trainer.phase === 'previewPaused'
+            ? trainer.previewIdx
+            : trainer.currentIdx;
+        const currentMidi = displayIdx >= 0 && events[displayIdx]?.pitch
+            ? events[displayIdx]!.pitch!.midi
             : null;
 
         const hintPositions = useMemo(() => {
             if (!settings.showHint || !currentInstrumentDef.showTuning || !currentTuning || currentMidi === null) return [];
-            if (phrase.fretWindowEnabled) {
-                return positionsWithinWindow(currentMidi, currentTuning, phrase.fretMin, phrase.fretMax);
+            if (pf.fretWindowEnabled) {
+                return positionsWithinWindow(currentMidi, currentTuning, pf.fretMin, pf.fretMax);
             }
             return getFretboardPositions(currentMidi, currentTuning);
-        }, [settings.showHint, currentInstrumentDef, currentTuning, currentMidi, phrase.fretWindowEnabled, phrase.fretMin, phrase.fretMax]);
+        }, [settings.showHint, currentInstrumentDef, currentTuning, currentMidi, pf.fretWindowEnabled, pf.fretMin, pf.fretMax]);
 
         const handleVirtualPlay = useCallback((midi: number) => {
             if (!settings.virtualGuitarMute) {
@@ -380,7 +375,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const statusText = useMemo(() => {
             if (!scoreOk) return materialError ?? 'No material.';
             const p = trainer.phase;
-            if (p === 'preview') return 'Listen …';
+            if (p === 'preview') return 'Listen … (pause to step note by note)';
+            if (p === 'previewPaused') return 'Paused — step with ⏮ ⏭ or ← →, resume with P';
             if (p === 'countIn') return `Count-in: ${trainer.countInLeft}`;
             if (p === 'paused') return 'Paused';
             if (p === 'done') {
@@ -399,12 +395,13 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
             const p = trainer.phase;
             if (p === 'playing' || p === 'countIn') return 'Pause';
             if (p === 'paused') return 'Resume';
-            if (p === 'preview') return 'Stop preview';
+            if (p === 'preview') return 'Pause';
+            if (p === 'previewPaused') return 'Resume';
             return 'Start';
         }, [trainer.phase]);
 
         const startAction = useMemo(() => {
-            if (trainer.phase === 'preview') return trainer.previewToggle;
+            if (trainer.phase === 'preview' || trainer.phase === 'previewPaused') return trainer.previewToggle;
             return trainer.pauseToggle;
         }, [trainer]);
 
@@ -452,118 +449,8 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                     </span>
                 </div>
 
-                <div className="sheet-music-container">
-                    {scoreOk ? (
-                        <PhraseSheetMusic
-                            score={trainer.activeScore}
-                            currentIdx={trainer.currentIdx}
-                            statuses={trainer.statuses}
-                            clef={activeClef}
-                            transpose={activeTranspose}
-                            width={staffWidth}
-                            theme={settings.theme}
-                        />
-                    ) : (
-                        <div className="phrase-error">{materialError}</div>
-                    )}
-                </div>
-
-                {trainer.error && <div className="error-message">{trainer.error}</div>}
-                {importError && <div className="error-message">{importError}</div>}
-                {rangeWarning && <div className="phrase-warning">{rangeWarning}</div>}
-
-                <div className="feedback-area">
-                    {trainer.phase === 'countIn' && (
-                        <span
-                            className="phrase-countin"
-                            style={{
-                                display: 'inline-block',
-                                minWidth: '20px',
-                                padding: '1px 7px',
-                                marginRight: '8px',
-                                borderRadius: '10px',
-                                fontSize: '11px',
-                                opacity: 0.75,
-                                background: 'color-mix(in srgb, var(--color-text-main) 10%, transparent)',
-                            }}
-                            aria-label={`Count-in: ${trainer.countInLeft} beats left`}
-                        >{trainer.countInLeft}</span>
-                    )}
-                    <div className="instruction-text phrase-status">{statusText}</div>
-                </div>
-
-                {/* Transport — reuses the single-note button styles/behavior */}
-                <div className="action-row phrase-transport">
-                    <button className="skip-button" onClick={startAction} title="Start / Pause (Space)">
-                        {trainer.phase === 'playing' || trainer.phase === 'countIn' ? <Pause size={18} /> : <Play size={18} />}
-                        {startLabel}
-                    </button>
-                    {!settings.zenMode && (
-                        <>
-                            <button
-                                className="hint-button"
-                                onClick={trainer.previewToggle}
-                                title="Preview the phrase (P)"
-                            >
-                                {trainer.phase === 'preview' ? <Square size={18} /> : <Volume2 size={18} />}
-                                {trainer.phase === 'preview' ? 'Stop' : 'Preview'}
-                            </button>
-                            <button className="hint-button" onClick={trainer.retry} title="Retry from the start (R)">
-                                <RotateCcw size={18} />
-                                Retry
-                            </button>
-                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || fixedMaterial) && (
-                                <button className="hint-button" onClick={nextAction} title="New melody / next bars (N)">
-                                    <SkipForward size={18} />
-                                    {phrase.material === 'melody' ? 'New' : 'Next'}
-                                </button>
-                            )}
-                            {phrase.pace === 'step' && (
-                                <button className="hint-button" onClick={trainer.skip} title="Skip this note (S)">
-                                    <SkipForward size={18} />
-                                    Skip
-                                </button>
-                            )}
-                        </>
-                    )}
-                    {/* Same virtual-instrument / hint toggles as single-note mode */}
-                    {trainer.phase === 'done' && settings.zenMode && (
-                        <>
-                            <button className="hint-button" onClick={trainer.retry} title="Retry (R)">
-                                <RotateCcw size={18} />
-                                Retry
-                            </button>
-                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || fixedMaterial) && (
-                                <button className="hint-button" onClick={nextAction} title="New / Next (N)">
-                                    <SkipForward size={18} />
-                                    {phrase.material === 'melody' ? 'New' : 'Next'}
-                                </button>
-                            )}
-                        </>
-                    )}
-                    {!settings.zenMode && currentInstrumentDef.showTuning && (
-                        <button
-                            className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
-                            onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
-                            title={`Toggle Virtual ${currentInstrumentDef.displayName} (Keyboard Shortcut: V)`}
-                        >
-                            <Guitar size={18} />
-                            {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
-                        </button>
-                    )}
-                    {!settings.zenMode && (
-                        <button
-                            className={`hint-button ${settings.showHint ? 'active' : ''}`}
-                            onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
-                            title="Keyboard Shortcut: H"
-                        >
-                            <HelpCircle size={18} />
-                            {settings.showHint ? "Hide Hint" : "Show Hint"}
-                        </button>
-                    )}
-                </div>
-
-                {/* Setup panel */}
+                {/* Setup panel — above the notation, holds material options
+                    plus the shared note filter (key/strings/fret window) */}
                 {!settings.zenMode && (
                     <details className="phrase-setup">
                         <summary><ChevronDown size={16} /> Setup</summary>
@@ -578,12 +465,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                     <option value="import">Imported file</option>
                                 </select>
                             </label>
-
-                            {(phrase.material === 'melody' || phrase.material === 'scale' || phrase.material === 'arpeggio') && (
-                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
-                                    Key/mode: use the "Target key" controls below the sheet — shared across modes.
-                                </span>
-                            )}
 
                             {phrase.material === 'melody' && (
                                 <>
@@ -799,12 +680,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 </label>
                             )}
 
-                            {fretted && (
-                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
-                                    Fret window: use the "Fret window" controls below the sheet — shared across modes.
-                                </span>
-                            )}
-
                             {/* Pace lives in the metronome widget now:
                                 'Sync to exercise' checked = tempo pace,
                                 unchecked = at-your-pace (step). */}
@@ -816,11 +691,6 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                 />
                                 Virtual input only
                             </label>
-                            {phrase.pace === 'tempo' && (
-                                <span style={{ fontSize: '11px', opacity: 0.7, alignSelf: 'center' }}>
-                                    BPM + click: on the metronome widget below.
-                                </span>
-                            )}
                             <label className="phrase-check">
                                 <input
                                     type="checkbox"
@@ -839,14 +709,167 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                             </label>
                         </div>
                         {phrase.pace === 'tempo' && (
-                            <p className="phrase-note">The run clicks a full count-in bar, then one click per beat. The metronome pendulum mirrors these beats — set the tempo on the metronome tool.</p>
+                            <p className="phrase-note">Tempo and click sound live on the metronome tool (Sync checked = the run sets the pace; unchecked = play at your own pace with a free metronome).</p>
                         )}
                         <p className="phrase-note">
                             Matching checks pitch, not fingering — several fretboard positions produce the same pitch.
                             For repeated identical notes, briefly release between notes so each attack is detected.
                         </p>
+                        <TargetNoteControls />
                     </details>
                 )}
+
+                <div className="sheet-music-container">
+                    {scoreOk ? (
+                        <PhraseSheetMusic
+                            score={trainer.activeScore}
+                            currentIdx={trainer.phase === 'preview' || trainer.phase === 'previewPaused' ? trainer.previewIdx : trainer.currentIdx}
+                            statuses={trainer.statuses}
+                            clef={activeClef}
+                            transpose={activeTranspose}
+                            width={staffWidth}
+                            theme={settings.theme}
+                        />
+                    ) : (
+                        <div className="phrase-error">{materialError}</div>
+                    )}
+                </div>
+
+                {trainer.error && <div className="error-message">{trainer.error}</div>}
+                {importError && <div className="error-message">{importError}</div>}
+                {rangeWarning && <div className="phrase-warning">{rangeWarning}</div>}
+
+                <div className="feedback-area">
+                    {trainer.phase === 'countIn' && (
+                        <span
+                            className="phrase-countin"
+                            style={{
+                                display: 'inline-block',
+                                minWidth: '20px',
+                                padding: '1px 7px',
+                                marginRight: '8px',
+                                borderRadius: '10px',
+                                fontSize: '11px',
+                                opacity: 0.75,
+                                background: 'color-mix(in srgb, var(--color-text-main) 10%, transparent)',
+                            }}
+                            aria-label={`Count-in: ${trainer.countInLeft} beats left`}
+                        >{trainer.countInLeft}</span>
+                    )}
+                    <div className="instruction-text phrase-status">{statusText}</div>
+                </div>
+
+                {/* Transport — reuses the single-note button styles/behavior */}
+                <div className="action-row phrase-transport">
+                    <button className="skip-button" onClick={startAction} title="Start / Pause (Space)">
+                        {trainer.phase === 'playing' || trainer.phase === 'countIn' ? <Pause size={18} /> : <Play size={18} />}
+                        {startLabel}
+                    </button>
+                    {!settings.zenMode && (
+                        <>
+                            {trainer.phase === 'previewPaused' && (
+                                <div className="transport-step-group" role="group" aria-label="Preview stepping">
+                                    <button
+                                        className="hint-button step-button"
+                                        onClick={() => trainer.previewStep(-1)}
+                                        title="One event back (while previewing)"
+                                        aria-label="Step back"
+                                    >
+                                        <SkipBack size={16} />
+                                    </button>
+                                    <button
+                                        className="hint-button step-button"
+                                        onClick={() => trainer.previewStep(1)}
+                                        title="One event forward (while previewing)"
+                                        aria-label="Step forward"
+                                    >
+                                        <SkipForward size={16} />
+                                    </button>
+                                </div>
+                            )}
+                            <button
+                                className={`hint-button ${trainer.phase === 'preview' || trainer.phase === 'previewPaused' ? 'active' : ''}`}
+                                onClick={trainer.previewToggle}
+                                title="Preview: play / pause / resume (P)"
+                            >
+                                {trainer.phase === 'preview'
+                                    ? <><Pause size={18} /> Pause</>
+                                    : trainer.phase === 'previewPaused'
+                                        ? <><Play size={18} /> Resume</>
+                                        : <><Volume2 size={18} /> Preview</>}
+                            </button>
+                            <button className="hint-button" onClick={trainer.retry} title="Retry from the start (R)">
+                                <RotateCcw size={18} />
+                                Retry
+                            </button>
+                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || phrase.material === 'giuliani' || fixedMaterial) && (
+                                <button className="hint-button" onClick={nextAction} title="New melody / next bars (N)">
+                                    <SkipForward size={18} />
+                                    {(fixedMaterial || phrase.material === 'scale') ? 'Next' : 'New'}
+                                </button>
+                            )}
+                            {phrase.pace === 'step' && (
+                                <button className="hint-button" onClick={trainer.skip} title="Skip this note (S)">
+                                    <SkipForward size={18} />
+                                    Skip
+                                </button>
+                            )}
+                        </>
+                    )}
+                    {/* Same virtual-instrument / hint toggles as single-note mode */}
+                    {trainer.phase === 'done' && settings.zenMode && (
+                        <>
+                            <button className="hint-button" onClick={trainer.retry} title="Retry (R)">
+                                <RotateCcw size={18} />
+                                Retry
+                            </button>
+                            {(phrase.material === 'melody' || phrase.material === 'arpeggio' || phrase.material === 'giuliani' || fixedMaterial) && (
+                                <button className="hint-button" onClick={nextAction} title="New / Next (N)">
+                                    <SkipForward size={18} />
+                                    {(fixedMaterial || phrase.material === 'scale') ? 'Next' : 'New'}
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
+
+                {/* Display toggles — separate row, switch style (like the
+                    tuner/metronome switches): pure show/hide, no run state. */}
+                {!settings.zenMode && (
+                    <div className="display-toggles">
+                        {currentInstrumentDef.showTuning && (
+                            <div className="display-toggle">
+                                <span className="display-toggle-label">
+                                    <Guitar size={15} />
+                                    {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
+                                </span>
+                                <button
+                                    className={`switch-button ${settings.showFretboard ? 'active' : ''}`}
+                                    onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
+                                    title={`Toggle Virtual ${currentInstrumentDef.displayName} (Keyboard Shortcut: V)`}
+                                    aria-label={`Show virtual ${currentInstrumentDef.displayName}`}
+                                >
+                                    <div className="switch-thumb" />
+                                </button>
+                            </div>
+                        )}
+                        <div className="display-toggle">
+                            <span className="display-toggle-label">
+                                <HelpCircle size={15} />
+                                Hint
+                            </span>
+                            <button
+                                className={`switch-button ${settings.showHint ? 'active' : ''}`}
+                                onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
+                                title="Keyboard Shortcut: H"
+                                aria-label="Show hint"
+                            >
+                                <div className="switch-thumb" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
 
                 {/* Hint instruments */}
                 {(settings.showHint || settings.showFretboard) && currentInstrumentDef.showTuning && (
@@ -878,7 +901,7 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
                                     onPlayNote={handleVirtualPlay}
                                     onHover={setHoveredMidi}
                                     showHints={settings.showHint}
-                                    maxFrets={Math.max(15, phrase.fretWindowEnabled ? phrase.fretMax + 1 : 0)}
+                                    maxFrets={Math.max(15, pf.fretWindowEnabled ? pf.fretMax + 1 : 0)}
                                 />
                             )
                         )}

@@ -6,8 +6,10 @@
  * - Strings: pick which strings contribute target notes (fretted instruments).
  * - Fret window: restrict target notes to a fret range (fretted instruments).
  *
- * In Phrase Mode the same controls bind to the shared practice filter
- * (mirrored into phrase settings), so state stays consistent across modes.
+ * In Phrase Mode the Key section binds to the generator key (tonic+mode are
+ * always applied; no toggle), and the display-signature sync checkbox is
+ * hidden (phrase notation takes its signature from the score's key).
+ * Rendered inside the per-mode Setup panel above the notation.
  */
 import { useMemo } from 'react';
 import { Key, Guitar, Music, SlidersHorizontal } from 'lucide-react';
@@ -46,6 +48,8 @@ const MINOR_TONIC_TO_SIGNATURE: Record<string, string> = {
 export const TargetNoteControls: React.FC = () => {
     const { settings, updateSettings } = useSettings();
     const pf = getPracticeFilter(settings);
+    // Phrase Mode: key tonic/mode are the generator key — always in effect.
+    const inPhraseMode = settings.gameMode === 'phrase';
 
     const setFilter = (updates: Partial<PracticeFilter>) => {
         updateSettings(s => {
@@ -81,7 +85,8 @@ export const TargetNoteControls: React.FC = () => {
 
     const allSelected = pf.strings.length === 0;
 
-    const anyActive = pf.keyEnabled || pf.fretWindowEnabled || pf.strings.length > 0;
+    const anyActive =
+        (!inPhraseMode && pf.keyEnabled) || pf.fretWindowEnabled || pf.strings.length > 0;
     return (
         <div className="practice-filter-grid" style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px', gridColumn: '1 / -1' }}>
             {/* Section header: unified with Tuner/Metronome style */}
@@ -108,15 +113,17 @@ export const TargetNoteControls: React.FC = () => {
                         <Key size={18} />
                         <span>Key</span>
                     </label>
-                    <button
-                        className={`switch-button ${pf.keyEnabled ? 'active' : ''}`}
-                        onClick={() => setFilter({ keyEnabled: !pf.keyEnabled })}
-                        title={pf.keyEnabled ? 'Limit to key: on' : 'Limit to key: off'}
-                    >
-                        <div className="switch-thumb" />
-                    </button>
+                    {!inPhraseMode && (
+                        <button
+                            className={`switch-button ${pf.keyEnabled ? 'active' : ''}`}
+                            onClick={() => setFilter({ keyEnabled: !pf.keyEnabled })}
+                            title={pf.keyEnabled ? 'Limit to key: on' : 'Limit to key: off'}
+                        >
+                            <div className="switch-thumb" />
+                        </button>
+                    )}
                 </div>
-                {pf.keyEnabled && (
+                {(pf.keyEnabled || inPhraseMode) && (
                     <>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                             <select
@@ -140,23 +147,25 @@ export const TargetNoteControls: React.FC = () => {
                                 ))}
                             </select>
                         </div>
-                        <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', opacity: 0.85 }}>
-                            <input
-                                type="checkbox"
-                                checked={settings.keyFollowsTarget ?? false}
-                                onChange={e => updateSettings(s => {
-                                    const next = { ...s, keyFollowsTarget: e.target.checked };
-                                    // When enabling sync, snap the display signature now.
-                                    if (e.target.checked) {
-                                        const table = pf.keyMode === 'minor' ? MINOR_TONIC_TO_SIGNATURE : MAJOR_TONIC_TO_SIGNATURE;
-                                        const sig = table[pf.keyTonic];
-                                        if (sig) next.keySignature = sig;
-                                    }
-                                    return next;
-                                })}
-                            />
-                            Sync display key signature with target key
-                        </label>
+                        {!inPhraseMode && (
+                            <label style={{ fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', opacity: 0.85 }}>
+                                <input
+                                    type="checkbox"
+                                    checked={settings.keyFollowsTarget ?? false}
+                                    onChange={e => updateSettings(s => {
+                                        const next = { ...s, keyFollowsTarget: e.target.checked };
+                                        // When enabling sync, snap the display signature now.
+                                        if (e.target.checked) {
+                                            const table = pf.keyMode === 'minor' ? MINOR_TONIC_TO_SIGNATURE : MAJOR_TONIC_TO_SIGNATURE;
+                                            const sig = table[pf.keyTonic];
+                                            if (sig) next.keySignature = sig;
+                                        }
+                                        return next;
+                                    })}
+                                />
+                                Sync display key signature with target key
+                            </label>
+                        )}
                     </>
                 )}
             </div>

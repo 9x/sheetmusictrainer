@@ -8,6 +8,7 @@ import { SingleNoteTrainer, type SingleNoteHandle } from './components/SingleNot
 import { LiveNoteStaff } from './components/LiveNoteStaff';
 import { resolveClefTranspose } from './music/InstrumentConfigs';
 import { PhraseTrainer, type PhraseHandle } from './components/PhraseTrainer';
+import { AssistMode } from './components/AssistMode';
 import { usePitchDetector } from './hooks/usePitchDetector';
 import { useSettings } from './context/useSettings';
 import { audioEngine } from './audio/AudioEngine';
@@ -26,6 +27,7 @@ function App() {
   const setSettings = updateSettings;
 
   const isPhrase = settings.gameMode === 'phrase';
+  const isAssist = settings.gameMode === 'assist';
 
   const currentTuning = TUNINGS[settings.tuningId];
   const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
@@ -121,24 +123,28 @@ function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
-      const onInteractive =
+      // Text inputs / selects keep their native keys — shortcuts must not
+      // fire while typing. FOCUSED BUTTONS however stay eligible: after a
+      // click the button keeps focus, and gating there made N/R/P/L
+      // silently dead until the user clicked elsewhere. Space/Enter on a
+      // focused button activate it natively (guarded below), so no
+      // double-fire.
+      const onTextEntry =
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLButtonElement ||
         target instanceof HTMLSelectElement ||
         !!target?.isContentEditable;
+      if (onTextEntry) return;
 
       if (e.code === 'Escape') {
         if (showHelp) setShowHelp(false);
         else if (settings.zenMode) setSettings(s => ({ ...s, zenMode: false }));
         return;
       }
-      // Focused buttons handle their own keys (native activation);
-      // global shortcuts must not double-fire or block them.
-      if (onInteractive) return;
-
-      // Prevent default for space to stop scrolling
-      if (e.code === 'Space') {
+      // Prevent default for space to stop scrolling (Space on a focused
+      // button activates it natively — preventDefault only applies when the
+      // focus is on the body, where the shortcut below takes over).
+      if (e.code === 'Space' && !(target instanceof HTMLButtonElement)) {
         e.preventDefault();
       }
 
@@ -159,6 +165,12 @@ function App() {
           case 'n':
             phraseRef.current?.next();
             break;
+          case 'arrowleft':
+            phraseRef.current?.previewStep(-1);
+            break;
+          case 'arrowright':
+            phraseRef.current?.previewStep(1);
+            break;
           case 's':
             phraseRef.current?.skip();
             break;
@@ -169,8 +181,29 @@ function App() {
             setListening(l => !l);
             break;
         }
-        if (e.code === 'Space' || e.code === 'Enter') {
+        // Space/Enter on a focused button natively activate that button
+        // (e.g. Start); only treat them as pause-toggle when NOT on a button.
+        if ((e.code === 'Space' || e.code === 'Enter') && !(e.target instanceof HTMLButtonElement)) {
           phraseRef.current?.pauseToggle();
+        }
+        return;
+      }
+
+      if (isAssist) {
+        // Assist mode: only display shortcuts — no trainer actions.
+        switch (e.key.toLowerCase()) {
+          case 'h':
+            setSettings(s => ({ ...s, showHint: !s.showHint }));
+            break;
+          case 'z':
+            setSettings(s => ({ ...s, zenMode: !s.zenMode }));
+            break;
+          case 'v':
+            setSettings(s => ({ ...s, showFretboard: !s.showFretboard }));
+            break;
+          case 'l':
+            setListening(l => !l);
+            break;
         }
         return;
       }
@@ -200,23 +233,23 @@ function App() {
           break;
       }
 
-      if (e.code === 'Space' || e.code === 'Enter') {
+      if ((e.code === 'Space' || e.code === 'Enter') && !(e.target instanceof HTMLButtonElement)) {
         singleNoteRef.current?.skipNote();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [settings, showHelp, isPhrase, setSettings]);
+  }, [settings, showHelp, isPhrase, isAssist, setSettings]);
 
-  // 'm' cycles all three modes from phrase mode too.
+  // 'm' cycles back to sight reading from phrase/assist modes.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== 'm') return;
       const target = e.target as HTMLElement | null;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ||
         target instanceof HTMLButtonElement || target instanceof HTMLSelectElement || target?.isContentEditable) return;
-      if (settings.gameMode === 'phrase') {
+      if (settings.gameMode === 'phrase' || settings.gameMode === 'assist') {
         setSettings(s => ({ ...s, gameMode: 'sight_reading' }));
       }
     };
@@ -263,6 +296,13 @@ function App() {
               >
                 Phrases
               </button>
+              <button
+                className={`toggle-option ${settings.gameMode === 'assist' ? 'active' : ''}`}
+                onClick={() => setSettings(s => ({ ...s, gameMode: 'assist' }))}
+                title="Practice companion: shows played notes while you work from paper"
+              >
+                Assist
+              </button>
             </div>
 
             <button
@@ -303,6 +343,11 @@ function App() {
             ref={phraseRef}
             listening={listening}
             micError={error}
+            windowWidth={windowWidth}
+          />
+        ) : isAssist ? (
+          <AssistMode
+            pitchData={displayedPitch}
             windowWidth={windowWidth}
           />
         ) : (
@@ -391,6 +436,7 @@ function App() {
                 <>
                   <div className="help-item"><span>Start / Pause / Resume</span><span className="shortcut-key">Space</span></div>
                   <div className="help-item"><span>Preview phrase (Play / Stop)</span><span className="shortcut-key">P</span></div>
+                  <div className="help-item"><span>While previewing: step note forward / back</span><span className="shortcut-key">→ / ←</span></div>
                   <div className="help-item"><span>Retry phrase</span><span className="shortcut-key">R</span></div>
                   <div className="help-item"><span>New melody / next bars</span><span className="shortcut-key">N</span></div>
                   <div className="help-item"><span>Skip note (at your pace)</span><span className="shortcut-key">S</span></div>

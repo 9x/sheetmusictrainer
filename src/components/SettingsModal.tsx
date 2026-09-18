@@ -1,8 +1,32 @@
 import React, { useState } from 'react';
-import { X, Volume2, VolumeX, ChevronDown, ChevronUp, Mic, MicOff, Sun, Moon, Monitor, Clock } from 'lucide-react';
+import { X, Volume2, VolumeX, ChevronDown, ChevronUp, Mic, MicOff, Sun, Moon, Monitor, Clock, Guitar } from 'lucide-react';
 import type { AppSettings } from '../types/SettingsTypes';
 import { MIC_SENSITIVITY_DB_RANGE, MIC_DEFAULT_SENSITIVITY } from '../AppConfig';
 import type { MicrophoneDebugInfo } from '../hooks/usePitchDetector';
+import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
+import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
+
+/** Collapsible settings section. First section open by default. */
+const Section: React.FC<{ title: string; defaultOpen?: boolean; children: React.ReactNode }> = ({ title, defaultOpen = false, children }) => {
+    const [open, setOpen] = useState(defaultOpen);
+    return (
+        <div style={{ borderBottom: '1px solid color-mix(in srgb, var(--color-text-main) 10%, transparent)' }}>
+            <button
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    width: '100%', background: 'transparent', border: 'none', color: 'inherit',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '14px 0', cursor: 'pointer', font: 'inherit'
+                }}
+                aria-expanded={open}
+            >
+                <span style={{ fontSize: '15px', fontWeight: 600 }}>{title}</span>
+                {open ? <ChevronUp size={16} style={{ opacity: 0.6 }} /> : <ChevronDown size={16} style={{ opacity: 0.6 }} />}
+            </button>
+            {open && <div style={{ paddingBottom: '20px' }}>{children}</div>}
+        </div>
+    );
+};
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -78,7 +102,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="help-popup-overlay" onClick={onClose}>
             <div className="help-popup" onClick={e => e.stopPropagation()}>
                 <button className="help-close" onClick={onClose}><X size={20} /></button>
-                <h2 style={{ marginTop: 0, marginBottom: '24px' }}>Settings</h2>
+                <h2 style={{ marginTop: 0, marginBottom: '12px' }}>Settings</h2>
+
+                {/* Instrument & Tuning (rarely changed — lives here now) */}
+                <Section title="Instrument" defaultOpen>
+                    <div className="control-group" style={{ marginBottom: '16px' }}>
+                        <label className="control-label" style={{ marginBottom: '8px', fontSize: '16px' }}>
+                            <Guitar size={18} />
+                            <span>Instrument</span>
+                        </label>
+                        <select
+                            value={settings.instrument}
+                            onChange={(e) => {
+                                const id = e.target.value;
+                                const def = INSTRUMENT_DEFINITIONS[id];
+                                let tuningId = settings.tuningId;
+                                if (def.showTuning && INSTRUMENT_TUNINGS[id as 'guitar' | 'bass']) {
+                                    tuningId = INSTRUMENT_TUNINGS[id as 'guitar' | 'bass'][0];
+                                }
+                                onUpdateSettings({ ...settings, instrument: id, difficulty: def.ranges[0].id, tuningId });
+                            }}
+                            className="control-select"
+                        >
+                            {Object.values(INSTRUMENT_DEFINITIONS).map(def => (
+                                <option key={def.id} value={def.id}>{def.displayName}</option>
+                            ))}
+                        </select>
+                    </div>
+                    {INSTRUMENT_DEFINITIONS[settings.instrument]?.showTuning && INSTRUMENT_TUNINGS[settings.instrument as 'guitar' | 'bass'] && (
+                        <div className="control-group">
+                            <label className="control-label" style={{ marginBottom: '8px', fontSize: '16px' }}>
+                                <span>Tuning</span>
+                            </label>
+                            <select
+                                value={settings.tuningId}
+                                onChange={(e) => onUpdateSettings({ ...settings, tuningId: e.target.value })}
+                                className="control-select"
+                            >
+                                {INSTRUMENT_TUNINGS[settings.instrument as 'guitar' | 'bass'].map(id => (
+                                    <option key={id} value={id}>{TUNINGS[id]?.name ?? id}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </Section>
+
+                <Section title="Appearance">
 
                 {/* Theme Settings */}
                 <div className="control-group" style={{ marginBottom: '24px' }}>
@@ -119,8 +188,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </div>
                 </div>
 
-                <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '24px 0' }} />
-
                 {/* Animation Settings */}
                 <div className="control-group" style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -140,7 +207,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </p>
                 </div>
 
-                <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '24px 0' }} />
+                </Section>
+
+                <Section title="Audio" defaultOpen>
 
                 <div className="control-group" style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -261,7 +330,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </p>
                 </div>
 
-                <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '24px 0' }} />
+                </Section>
+
+                <Section title="Microphone" defaultOpen>
 
                 {/* Microphone Toggle */}
                 <div className="control-group" style={{ marginBottom: '16px' }}>
@@ -434,6 +505,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         )}
                     </div>
                 )}
+
+                </Section>
             </div>
 
         </div>

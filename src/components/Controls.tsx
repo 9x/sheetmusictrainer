@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Guitar, Music, Gauge } from 'lucide-react';
-import { TUNINGS, INSTRUMENT_TUNINGS } from '../music/Tunings';
-import { INSTRUMENT_DEFINITIONS } from '../music/InstrumentConfigs';
-
+import { Gauge, SlidersHorizontal } from 'lucide-react';
 import { TuningMeter } from './TuningMeter';
 import { TargetNoteControls } from './TargetNoteControls';
 import { MetronomeWidget } from './MetronomeWidget';
 import { phraseRunBus } from '../hooks/phraseRunBus';
 import { useSettings } from '../context/useSettings';
-import { type Difficulty, type RhythmSettings } from '../types/SettingsTypes';
+import { getPracticeFilter, type RhythmSettings } from '../types/SettingsTypes';
 
 
 
@@ -18,35 +15,13 @@ interface ControlsProps {
 
 export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
     const { settings, updateSettings } = useSettings();
-    // Alias to minimize refactor, or just use updateSettings. 
     const onUpdateSettings = updateSettings;
     // Phrase run gate: the metronome only ticks while the phrase trainer is
     // counting in / playing (armed by the user toggle, fired by the run).
     const [phraseRunActive, setPhraseRunActive] = useState(false);
     useEffect(() => phraseRunBus.subscribe(setPhraseRunActive), []);
-    const handleTuningChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        onUpdateSettings({ ...settings, tuningId: e.target.value });
-    };
-
-    const handleInstrumentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newInstrumentId = e.target.value;
-        const instDef = INSTRUMENT_DEFINITIONS[newInstrumentId];
-
-        const defaultRange = instDef.ranges[0].id;
-
-        // Reset tuning if applicable, or just keep as is (it won't be shown/used)
-        let newTuningId = settings.tuningId;
-        if (instDef.showTuning && INSTRUMENT_TUNINGS[newInstrumentId as 'guitar' | 'bass']) {
-            newTuningId = INSTRUMENT_TUNINGS[newInstrumentId as 'guitar' | 'bass'][0];
-        }
-
-        onUpdateSettings({
-            ...settings,
-            instrument: newInstrumentId,
-            difficulty: defaultRange as Difficulty,
-            tuningId: newTuningId
-        });
-    };
+    // Note-filter panel: hidden by default (minimal UI), toggled here.
+    const [filtersOpen, setFiltersOpen] = useState(false);
 
     const updateRhythm = (updates: Partial<RhythmSettings>) => {
         onUpdateSettings({
@@ -55,98 +30,43 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
         });
     };
 
-    // Cast instrument to specific key if needed, or use generic record access
-    const availableTunings = INSTRUMENT_TUNINGS[settings.instrument as 'guitar' | 'bass'] || [];
-    const currentInstrumentDef = INSTRUMENT_DEFINITIONS[settings.instrument];
-
-
-
-    // Phrase Mode brings its own key/tempo machinery; the single-note
-    // key-signature select and metronome tool would be competing controls.
     const inPhraseMode = settings.gameMode === 'phrase';
+
+    const pf = getPracticeFilter(settings);
+    const activeFilterCount =
+        (pf.keyEnabled ? 1 : 0) +
+        (pf.strings.length > 0 ? 1 : 0) +
+        (pf.fretWindowEnabled ? 1 : 0);
+
+    // Phrase Mode hosts the filter inside its Setup panel (above the
+    // notation) — no footer filter button there.
+    const showFilterButton = !inPhraseMode;
+    const shouldShowFilters = showFilterButton && filtersOpen;
 
     return (
         <div className="controls-container">
-            {/* Top Section: Settings Grid (2 Columns) */}
-            <div className="settings-grid">
-                {/* Row 1, Col 1 */}
-                <div className="control-group">
-                    <label className="control-label">
-                        <Music size={18} />
-                        <span>Instrument</span>
-                    </label>
-                    <select
-                        value={settings.instrument}
-                        onChange={handleInstrumentChange}
-                        className="control-select"
-                    >
-                        {Object.values(INSTRUMENT_DEFINITIONS).map(def => (
-                            <option key={def.id} value={def.id}>{def.displayName}</option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Row 1, Col 2 (Conditional) */}
-                {currentInstrumentDef.showTuning ? (
-                    <div className="control-group">
-                        <label className="control-label">
-                            <Guitar size={18} />
-                            <span>Tuning</span>
-                        </label>
-                        <select
-                            value={settings.tuningId}
-                            onChange={handleTuningChange}
-                            className="control-select"
-                        >
-                            {availableTunings.map(id => (
-                                <option key={id} value={id}>{TUNINGS[id].name}</option>
-                            ))}
-                        </select>
-                    </div>
-                ) : <div />} {/* Spacer to maintain grid flow if needed, or omit to let items flow. User asked for specific rows. 
-                             If I omit, Note Set goes here. Let's omit for "Dense" feel, or keep empty div for strict rows? 
-                             The request "Top row: instrument and tuning" implies if tuning is missing, maybe just 1 item? 
-                             I'll output an empty div if I want to FORCE strict placement, but generally flow is better. 
-                             However, "Second row: note set..." suggests structure. 
-                             I will use an empty div if tuning is hidden to push Note Set to next row? 
-                             Actually, grid-template-columns: 1fr 1fr. 
-                             If Tuning is hidden, Note Set becomes Item 2. 
-                             I'll forgo complexity and just render what's available. */}
-
-                {/* Row 2, Col 2 */}
-                {!inPhraseMode && (
-                <div className="control-group">
-                    <label className="control-label">
-                        <span>Key signature</span>
-                    </label>
-                    <select
-                        value={settings.keySignature}
-                        onChange={(e) => onUpdateSettings({ ...settings, keySignature: e.target.value })}
-                        className="control-select"
-                    >
-                        <optgroup label="Major Keys">
-                            <option value="C">C Major</option>
-                            <option value="G">G Major</option>
-                            <option value="D">D Major</option>
-                            <option value="A">A Major</option>
-                            <option value="E">E Major</option>
-                            <option value="F">F Major</option>
-                            <option value="Bb">Bb Major</option>
-                            <option value="Eb">Eb Major</option>
-                        </optgroup>
-                        <optgroup label="Minor Keys">
-                            <option value="Am">A Minor</option>
-                            <option value="Em">E Minor</option>
-                            <option value="Dm">D Minor</option>
-                        </optgroup>
-                    </select>
-                </div>
-                )}
-
+            {/* Note filter: collapsed behind a button — visible only when needed */}
+            {showFilterButton && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                <button
+                    className={`hint-button ${filtersOpen ? 'active' : ''}`}
+                    onClick={() => setFiltersOpen(o => !o)}
+                    title="Limit the notes used for exercises (key, strings, fret window)"
+                >
+                    <SlidersHorizontal size={16} />
+                    Filter
+                    {activeFilterCount > 0 && (
+                        <span style={{
+                            display: 'inline-block', minWidth: '18px', padding: '1px 5px',
+                            marginLeft: '4px', borderRadius: '9px', fontSize: '11px',
+                            background: 'var(--color-primary)', color: 'var(--color-surface)',
+                            fontWeight: 600, textAlign: 'center'
+                        }}>{activeFilterCount}</span>
+                    )}
+                </button>
             </div>
-
-            {/* Target-note filter: unified controls, all modes */}
-            <TargetNoteControls />
+            )}
+            {shouldShowFilters && <TargetNoteControls />}
 
             {/* Bottom Section: Tools Grid (2 Columns now) */}
             <div className="tools-grid" style={inPhraseMode ? { gridTemplateColumns: '1fr' } : undefined}>

@@ -59,24 +59,24 @@
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --color-bg: hsl(30, 20%, 10%);
-    --color-surface: hsl(30, 20%, 15%);
-    --color-text-main: hsl(30, 10%, 90%);
-    --color-text-muted: hsl(30, 10%, 60%);
-    --color-primary: hsl(0, 0%, 90%);
-    --color-primary-dark: hsl(0, 0%, 100%);
+    --color-bg: hsl(220, 6%, 10%);
+    --color-surface: hsl(220, 6%, 15%);
+    --color-text-main: hsl(220, 4%, 90%);
+    --color-text-muted: hsl(220, 4%, 60%);
+    --color-primary: hsl(220, 4%, 90%);
+    --color-primary-dark: hsl(220, 4%, 100%);
   }
 }
 
 /* Manual Dark Mode Override */
 html[data-theme="dark"] {
   color-scheme: dark;
-  --color-bg: hsl(30, 20%, 10%);
-  --color-surface: hsl(30, 20%, 15%);
-  --color-text-main: hsl(30, 10%, 90%);
-  --color-text-muted: hsl(30, 10%, 60%);
-  --color-primary: hsl(0, 0%, 90%);
-  --color-primary-dark: hsl(0, 0%, 100%);
+  --color-bg: hsl(220, 6%, 10%);
+  --color-surface: hsl(220, 6%, 15%);
+  --color-text-main: hsl(220, 4%, 90%);
+  --color-text-muted: hsl(220, 4%, 60%);
+  --color-primary: hsl(220, 4%, 90%);
+  --color-primary-dark: hsl(220, 4%, 100%);
 }
 
 /* Manual Light Mode Override */

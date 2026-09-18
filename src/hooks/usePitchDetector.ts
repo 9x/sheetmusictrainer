@@ -9,7 +9,7 @@ import {
     NOTE_DISPLAY_STABLE_FRAMES,
 } from '../AppConfig';
 
-interface PitchData {
+export interface PitchData {
     frequency: number;
     midi: number;
     note: string;
