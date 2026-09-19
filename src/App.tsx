@@ -278,10 +278,18 @@ function App() {
           <div className="header-controls">
             <div className="game-mode-toggle">
               <button
+                className={`toggle-option ${settings.gameMode === 'assist' ? 'active' : ''}`}
+                onClick={() => setSettings(s => ({ ...s, gameMode: 'assist' }))}
+                title="Practice companion: shows played notes while you work from paper"
+              >
+                Assist
+              </button>
+              <button
                 className={`toggle-option ${settings.gameMode === 'sight_reading' ? 'active' : ''}`}
                 onClick={() => setSettings(s => ({ ...s, gameMode: 'sight_reading' }))}
+                title="Learn to read notes from the staff"
               >
-                Sight Reading
+                Learn Notes
               </button>
               <button
                 className={`toggle-option ${settings.gameMode === 'ear_training' ? 'active' : ''}`}
@@ -295,13 +303,6 @@ function App() {
                 title="Play short phrases and melodies"
               >
                 Phrases
-              </button>
-              <button
-                className={`toggle-option ${settings.gameMode === 'assist' ? 'active' : ''}`}
-                onClick={() => setSettings(s => ({ ...s, gameMode: 'assist' }))}
-                title="Practice companion: shows played notes while you work from paper"
-              >
-                Assist
               </button>
             </div>
 
