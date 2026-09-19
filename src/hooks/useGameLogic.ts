@@ -85,7 +85,11 @@ export const useGameLogic = (
 
     const { restart: restartMetronome } = useMetronome({
         bpm: effectiveBpm,
-        volume: settings.rhythm.sound ? settings.rhythm.volume : 0,
+        // Audible clicks come from the shared footer widget (Controls) in
+        // non-zen single-note modes — this scheduler is only the tick source
+        // for auto-advance. Sounding it here too doubles every beat. In zen
+        // mode the widget isn't rendered, so this scheduler IS the click.
+        volume: settings.zenMode && settings.rhythm.sound ? settings.rhythm.volume : 0,
         playing: settings.rhythm.active,
         onTick: handleTick
     });
