@@ -278,10 +278,18 @@ function App() {
           <div className="header-controls">
             <div className="game-mode-toggle">
               <button
+                className={`toggle-option ${settings.gameMode === 'assist' ? 'active' : ''}`}
+                onClick={() => setSettings(s => ({ ...s, gameMode: 'assist' }))}
+                title="Practice companion: shows played notes while you work from paper"
+              >
+                Assist
+              </button>
+              <button
                 className={`toggle-option ${settings.gameMode === 'sight_reading' ? 'active' : ''}`}
                 onClick={() => setSettings(s => ({ ...s, gameMode: 'sight_reading' }))}
+                title="Learn to read notes from the staff"
               >
-                Sight Reading
+                Learn Notes
               </button>
               <button
                 className={`toggle-option ${settings.gameMode === 'ear_training' ? 'active' : ''}`}
@@ -295,13 +303,6 @@ function App() {
                 title="Play short phrases and melodies"
               >
                 Phrases
-              </button>
-              <button
-                className={`toggle-option ${settings.gameMode === 'assist' ? 'active' : ''}`}
-                onClick={() => setSettings(s => ({ ...s, gameMode: 'assist' }))}
-                title="Practice companion: shows played notes while you work from paper"
-              >
-                Assist
               </button>
             </div>
 
@@ -373,13 +374,17 @@ function App() {
                 {listening ? <Mic size={28} /> : <MicOff size={28} />}
               </button>
 
-              <LiveNoteStaff
-                midi={displayedPitch ? displayedPitch.midi : null}
-                transpose={resolveClefTranspose(currentInstrumentDef, settings.difficulty).transpose}
-                keySignature={settings.keySignature}
-                clef={currentInstrumentDef.clefMode === 'treble' ? 'treble' : currentInstrumentDef.clefMode === 'bass' ? 'bass' : undefined}
-                theme={settings.theme}
-              />
+              {/* Live staff omitted in Assist mode: the Assist card already
+                  shows the played note large above the fretboard. */}
+              {!isAssist && (
+                <LiveNoteStaff
+                  midi={displayedPitch ? displayedPitch.midi : null}
+                  transpose={resolveClefTranspose(currentInstrumentDef, settings.difficulty).transpose}
+                  keySignature={settings.keySignature}
+                  clef={currentInstrumentDef.clefMode === 'treble' ? 'treble' : currentInstrumentDef.clefMode === 'bass' ? 'bass' : undefined}
+                  theme={settings.theme}
+                />
+              )}
               <div className={`pitch-readout ${displayedPitch ? 'active' : ''}`}>
                 {displayedPitch ? (
                   <>

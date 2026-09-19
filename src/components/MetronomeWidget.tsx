@@ -55,13 +55,22 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
 
     const isSync = syncMode === 'option' && !!rhythm.syncToExercise;
     const runActive = gate === true;
+    // Phrase mode (syncMode 'option') has no on/off switch — the sync
+    // checkbox replaces it (unchecked = free metronome, checked = synced to
+    // the exercise), so the metronome is always armed there. Gating on
+    // rhythm.active would leave phrase users with no way to enable clicks.
+    const armed = syncMode === 'option' ? true : rhythm.active;
     // Sync: pendulum/click only while the run is active (the run's scheduler
     // is the click source; the widget's own scheduler stays off).
     // Free/plain: the widget's own scheduler runs whenever armed.
-    const running = isSync ? runActive : rhythm.active;
+    const running = isSync ? runActive : armed;
+
+    // Timer mode = one beat per N seconds: effective BPM 60/seconds so
+    // clicks and pendulum match the trainer's auto-advance cadence.
+    const effectiveBpm = rhythm.mode === 'bpm' ? rhythm.bpm : 60 / Math.max(1, rhythm.seconds);
 
     const { restart } = useMetronome({
-        bpm: rhythm.bpm,
+        bpm: effectiveBpm,
         volume: rhythm.sound ? rhythm.volume : 0,
         playing: running && !isSync,
         onTick: handleTick,
@@ -77,8 +86,7 @@ export const MetronomeWidget: React.FC<MetronomeWidgetProps> = ({
         });
     }, [isSync, runActive]);
 
-    const beatMs = 60000 / Math.max(1, rhythm.bpm);
-    const armed = rhythm.active;
+    const beatMs = 60000 / Math.max(1, effectiveBpm);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

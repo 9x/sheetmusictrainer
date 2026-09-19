@@ -34,6 +34,8 @@ export function useMetronome({ bpm, volume, playing, onTick }: MetronomeOptions)
 
     const playClick = useCallback((time: number) => {
         if (!audioContext.current) return;
+        onTickRef.current(currentBeat.current);
+        if (volume <= 0) return; // silent tick source — no audio nodes needed
 
         const osc = audioContext.current.createOscillator();
         const gainNode = audioContext.current.createGain();

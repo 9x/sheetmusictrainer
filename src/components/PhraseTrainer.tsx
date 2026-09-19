@@ -85,13 +85,15 @@ export const PhraseTrainer = forwardRef<PhraseHandle, PhraseTrainerProps>(
         const pace: PhraseSettings['pace'] = settings.rhythm.syncToExercise ? 'tempo' : 'step';
         phrase.pace = pace;
         // Click decision — ONE source: the metronome widget's sound checkbox.
-        // - Sync (tempo): run clicks when armed && sound (count-in incl.);
-        //   widget silent while idle.
-        // - Free metronome: widget clicks freely; the run stays silent to
-        //   avoid doubling (sync off in tempo = free widget during runs).
-        phrase.clickSound = pace === 'tempo'
-            ? settings.rhythm.active && settings.rhythm.sound
-            : settings.rhythm.active && settings.rhythm.sound && !settings.rhythm.syncToExercise;
+        // Phrase mode has no metronome on/off switch (the sync checkbox
+        // replaces it, see MetronomeWidget), so rhythm.active must NOT gate
+        // clicks here — with the default active:false a synced run would
+        // stay silent with no way to fix it from this mode.
+        // - Sync (tempo): run clicks when sound is on (count-in included);
+        //   the widget stays silent while idle.
+        // - Free metronome (step): the widget clicks freely; the run stays
+        //   silent to avoid doubling.
+        phrase.clickSound = settings.rhythm.sound;
         const setPhrase = useCallback((updates: Partial<PhraseSettings>) => {
             updateSettings(s => ({ ...s, phrase: { ...getPhraseSettings(s), ...updates } }));
         }, [updateSettings]);

@@ -68,8 +68,8 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
             )}
             {shouldShowFilters && <TargetNoteControls />}
 
-            {/* Bottom Section: Tools Grid (2 Columns now) */}
-            <div className="tools-grid" style={inPhraseMode ? { gridTemplateColumns: '1fr' } : undefined}>
+            {/* Bottom Section: Tools Grid (stacked in all modes) */}
+            <div className="tools-grid" style={{ gridTemplateColumns: '1fr' }}>
                 {/* Tool 1: Tuner */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid rgba(128,128,128,0.2)', padding: '12px', borderRadius: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

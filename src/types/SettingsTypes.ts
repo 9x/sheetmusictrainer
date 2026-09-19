@@ -134,6 +134,11 @@ export interface AppSettings {
     instrument: string;
     rhythm: RhythmSettings;
     zenMode: boolean;
+    /**
+     * TODO: Rename 'sight_reading' to 'learn_notes' internally (UI label is
+     * already "Learn Notes"). Deferred because the value is persisted in
+     * localStorage — needs a settings migration for existing users.
+     */
     gameMode: 'sight_reading' | 'ear_training' | 'phrase' | 'assist';
     customMinFret?: number;
     customMaxFret?: number;

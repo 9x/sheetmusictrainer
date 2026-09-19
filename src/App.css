@@ -1041,29 +1041,53 @@ button {
 
 .phrase-setup {
     margin-bottom: 16px;
-    border-bottom: 1px solid color-mix(in srgb, var(--color-text-main) 12%, transparent);
-    padding-bottom: 12px;
+    border: 1px solid color-mix(in srgb, var(--color-text-main) 18%, transparent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--color-text-main) 4%, transparent);
 }
 
 .phrase-setup summary {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     cursor: pointer;
-    font-size: 13px;
-    color: var(--color-text-muted);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text-main);
+    padding: 12px 14px;
     user-select: none;
+    list-style: none;
+    border-radius: 10px;
+    transition: background 0.15s ease;
+}
+
+/* Hide the default disclosure triangle — the chevron icon does the job */
+.phrase-setup summary::-webkit-details-marker {
+    display: none;
 }
 
 .phrase-setup summary:hover {
-    color: var(--color-text-main);
+    background: color-mix(in srgb, var(--color-text-main) 7%, transparent);
+}
+
+.phrase-setup[open] summary {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-text-main) 12%, transparent);
+    border-radius: 10px 10px 0 0;
+}
+
+.phrase-setup summary svg {
+    transition: transform 0.15s ease;
+}
+
+.phrase-setup[open] summary svg {
+    transform: rotate(180deg);
 }
 
 .phrase-setup-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 10px 14px;
-    margin-top: 12px;
+    padding: 12px 14px 14px;
 }
 
 .phrase-setup-grid label {
