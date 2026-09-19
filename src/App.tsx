@@ -374,13 +374,17 @@ function App() {
                 {listening ? <Mic size={28} /> : <MicOff size={28} />}
               </button>
 
-              <LiveNoteStaff
-                midi={displayedPitch ? displayedPitch.midi : null}
-                transpose={resolveClefTranspose(currentInstrumentDef, settings.difficulty).transpose}
-                keySignature={settings.keySignature}
-                clef={currentInstrumentDef.clefMode === 'treble' ? 'treble' : currentInstrumentDef.clefMode === 'bass' ? 'bass' : undefined}
-                theme={settings.theme}
-              />
+              {/* Live staff omitted in Assist mode: the Assist card already
+                  shows the played note large above the fretboard. */}
+              {!isAssist && (
+                <LiveNoteStaff
+                  midi={displayedPitch ? displayedPitch.midi : null}
+                  transpose={resolveClefTranspose(currentInstrumentDef, settings.difficulty).transpose}
+                  keySignature={settings.keySignature}
+                  clef={currentInstrumentDef.clefMode === 'treble' ? 'treble' : currentInstrumentDef.clefMode === 'bass' ? 'bass' : undefined}
+                  theme={settings.theme}
+                />
+              )}
               <div className={`pitch-readout ${displayedPitch ? 'active' : ''}`}>
                 {displayedPitch ? (
                   <>
