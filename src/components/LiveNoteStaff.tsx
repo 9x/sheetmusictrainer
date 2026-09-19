@@ -21,14 +21,19 @@ interface LiveNoteStaffProps {
      *  clef auto-switches treble/bass around middle C (piano-style). */
     clef?: 'treble' | 'bass';
     width?: number;
+    /** Box height. 64px matches the mic bar; larger boxes (e.g. 88px in
+     *  Assist mode) give ledger lines room inside instead of being clipped
+     *  by the parent's overflow: hidden. */
+    height?: number;
     theme?: 'light' | 'dark' | 'auto';
 }
 
 const BOX_H = 64;   // mic button height — vertical centering via the bar
 // VexFlow draws the first stave line ~40.5px BELOW the constructor y
-// (default space_above_staff_ln = 4 line-spaces). To center a 38px staff in
-// the 64px box the constructor y must be negative.
-const STAVE_Y = -28;
+// (default space_above_staff_ln = 4 line-spaces). To center the ~38px staff
+// in a box of height h the constructor y must be negative. For h = 64 this
+// yields -27.5 ≈ -28 (the original hardcoded value).
+const staveYFor = (h: number) => (h - 38) / 2 - 40.5;
 
 export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
     midi,
@@ -36,6 +41,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
     keySignature = 'C',
     clef: clefOverride,
     width = 130,
+    height: boxH = BOX_H,
     theme = 'auto',
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -53,7 +59,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         container.innerHTML = '';
 
         const renderer = new Renderer(container, Renderer.Backends.SVG);
-        renderer.resize(width, BOX_H);
+        renderer.resize(width, boxH);
         const context = renderer.getContext();
 
         const resolvedColor =
@@ -63,7 +69,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         context.setFillStyle(resolvedColor);
         context.setStrokeStyle(resolvedColor);
 
-        const stave = new Stave(0, STAVE_Y, width - 2);
+        const stave = new Stave(0, staveYFor(boxH), width - 2);
         stave.setDefaultLedgerLineStyle({ strokeStyle: resolvedColor, lineWidth: 2 });
         const written0 = midi !== null ? midi + transpose : null;
         // Instrument-fixed clef when provided (guitar always treble, bass
@@ -119,7 +125,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         <div
             ref={containerRef}
             className="live-note-staff"
-            style={{ width, height: BOX_H }}
+            style={{ width, height: boxH }}
             role="img"
             aria-label={midi !== null ? 'Currently played note' : 'No note currently detected'}
         />

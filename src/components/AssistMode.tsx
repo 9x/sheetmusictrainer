@@ -61,6 +61,7 @@ export const AssistMode: React.FC<AssistModeProps> = ({ pitchData, windowWidth }
                     keySignature={settings.keySignature}
                     clef={clef === 'grand' ? undefined : clef}
                     width={Math.min(240, staffWidth)}
+                    height={88}
                     theme={settings.theme}
                 />
             </div>
