@@ -1190,13 +1190,6 @@ button {
   overflow-x: auto;
 }
 
-.assist-hint {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin: 0;
-  text-align: center;
-}
-
 /* ---- Transport step group (preview stepping) ---------------------------- */
 .transport-step-group {
   display: flex;

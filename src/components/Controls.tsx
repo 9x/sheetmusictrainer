@@ -86,7 +86,7 @@ export const Controls: React.FC<ControlsProps> = ({ currentPitch }) => {
                         </button>
                     </div>
                     {settings.showTuningMeter && (
-                        <div style={{ paddingTop: '8px', borderTop: '1px solid color-mix(in srgb, var(--color-text-main) 10%, transparent)' }}>
+                        <div style={{ paddingTop: '8px', borderTop: '1px solid color-mix(in srgb, var(--color-text-main) 10%, transparent)', display: 'flex', justifyContent: 'center' }}>
                             <TuningMeter
                                 cents={currentPitch ? currentPitch.cents : null}
                                 noteName={currentPitch ? currentPitch.note : null}

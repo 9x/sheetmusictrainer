@@ -97,13 +97,6 @@ export const AssistMode: React.FC<AssistModeProps> = ({ pitchData, windowWidth }
                     />
                 </div>
             )}
-
-            {!pitchData && (
-                <p className="assist-hint">
-                    Play a note — it shows here. Mic is{' '}
-                    {settings.showTuningMeter ? 'on' : 'controlled by the mic button below'}.
-                </p>
-            )}
         </div>
     );
 };
