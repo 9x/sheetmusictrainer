@@ -149,38 +149,57 @@ export const SingleNoteTrainer = forwardRef<SingleNoteHandle, SingleNoteTrainerP
                 )}
 
                 {!settings.zenMode && (
-                    <div className="action-row" style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
-                        {currentInstrumentDef.showTuning && (
+                    <>
+                        {/* Display toggles — switch style (like phrase mode):
+                            pure show/hide, no trainer actions. */}
+                        <div className="display-toggles" style={{ marginTop: '24px' }}>
+                            {currentInstrumentDef.showTuning && (
+                                <div className="display-toggle">
+                                    <span className="display-toggle-label">
+                                        <Guitar size={15} />
+                                        {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
+                                    </span>
+                                    <button
+                                        className={`switch-button ${settings.showFretboard ? 'active' : ''}`}
+                                        onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
+                                        title={`Toggle Virtual ${currentInstrumentDef.displayName} (Keyboard Shortcut: V)`}
+                                        aria-label={`Show virtual ${currentInstrumentDef.displayName}`}
+                                    >
+                                        <div className="switch-thumb" />
+                                    </button>
+                                </div>
+                            )}
+                            <div className="display-toggle">
+                                <span className="display-toggle-label">
+                                    <HelpCircle size={15} />
+                                    Hint
+                                </span>
+                                <button
+                                    className={`switch-button ${settings.showHint ? 'active' : ''}`}
+                                    onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
+                                    title="Keyboard Shortcut: H"
+                                    aria-label="Show hint"
+                                >
+                                    <div className="switch-thumb" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="action-row" style={{ marginTop: '16px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
                             <button
-                                className={`hint-button ${settings.showFretboard ? 'active' : ''}`}
-                                onClick={() => setSettings(s => ({ ...s, showFretboard: !s.showFretboard }))}
-                                title={`Toggle Virtual ${currentInstrumentDef.displayName} (Keyboard Shortcut: V)`}
+                                className="hint-button"
+                                onClick={() => playNote(targetMidi, settings.referenceNoteDuration ?? 1.5, settings.autoPlayVolume ?? 0.5)}
+                                title="Keyboard Shortcut: P or R"
                             >
-                                <Guitar size={18} />
-                                {currentInstrumentDef.id === 'piano' ? 'Piano' : 'Guitar'}
+                                <Volume2 size={18} />
+                                Play Note
                             </button>
-                        )}
-                        <button
-                            className={`hint-button ${settings.showHint ? 'active' : ''}`}
-                            onClick={() => setSettings(s => ({ ...s, showHint: !s.showHint }))}
-                            title="Keyboard Shortcut: H"
-                        >
-                            <HelpCircle size={18} />
-                            {settings.showHint ? "Hide Hint" : "Show Hint"}
-                        </button>
-                        <button
-                            className="hint-button"
-                            onClick={() => playNote(targetMidi, settings.referenceNoteDuration ?? 1.5, settings.autoPlayVolume ?? 0.5)}
-                            title="Keyboard Shortcut: P or R"
-                        >
-                            <Volume2 size={18} />
-                            Play Note
-                        </button>
-                        <button className="skip-button" onClick={() => generateNewNote()} title="Keyboard Shortcut: Space">
-                            <SkipForward size={18} />
-                            Skip Note
-                        </button>
-                    </div>
+                            <button className="skip-button" onClick={() => generateNewNote()} title="Keyboard Shortcut: Space">
+                                <SkipForward size={18} />
+                                Skip Note
+                            </button>
+                        </div>
+                    </>
                 )}
             </div>
         );
