@@ -30,6 +30,10 @@ export const AssistMode: React.FC<AssistModeProps> = ({ pitchData, windowWidth }
     const fretted = isFrettedInstrument(settings.instrument) && !!currentTuning;
     const pf = getPracticeFilter(settings);
 
+    const { clef, transpose } = useMemo(() =>
+        resolveClefTranspose(currentInstrumentDef, settings.difficulty),
+    [currentInstrumentDef, settings.difficulty]);
+
     // Alternative positions for the detected note (respect fret window filter)
     const positions = useMemo(() => {
         if (!fretted || !currentTuning || !pitchData) return [];
@@ -38,9 +42,23 @@ export const AssistMode: React.FC<AssistModeProps> = ({ pitchData, windowWidth }
         return all.filter(p => p.fret >= Math.max(0, pf.fretMin) && p.fret <= Math.min(24, pf.fretMax));
     }, [fretted, currentTuning, pitchData, pf.fretWindowEnabled, pf.fretMin, pf.fretMax]);
 
-    const { clef, transpose } = useMemo(() =>
-        resolveClefTranspose(currentInstrumentDef, settings.difficulty),
-    [currentInstrumentDef, settings.difficulty]);
+    // Full written range of the currently configured pool (strings × frets,
+    // respecting the same filter as the position markers). The staff box is
+    // sized to fit it, so notes render at their TRUE written position with
+    // real ledger lines — no 8va/8vb octave shifting.
+    const range = useMemo(() => {
+        if (!fretted || !currentTuning) return undefined;
+        const strings = pf.strings.length > 0
+            ? currentTuning.strings.filter((_, i) => pf.strings.includes(i))
+            : currentTuning.strings;
+        if (strings.length === 0) return undefined;
+        const lo = pf.fretWindowEnabled ? Math.max(0, pf.fretMin) : 0;
+        const hi = pf.fretWindowEnabled ? Math.min(24, pf.fretMax) : 24;
+        return {
+            min: Math.min(...strings) + lo + transpose,
+            max: Math.max(...strings) + hi + transpose,
+        };
+    }, [fretted, currentTuning, pf.strings, pf.fretWindowEnabled, pf.fretMin, pf.fretMax, transpose]);
 
     const staffWidth = Math.min(windowWidth - 40, 860);
 
@@ -62,6 +80,7 @@ export const AssistMode: React.FC<AssistModeProps> = ({ pitchData, windowWidth }
                     clef={clef === 'grand' ? undefined : clef}
                     width={Math.min(240, staffWidth)}
                     height={88}
+                    range={range}
                     theme={settings.theme}
                 />
             </div>
@@ -72,7 +91,7 @@ export const AssistMode: React.FC<AssistModeProps> = ({ pitchData, windowWidth }
                         tuning={currentTuning}
                         positions={positions}
                         maxFrets={15}
-                        showHints={false}
+                        showHints={true}
                         interactive={false}
                         displayTranspose={transpose}
                     />

@@ -23,8 +23,13 @@ interface LiveNoteStaffProps {
     width?: number;
     /** Box height. 64px matches the mic bar; larger boxes (e.g. 88px in
      *  Assist mode) give ledger lines room inside instead of being clipped
-     *  by the parent's overflow: hidden. */
+     *  by the parent's overflow: hidden. Ignored when `range` is set. */
     height?: number;
+    /** Written-pitch range the box must fit WITHOUT octave shifting.
+     *  When set, notes render at their true staff position with real ledger
+     *  lines (no 8va/8vb marker) and the box height is computed from the
+     *  range so every note in it stays inside the box. */
+    range?: { min: number; max: number };
     theme?: 'light' | 'dark' | 'auto';
 }
 
@@ -35,16 +40,45 @@ const BOX_H = 64;   // mic button height — vertical centering via the bar
 // yields -27.5 ≈ -28 (the original hardcoded value).
 const staveYFor = (h: number) => (h - 38) / 2 - 40.5;
 
+// Diatonic index (C0 = 0, one step per letter name) for ledger-line math.
+const DI_STEP = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+const diFromMidi = (m: number) => Math.floor(m / 12 - 1) * 7 + DI_STEP[m % 12];
+// Top/bottom staff-line diatonic index per clef (treble F5/E4, bass A3/G2).
+const CLEF_LINES: Record<'treble' | 'bass', { top: number; bottom: number }> = {
+    treble: { top: 38, bottom: 30 },
+    bass: { top: 26, bottom: 18 },
+};
+// One diatonic step = half a staff space = 5px (standard 10px spaces).
+// Box that fits a whole written range: staff anchored below the top
+// headroom so the highest note has room for its ledger lines, lowest note
+// the same at the bottom.
+const rangeLayout = (range: { min: number; max: number }, clef: 'treble' | 'bass') => {
+    const lines = CLEF_LINES[clef];
+    const aboveLines = Math.max(0, Math.ceil((diFromMidi(range.max) - lines.top) / 2));
+    const belowLines = Math.max(0, Math.ceil((lines.bottom - diFromMidi(range.min)) / 2));
+    const abovePx = aboveLines * 10 + 10;   // + notehead margin
+    const belowPx = belowLines * 10 + 10;
+    return { height: abovePx + 38 + belowPx, y: abovePx - 40.5 };
+};
+
 export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
     midi,
     transpose = 0,
     keySignature = 'C',
     clef: clefOverride,
     width = 130,
-    height: boxH = BOX_H,
+    height = BOX_H,
+    range,
     theme = 'auto',
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
+
+    // Box geometry: range-fit wins over the fixed height prop.
+    const fit = range
+        ? rangeLayout(range, clefOverride ?? 'treble')
+        : { height, y: staveYFor(height) };
+    const boxH = fit.height;
+    const staveY = fit.y;
     const [schemeVersion, setSchemeVersion] = useState(0);
     useEffect(() => {
         const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -69,7 +103,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
         context.setFillStyle(resolvedColor);
         context.setStrokeStyle(resolvedColor);
 
-        const stave = new Stave(0, staveYFor(boxH), width - 2);
+        const stave = new Stave(0, staveY, width - 2);
         stave.setDefaultLedgerLineStyle({ strokeStyle: resolvedColor, lineWidth: 2 });
         const written0 = midi !== null ? midi + transpose : null;
         // Instrument-fixed clef when provided (guitar always treble, bass
@@ -85,13 +119,17 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
             //   treble: staff E4..F5 (+ up to two ledger lines each way)
             //   bass:   staff G2..A3 (+ up to two ledger lines each way)
             let written = written0!;
+            // Range-fit mode renders the TRUE written position with real
+            // ledger lines — no 8va/8vb shifting.
             let octaveMark: '8va' | '8vb' | null = null;
-            if (clef === 'treble') {
-                while (written < 58) { written += 12; octaveMark = '8vb'; }
-                while (written > 81) { written -= 12; octaveMark = '8va'; }
-            } else {
-                while (written < 40) { written += 12; octaveMark = '8vb'; }
-                while (written > 61) { written -= 12; octaveMark = '8va'; }
+            if (!range) {
+                if (clef === 'treble') {
+                    while (written < 58) { written += 12; octaveMark = '8vb'; }
+                    while (written > 81) { written -= 12; octaveMark = '8va'; }
+                } else {
+                    while (written < 40) { written += 12; octaveMark = '8vb'; }
+                    while (written > 61) { written -= 12; octaveMark = '8va'; }
+                }
             }
 
             const spec = getNoteInKey(written, keySignature);
@@ -119,7 +157,7 @@ export const LiveNoteStaff: React.FC<LiveNoteStaffProps> = ({
             new Formatter().joinVoices([voice]).format([voice], width - 40);
             voice.draw(context, stave);
         }
-    }, [midi, transpose, keySignature, clefOverride, width, theme, schemeVersion]);
+    }, [midi, transpose, keySignature, clefOverride, width, boxH, staveY, range, theme, schemeVersion]);
 
     return (
         <div
